@@ -3,6 +3,7 @@ import { DeviceConnect, type ConnectionStatus } from "./components/DeviceConnect
 import { KeyboardLayout } from "./components/KeyboardLayout.tsx";
 import { KeycodePicker } from "./components/KeycodePicker.tsx";
 import { LayerTabs } from "./components/LayerTabs.tsx";
+import { MatrixTester } from "./components/MatrixTester.tsx";
 import { Keyboard } from "./protocol/keyboard.ts";
 import { HidTransport } from "./protocol/transport.ts";
 
@@ -17,6 +18,7 @@ function App() {
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
   const [productName, setProductName] = useState<string | undefined>();
   const [layer, setLayer] = useState(0);
+  const [mode, setMode] = useState<"keymap" | "matrix">("keymap");
   const [selected, setSelected] = useState<SelectedKey | null>(null);
   // Keyboard mutates its internal keymap in place; bumping this forces a
   // re-render so KeyboardLayout picks up the new label after a remap.
@@ -31,6 +33,7 @@ function App() {
       await kb.reload();
       setKeyboard(kb);
       setProductName(transport.productName);
+      setMode("keymap");
       setStatus("connected");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -54,13 +57,24 @@ function App() {
     <div className="app">
       <h1>Vialite</h1>
       <DeviceConnect status={status} error={error} productName={productName} onConnect={handleConnect} />
-      {keyboard && (
+      {keyboard && keyboard.supportsMatrixTester && (
+        <div className="mode-tabs">
+          <button className={mode === "keymap" ? "active" : ""} onClick={() => setMode("keymap")}>
+            Keymap
+          </button>
+          <button className={mode === "matrix" ? "active" : ""} onClick={() => setMode("matrix")}>
+            Matrix test
+          </button>
+        </div>
+      )}
+      {keyboard && mode === "keymap" && (
         <>
           <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer} />
           <KeyboardLayout keyboard={keyboard} layer={layer} onKeySelect={(row, col) => setSelected({ row, col })} />
         </>
       )}
-      {selected && <KeycodePicker onPick={handlePick} onClose={() => setSelected(null)} />}
+      {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
+      {selected && mode === "keymap" && <KeycodePicker onPick={handlePick} onClose={() => setSelected(null)} />}
     </div>
   );
 }

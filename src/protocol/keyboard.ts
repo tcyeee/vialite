@@ -227,4 +227,83 @@ export class Keyboard {
       }
     }
   }
+
+  // --- Unlock & matrix tester (ported from keyboard_comm.py get_unlock_status /
+  // unlock_start / unlock_poll / lock / matrix_poll and editor/matrix_test.py) ---
+
+  /**
+   * Whether the matrix tester can work on this keyboard: needs Vial protocol 3+
+   * and the whole matrix state must fit in one 32-byte report (vial-gui uses
+   * the conservative `(cols // 8 + 1) * rows <= 28` check; mirror it).
+   */
+  get supportsMatrixTester(): boolean {
+    return (
+      this.vialProtocol >= C.VIAL_PROTOCOL_MATRIX_TESTER &&
+      (Math.floor(this.cols / 8) + 1) * this.rows <= C.BUFFER_FETCH_CHUNK
+    );
+  }
+
+  async getUnlockStatus(retries = 20): Promise<UnlockStatus> {
+    const data = await this.transport.send(
+      new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_GET_UNLOCK_STATUS]),
+      retries,
+    );
+    // data[0] = unlocked, data[1] = unlock in progress, then up to 15 row/col
+    // pairs of the keys to hold, 255 meaning "no key in this slot".
+    const keys: { row: number; col: number }[] = [];
+    for (let i = 0; i < 15; i++) {
+      const row = data[2 + i * 2];
+      const col = data[3 + i * 2];
+      if (row !== 255 && col !== 255) {
+        keys.push({ row, col });
+      }
+    }
+    return { unlocked: data[0] === 1, inProgress: data[1] === 1, keys };
+  }
+
+  async unlockStart(): Promise<void> {
+    await this.transport.send(new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_UNLOCK_START]), 20);
+  }
+
+  /** data[0] = unlocked flag, data[2] = remaining unlock counter (counts down to 0). */
+  async unlockPoll(): Promise<{ unlocked: boolean; counter: number }> {
+    const data = await this.transport.send(new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_UNLOCK_POLL]), 20);
+    return { unlocked: data[0] === 1, counter: data[2] };
+  }
+
+  async lock(): Promise<void> {
+    await this.transport.send(new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_LOCK]), 20);
+  }
+
+  /**
+   * Polls the switch matrix state (requires the keyboard to be unlocked).
+   * Returns the set of currently pressed positions as "row,col" strings.
+   */
+  async getMatrixState(): Promise<Set<string>> {
+    const data = await this.transport.send(
+      new Uint8Array([C.CMD_VIA_GET_KEYBOARD_VALUE, C.VIA_SWITCH_MATRIX_STATE]),
+      3,
+    );
+    // Reply: 2 header bytes, then ceil(cols / 8) bytes per row; within a row
+    // the *last* byte holds cols 0-7, bit index = col % 8.
+    const rowSize = Math.ceil(this.cols / 8);
+    const pressed = new Set<string>();
+    for (let row = 0; row < this.rows; row++) {
+      const rowStart = 2 + row * rowSize;
+      for (let col = 0; col < this.cols; col++) {
+        const byte = data[rowStart + rowSize - 1 - Math.floor(col / 8)];
+        if ((byte >> col % 8) & 1) {
+          pressed.add(`${row},${col}`);
+        }
+      }
+    }
+    return pressed;
+  }
+}
+
+export interface UnlockStatus {
+  unlocked: boolean;
+  inProgress: boolean;
+  /** Keys the user has to hold down to unlock the keyboard. */
+  keys: { row: number; col: number }[];
 }

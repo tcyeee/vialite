@@ -89,3 +89,70 @@ body {
   white-space: pre-line;
   font-size: 0.75rem;
 }
+
+.mode-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.mode-tabs button.active {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.matrix-tester .keyboard-layout {
+  margin-bottom: 1rem;
+}
+
+.matrix-key {
+  position: absolute;
+  border: 1px solid #888;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.matrix-key.pressed {
+  background: #2a7f2a;
+  border-color: #2a7f2a;
+}
+
+.matrix-key.tested {
+  background: #7fb37f;
+  border-color: #7fb37f;
+}
+
+.unlock-dialog {
+  max-width: min(90vw, 40rem);
+}
+
+.unlock-reference {
+  position: relative;
+  margin: 0 auto 1rem;
+}
+
+.unlock-key {
+  position: absolute;
+  border: 1px solid #888;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.unlock-key.hold {
+  background: #2a7f2a;
+  border-color: #2a7f2a;
+}
+
+.unlock-progress {
+  height: 0.75rem;
+  border: 1px solid #888;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.unlock-progress-fill {
+  height: 100%;
+  background: #2a7f2a;
+  transition: width 0.2s;
+}
