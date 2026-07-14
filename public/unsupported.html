@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vialite — Unsupported Browser</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+      }
+      .app {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 3rem 1.5rem;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      .error {
+        color: #d33;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <h1>Vialite</h1>
+      <p class="error">Your browser does not support WebHID, which Vialite needs to talk to your keyboard.</p>
+      <p>Please use one of the following browsers on desktop:</p>
+      <ul>
+        <li>Google Chrome (89+)</li>
+        <li>Microsoft Edge (89+)</li>
+        <li>Opera (75+)</li>
+      </ul>
+      <p>Firefox and Safari do not currently support WebHID.</p>
+    </div>
+  </body>
+</html>
