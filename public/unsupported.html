@@ -24,19 +24,38 @@
       .error {
         color: #d33;
       }
+      #reason-insecure {
+        display: none;
+      }
     </style>
   </head>
   <body>
     <div class="app">
       <h1>Vialite</h1>
-      <p class="error">Your browser does not support WebHID, which Vialite needs to talk to your keyboard.</p>
-      <p>Please use one of the following browsers on desktop:</p>
-      <ul>
-        <li>Google Chrome (89+)</li>
-        <li>Microsoft Edge (89+)</li>
-        <li>Opera (75+)</li>
-      </ul>
-      <p>Firefox and Safari do not currently support WebHID.</p>
+      <div id="reason-unsupported">
+        <p class="error">Your browser does not support WebHID, which Vialite needs to talk to your keyboard.</p>
+        <p>Please use one of the following browsers on desktop:</p>
+        <ul>
+          <li>Google Chrome (89+)</li>
+          <li>Microsoft Edge (89+)</li>
+          <li>Opera (75+)</li>
+        </ul>
+        <p>Firefox and Safari do not currently support WebHID.</p>
+      </div>
+      <div id="reason-insecure">
+        <p class="error">This page was loaded over an insecure connection (plain HTTP).</p>
+        <p>
+          WebHID, which Vialite needs to talk to your keyboard, is only available on pages served over
+          <strong>HTTPS</strong> (or on <code>localhost</code>). Your browser is fine — reload this site via
+          an <code>https://</code> URL instead.
+        </p>
+      </div>
     </div>
+    <script>
+      if (new URLSearchParams(location.search).get("reason") === "insecure") {
+        document.getElementById("reason-unsupported").style.display = "none";
+        document.getElementById("reason-insecure").style.display = "block";
+      }
+    </script>
   </body>
 </html>

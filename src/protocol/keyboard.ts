@@ -163,12 +163,10 @@ export class Keyboard {
       if (key.labels[4] === "e") {
         const idx = Number((key.labels[0] ?? "0,0").split(",")[0]);
         this.encoders.push({ index: idx, x: key.x, y: key.y, width: key.width, height: key.height });
-      } else if (key.decal || (key.labels[0] && key.labels[0].includes(","))) {
-        let row = 0;
-        let col = 0;
-        if (key.labels[0] && key.labels[0].includes(",")) {
-          [row, col] = key.labels[0].split(",").map(Number);
-        }
+      } else if (!key.decal && key.labels[0] && key.labels[0].includes(",")) {
+        // Decals are purely decorative (logos, labels) — they carry no matrix
+        // position, so treating one as a key would alias it onto (0, 0).
+        const [row, col] = key.labels[0].split(",").map(Number);
         this.keys.push({ row, col, x: key.x, y: key.y, width: key.width, height: key.height });
       }
     }
