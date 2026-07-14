@@ -1,6 +1,6 @@
-emsdk
-sources
-deps
-build
-vial-gui
-via-keymap-precompiled
+node_modules
+dist
+dist-ssr
+*.local
+*.tsbuildinfo
+.DS_Store

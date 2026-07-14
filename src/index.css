@@ -1,0 +1,91 @@
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.app {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+}
+
+.device-connect {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.device-connect .error {
+  color: #d33;
+}
+
+.layer-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.layer-tabs button.active {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.keyboard-layout {
+  position: relative;
+}
+
+.keyboard-layout .key {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: pre-line;
+  font-size: 0.75rem;
+  text-align: center;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.keyboard-layout .encoder {
+  position: absolute;
+  border: 1px dashed #888;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.picker {
+  background: canvas;
+  color: canvastext;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+}
+
+.picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.picker-grid button {
+  min-width: 3rem;
+  white-space: pre-line;
+  font-size: 0.75rem;
+}
