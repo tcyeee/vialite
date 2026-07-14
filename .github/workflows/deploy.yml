@@ -1,0 +1,31 @@
+name: Deploy
+
+on:
+  push:
+    branches: [prod]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Deploy over rsync
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 123.206.216.124 >> ~/.ssh/known_hosts
+          rsync -avz --delete -e "ssh -i ~/.ssh/deploy_key" dist/ ubuntu@123.206.216.124:/home/ubuntu/www/vialite/
