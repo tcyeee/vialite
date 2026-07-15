@@ -1,5 +1,6 @@
 node_modules
 dist
+.claude/
 dist-ssr
 *.local
 *.tsbuildinfo
