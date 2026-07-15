@@ -32,3 +32,20 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           echo "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           rsync -avz --delete -e "ssh -i ~/.ssh/deploy_key" dist/ ubuntu@123.206.216.124:/home/ubuntu/www/vialite/
+
+      - name: Notify via Server酱
+        if: always()
+        env:
+          SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            TITLE="Vialite 部署成功"
+            DESP="commit \`${GITHUB_SHA:0:7}\` 已成功部署到生产环境。"
+          else
+            TITLE="Vialite 部署失败"
+            DESP="commit \`${GITHUB_SHA:0:7}\` 部署失败，请查看日志：${RUN_URL}"
+          fi
+          curl -fsS -X POST "https://sctapi.ftqq.com/${SENDKEY}.send" \
+            --data-urlencode "title=${TITLE}" \
+            --data-urlencode "desp=${DESP}"
