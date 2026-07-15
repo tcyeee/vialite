@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { Component, lazy, Suspense, useState, type ReactNode, type SVGProps } from "react";
 import { useI18n } from "../i18n.tsx";
 import type { ConnectionStatus } from "./DeviceConnect.tsx";
 
@@ -8,22 +8,70 @@ interface Props {
   onConnect: () => void;
 }
 
+// three.js is a large dependency (~600 kB); split into its own chunk so it
+// doesn't block first paint of this screen while it fetches.
+const KeyboardModelPreview = lazy(() =>
+  import("./KeyboardModelPreview.tsx").then((m) => ({ default: m.KeyboardModelPreview })),
+);
+
+// WebGL is unavailable in some real-world contexts (disabled by the user, no
+// GPU, a lost context, or the chunk itself failing to fetch), and only a
+// class-component error boundary can catch a failure *inside* the lazy
+// subtree — Suspense's fallback only covers the loading gap. Either failure
+// mode falls back to the flat SVG icon rather than taking the whole page
+// down with it, which is what an uncaught WebGLRenderer error used to do.
+class ModelErrorBoundary extends Component<{ onError: () => void; children: ReactNode }> {
+  componentDidCatch() {
+    this.props.onError();
+  }
+
+  render() {
+    return this.props.children;
+  }
+}
+
 export function WaitingForConnection({ status, error, onConnect }: Props) {
-  const { t } = useI18n();
+  const { lang, setLang, t } = useI18n();
   const connecting = status === "connecting";
+  const [modelReady, setModelReady] = useState(false);
+  const [modelFailed, setModelFailed] = useState(false);
 
   return (
-    <div className="relative flex min-h-[70vh] items-center justify-center bg-brand-background p-4">
+    <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden bg-brand-background p-4">
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-20 -left-20 h-[400px] w-[400px] rounded-full bg-brand-primary-container/40 blur-3xl" />
         <div className="absolute -right-10 bottom-0 h-[300px] w-[300px] rounded-full bg-brand-secondary-container/40 blur-3xl" />
         <div className="absolute top-1/2 left-1/3 h-[250px] w-[250px] rounded-full bg-brand-tertiary-container/20 blur-3xl" />
       </div>
 
+      <img className="fixed top-6 left-6 h-12 w-auto md:h-16" src="/logo-full.svg" alt="Vialite" />
+
+      <button
+        type="button"
+        className="fixed top-4 right-4 min-w-[3.5rem] rounded-lg border border-brand-outline/40 bg-white/60 px-3 py-1 text-sm font-medium text-brand-on-surface backdrop-blur-md"
+        onClick={() => setLang(lang === "zh" ? "en" : "zh")}
+      >
+        {lang === "zh" ? "EN" : "中文"}
+      </button>
+
       <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border-2 border-brand-surface-container-highest bg-white/60 p-8 text-center shadow-sm backdrop-blur-md md:p-16">
-        <div className="relative mb-6 inline-block animate-kawaii-float">
-          <div className="animate-kawaii-pulse absolute -inset-4 -z-10 rounded-full bg-brand-secondary-container/30 blur-2xl" />
-          <KeyboardIcon className="h-28 w-28 text-brand-primary md:h-40 md:w-40" />
+        <div className="relative mx-auto mb-6 h-40 w-full max-w-xs md:h-56">
+          <div className="animate-kawaii-pulse absolute inset-x-0 top-1/2 -z-10 h-2/3 -translate-y-1/2 rounded-full bg-brand-secondary-container/30 blur-2xl" />
+          <div
+            className="absolute inset-0 flex items-center justify-center transition-opacity duration-300"
+            style={{ opacity: modelReady && !modelFailed ? 0 : 1 }}
+          >
+            <KeyboardIcon className="h-28 w-28 text-brand-primary md:h-40 md:w-40" />
+          </div>
+          {!modelFailed && (
+            <div className="absolute inset-0">
+              <ModelErrorBoundary onError={() => setModelFailed(true)}>
+                <Suspense fallback={null}>
+                  <KeyboardModelPreview onReady={() => setModelReady(true)} onError={() => setModelFailed(true)} />
+                </Suspense>
+              </ModelErrorBoundary>
+            </div>
+          )}
         </div>
 
         <div className="mx-auto max-w-lg space-y-4">

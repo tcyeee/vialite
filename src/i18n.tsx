@@ -12,6 +12,8 @@ const MESSAGES = {
   // App
   keymapTab: { en: "Keymap", zh: "键位" },
   matrixTestTab: { en: "Matrix test", zh: "矩阵测试" },
+  view2d: { en: "2D", zh: "2D 平面" },
+  view3d: { en: "3D", zh: "3D 预览" },
   exportLayout: { en: "Export layout", zh: "导出配置" },
   importLayout: { en: "Import layout", zh: "导入配置" },
   importing: { en: "Importing…", zh: "导入中…" },

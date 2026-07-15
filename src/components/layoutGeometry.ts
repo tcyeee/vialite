@@ -31,7 +31,7 @@ export interface PlacedLayout {
 
 type Pt = [number, number];
 
-function rotatePoint(px: number, py: number, angleDeg: number, rx: number, ry: number): Pt {
+export function rotatePoint(px: number, py: number, angleDeg: number, rx: number, ry: number): Pt {
   if (!angleDeg) {
     return [px, py];
   }

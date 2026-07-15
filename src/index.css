@@ -337,6 +337,24 @@ body {
   text-decoration: underline;
 }
 
+.view-mode-tabs {
+  margin-bottom: 0.5rem;
+}
+
+.keyboard-layout-3d {
+  width: 100%;
+  height: min(60vh, 480px);
+  border-radius: 8px;
+  overflow: hidden;
+  background: light-dark(#dcdad1, #202020);
+  cursor: grab;
+}
+
+.keyboard-model-preview {
+  width: 100%;
+  height: 100%;
+}
+
 .matrix-tester .keyboard-layout {
   margin-bottom: 1rem;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { DeviceConnect, type ConnectionStatus } from "./components/DeviceConnect.tsx";
 import { KeyboardLayout } from "./components/KeyboardLayout.tsx";
 import { KeycodePicker } from "./components/KeycodePicker.tsx";
@@ -19,6 +19,12 @@ type Selected =
 // parallel auto-connect attempts.
 let autoConnectStarted = false;
 
+// three.js is a large dependency (~600 kB) only needed once a user opts into
+// the 3D preview, so it's split into its own chunk and fetched on demand.
+const KeyboardLayout3D = lazy(() =>
+  import("./components/KeyboardLayout3D.tsx").then((m) => ({ default: m.KeyboardLayout3D })),
+);
+
 function App() {
   const { lang, setLang, t } = useI18n();
   const [status, setStatus] = useState<ConnectionStatus>("idle");
@@ -27,6 +33,7 @@ function App() {
   const [productName, setProductName] = useState<string | undefined>();
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<"keymap" | "matrix">("keymap");
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [selected, setSelected] = useState<Selected | null>(null);
   // Keyboard mutates its internal keymap in place; bumping this forces a
   // re-render so KeyboardLayout picks up the new label after a remap.
@@ -195,17 +202,17 @@ function App() {
     [keyboard, t],
   );
 
+  if (status !== "connected") {
+    return <WaitingForConnection status={status} error={error} onConnect={handleConnect} />;
+  }
+
   return (
     <div className="app">
       <div className="app-main">
         <div className="app-header">
           <img className="app-logo" src="/logo-full.svg" alt="Vialite" />
         </div>
-        {status === "connected" ? (
-          <DeviceConnect error={error} productName={productName} onDisconnect={handleDisconnect} />
-        ) : (
-          <WaitingForConnection status={status} error={error} onConnect={handleConnect} />
-        )}
+        <DeviceConnect error={error} productName={productName} onDisconnect={handleDisconnect} />
         {keyboard && keyboard.supportsMatrixTester && (
           <div className="mode-tabs">
             <button className={mode === "keymap" ? "active" : ""} onClick={() => setMode("keymap")}>
@@ -242,12 +249,31 @@ function App() {
             </div>
             <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer} />
             <LayoutOptions keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
-            <KeyboardLayout
-              keyboard={keyboard}
-              layer={layer}
-              onKeySelect={(row, col) => setSelected({ kind: "key", row, col })}
-              onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
-            />
+            <div className="mode-tabs view-mode-tabs">
+              <button className={viewMode === "2d" ? "active" : ""} onClick={() => setViewMode("2d")}>
+                {t("view2d")}
+              </button>
+              <button className={viewMode === "3d" ? "active" : ""} onClick={() => setViewMode("3d")}>
+                {t("view3d")}
+              </button>
+            </div>
+            {viewMode === "2d" ? (
+              <KeyboardLayout
+                keyboard={keyboard}
+                layer={layer}
+                onKeySelect={(row, col) => setSelected({ kind: "key", row, col })}
+                onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
+              />
+            ) : (
+              <Suspense fallback={<div className="keyboard-layout-3d" />}>
+                <KeyboardLayout3D
+                  keyboard={keyboard}
+                  layer={layer}
+                  onKeySelect={(row, col) => setSelected({ kind: "key", row, col })}
+                  onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
+                />
+              </Suspense>
+            )}
           </>
         )}
         {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
