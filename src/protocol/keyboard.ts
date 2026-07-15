@@ -8,6 +8,7 @@ import * as C from "./constants.ts";
 import { deserialize as kleDeserialize, type KleData, type KleKeyboard } from "./kleSerial.ts";
 import { deserialize as kcDeserialize, serialize as kcSerialize, setKeycodeVersion } from "./keycodes.ts";
 import { HidTransport, ProtocolError } from "./transport.ts";
+import { normalizeVilKeycode, type ParsedVilFile, type VilRestoreReport, type VilSnapshot } from "./vilFile.ts";
 
 const { XzReadableStream } = pkg;
 
@@ -111,6 +112,8 @@ export class Keyboard {
 
   viaProtocol = -1;
   vialProtocol = -1;
+  /** 64-bit keyboard id from CMD_VIAL_GET_KEYBOARD_ID; identifies the model in .vil files. */
+  uid = -1n;
   rows = 0;
   cols = 0;
   layers = 0;
@@ -136,6 +139,7 @@ export class Keyboard {
     await this.reloadLayout();
     await this.reloadLayers();
     await this.reloadKeymap();
+    await this.reloadLayoutOptions();
   }
 
   getKey(layer: number, row: number, col: number): string {
@@ -225,7 +229,9 @@ export class Keyboard {
       new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_GET_KEYBOARD_ID]),
       20,
     );
-    this.vialProtocol = new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(0, true);
+    const idView = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    this.vialProtocol = idView.getUint32(0, true);
+    this.uid = idView.getBigUint64(4, true);
     setKeycodeVersion(this.vialProtocol);
 
     data = await this.transport.send(new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_GET_SIZE]), 20);
@@ -256,7 +262,7 @@ export class Keyboard {
 
     this.rows = definition.matrix.rows;
     this.cols = definition.matrix.cols;
-    this.layoutLabels = definition.layouts.labels ?? null;
+    this.layoutLabels = definition.layouts.labels?.length ? definition.layouts.labels : null;
 
     const kb: KleKeyboard = kleDeserialize(definition.layouts.keymap);
     this.keys = [];
@@ -356,14 +362,112 @@ export class Keyboard {
         this.encoderLayout.set(`${layer},${index},1`, kcSerialize(view.getUint16(2, false)));
       }
     }
+  }
 
-    if (this.layoutLabels) {
-      const data = await this.transport.send(
-        new Uint8Array([C.CMD_VIA_GET_KEYBOARD_VALUE, C.VIA_LAYOUT_OPTIONS]),
-        20,
-      );
-      const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-      this.layoutOptions = view.getUint32(2, false);
+  /** Mirrors vial-gui: layout options are only defined when the board declares layout labels. */
+  private async reloadLayoutOptions(): Promise<void> {
+    if (!this.layoutLabels) {
+      this.layoutOptions = -1;
+      return;
     }
+    const data = await this.transport.send(
+      new Uint8Array([C.CMD_VIA_GET_KEYBOARD_VALUE, C.VIA_LAYOUT_OPTIONS]),
+      20,
+    );
+    this.layoutOptions = new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(2, false);
+  }
+
+  /** Highest encoder index + 1, matching vial-gui's encoder_count. */
+  get encoderCount(): number {
+    return this.encoders.reduce((max, e) => Math.max(max, e.index + 1), 0);
+  }
+
+  /** Snapshot of the current keymap in vial-gui .vil structure (see vilFile.ts). */
+  saveLayout(): VilSnapshot {
+    const layout: (string | -1)[][][] = [];
+    for (let l = 0; l < this.layers; l++) {
+      const layer: (string | -1)[][] = [];
+      for (let r = 0; r < this.rows; r++) {
+        const row: (string | -1)[] = [];
+        for (let c = 0; c < this.cols; c++) {
+          row.push(this.layout.get(`${l},${r},${c}`) ?? -1);
+        }
+        layer.push(row);
+      }
+      layout.push(layer);
+    }
+
+    const encoderLayout: [string | -1, string | -1][][] = [];
+    const count = this.encoderCount;
+    for (let l = 0; l < this.layers; l++) {
+      const layer: [string | -1, string | -1][] = [];
+      for (let e = 0; e < count; e++) {
+        layer.push([
+          this.encoderLayout.get(`${l},${e},0`) ?? -1,
+          this.encoderLayout.get(`${l},${e},1`) ?? -1,
+        ]);
+      }
+      encoderLayout.push(layer);
+    }
+
+    return {
+      uid: this.uid,
+      viaProtocol: this.viaProtocol,
+      vialProtocol: this.vialProtocol,
+      layoutOptions: this.layoutOptions,
+      layout,
+      encoderLayout,
+    };
+  }
+
+  /**
+   * Writes a parsed .vil file to the device. Like vial-gui's restore_layout,
+   * only positions that exist on this keyboard are written, and only when they
+   * differ from the current assignment. Unsupported .vil content (macros, tap
+   * dance, ...) is not applied; keycodes this build can't resolve are skipped
+   * and reported.
+   */
+  async restoreLayout(file: ParsedVilFile): Promise<VilRestoreReport> {
+    const unknown = new Set<string>();
+    let written = 0;
+
+    for (let l = 0; l < file.layout.length; l++) {
+      const layer = file.layout[l];
+      for (let r = 0; r < layer.length; r++) {
+        const row = layer[r];
+        for (let c = 0; c < row.length; c++) {
+          const qmkId = normalizeVilKeycode(row[c], unknown);
+          if (qmkId === null || !this.layout.has(`${l},${r},${c}`)) {
+            continue;
+          }
+          if (this.layout.get(`${l},${r},${c}`) !== qmkId) {
+            await this.setKey(l, r, c, qmkId);
+            written++;
+          }
+        }
+      }
+    }
+
+    for (let l = 0; l < file.encoderLayout.length; l++) {
+      const layer = file.encoderLayout[l];
+      for (let e = 0; e < layer.length; e++) {
+        const pair = layer[e];
+        if (!Array.isArray(pair)) {
+          continue;
+        }
+        for (const dir of [0, 1] as const) {
+          const qmkId = normalizeVilKeycode(pair[dir], unknown);
+          if (qmkId === null || !this.encoderLayout.has(`${l},${e},${dir}`)) {
+            continue;
+          }
+          if (this.encoderLayout.get(`${l},${e},${dir}`) !== qmkId) {
+            await this.setEncoder(l, e, dir, qmkId);
+            written++;
+          }
+        }
+      }
+    }
+
+    return { written, unknownKeycodes: [...unknown] };
   }
 }

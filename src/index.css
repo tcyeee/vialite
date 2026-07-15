@@ -24,6 +24,25 @@ body {
   color: #d33;
 }
 
+.layout-io {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.layout-io .io-message {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* Blocks all interaction while a .vil import is writing to the device. */
+.io-busy-overlay {
+  position: fixed;
+  inset: 0;
+  cursor: progress;
+}
+
 .layer-tabs {
   display: flex;
   gap: 0.25rem;
