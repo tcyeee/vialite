@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "react": "^19.2.7",
@@ -20,6 +21,7 @@
     "@types/w3c-web-hid": "^1.0.7",
     "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^7.0.2",
-    "vite": "^8.1.4"
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10"
   }
 }

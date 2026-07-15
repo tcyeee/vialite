@@ -23,9 +23,12 @@ jobs:
       - name: Deploy over rsync
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          # Pinned host key(s); generate with `ssh-keyscan 123.206.216.124`
+          # from a trusted network and store as a repository secret.
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H 123.206.216.124 >> ~/.ssh/known_hosts
+          echo "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           rsync -avz --delete -e "ssh -i ~/.ssh/deploy_key" dist/ ubuntu@123.206.216.124:/home/ubuntu/www/vialite/
