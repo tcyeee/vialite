@@ -6,7 +6,7 @@
 import pkg from "xz-decompress";
 import * as C from "./constants.ts";
 import { deserialize as kleDeserialize, type KleData, type KleKeyboard } from "./kleSerial.ts";
-import { deserialize as kcDeserialize, serialize as kcSerialize } from "./keycodes.ts";
+import { deserialize as kcDeserialize, serialize as kcSerialize, setKeycodeVersion } from "./keycodes.ts";
 import { HidTransport, ProtocolError } from "./transport.ts";
 
 const { XzReadableStream } = pkg;
@@ -125,6 +125,7 @@ export class Keyboard {
       20,
     );
     this.vialProtocol = new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(0, true);
+    setKeycodeVersion(this.vialProtocol);
 
     data = await this.transport.send(new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_GET_SIZE]), 20);
     let size = new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(0, true);
