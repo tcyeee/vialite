@@ -5,6 +5,7 @@ import { KeycodePicker } from "./components/KeycodePicker.tsx";
 import { LayerTabs } from "./components/LayerTabs.tsx";
 import { LayoutOptions } from "./components/LayoutOptions.tsx";
 import { MatrixTester } from "./components/MatrixTester.tsx";
+import { WaitingForConnection } from "./components/WaitingForConnection.tsx";
 import { useI18n } from "./i18n.tsx";
 import { Keyboard } from "./protocol/keyboard.ts";
 import { HidTransport } from "./protocol/transport.ts";
@@ -34,6 +35,10 @@ function App() {
   const [ioMessage, setIoMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const transportRef = useRef<HidTransport | null>(null);
+  // Guards handleConnect and the auto-connect effect against running
+  // concurrently — e.g. a manual click landing in the async gap between the
+  // auto-connect effect finding a device and it calling setStatus("connecting").
+  const connectInFlightRef = useRef(false);
 
   const teardown = useCallback(async () => {
     const old = transportRef.current;
@@ -72,6 +77,10 @@ function App() {
   );
 
   const handleConnect = useCallback(async () => {
+    if (connectInFlightRef.current) {
+      return;
+    }
+    connectInFlightRef.current = true;
     setStatus("connecting");
     setError(null);
     try {
@@ -81,6 +90,8 @@ function App() {
       await teardown();
       setError(err instanceof Error ? err.message : String(err));
       setStatus("error");
+    } finally {
+      connectInFlightRef.current = false;
     }
   }, [attachTransport, teardown]);
 
@@ -101,9 +112,10 @@ function App() {
       try {
         const devices = await navigator.hid.getDevices();
         const device = devices.find((d) => HidTransport.isVialDevice(d));
-        if (!device) {
+        if (!device || connectInFlightRef.current) {
           return;
         }
+        connectInFlightRef.current = true;
         setStatus("connecting");
         const transport = await HidTransport.fromDevice(device);
         await attachTransport(transport);
@@ -111,6 +123,8 @@ function App() {
         // Best effort — fall back to the manual Connect button.
         await teardown();
         setStatus("idle");
+      } finally {
+        connectInFlightRef.current = false;
       }
     })();
   }, [attachTransport, teardown]);
@@ -183,66 +197,68 @@ function App() {
 
   return (
     <div className="app">
-      <div className="app-header">
-        <h1>Vialite</h1>
+      <div className="app-main">
+        <div className="app-header">
+          <img className="app-logo" src="/logo-full.svg" alt="Vialite" />
+        </div>
+        {status === "connected" ? (
+          <DeviceConnect error={error} productName={productName} onDisconnect={handleDisconnect} />
+        ) : (
+          <WaitingForConnection status={status} error={error} onConnect={handleConnect} />
+        )}
+        {keyboard && keyboard.supportsMatrixTester && (
+          <div className="mode-tabs">
+            <button className={mode === "keymap" ? "active" : ""} onClick={() => setMode("keymap")}>
+              {t("keymapTab")}
+            </button>
+            <button className={mode === "matrix" ? "active" : ""} onClick={() => setMode("matrix")}>
+              {t("matrixTestTab")}
+            </button>
+          </div>
+        )}
+        {keyboard && mode === "keymap" && (
+          <>
+            <div className="layout-io">
+              <button onClick={handleExport} disabled={importing}>
+                {t("exportLayout")}
+              </button>
+              <button onClick={() => fileInputRef.current?.click()} disabled={importing}>
+                {importing ? t("importing") : t("importLayout")}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".vil,application/json"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) {
+                    void handleImportFile(file);
+                  }
+                }}
+              />
+              {ioMessage && <span className="io-message">{ioMessage}</span>}
+            </div>
+            <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer} />
+            <LayoutOptions keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+            <KeyboardLayout
+              keyboard={keyboard}
+              layer={layer}
+              onKeySelect={(row, col) => setSelected({ kind: "key", row, col })}
+              onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
+            />
+          </>
+        )}
+        {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
+        {selected && mode === "keymap" && <KeycodePicker onPick={handlePick} onClose={() => setSelected(null)} />}
+        {importing && <div className="io-busy-overlay" />}
+      </div>
+      <footer className="app-footer">
         <button className="lang-toggle" onClick={() => setLang(lang === "zh" ? "en" : "zh")}>
           {lang === "zh" ? "EN" : "中文"}
         </button>
-      </div>
-      <DeviceConnect
-        status={status}
-        error={error}
-        productName={productName}
-        onConnect={handleConnect}
-        onDisconnect={handleDisconnect}
-      />
-      {keyboard && keyboard.supportsMatrixTester && (
-        <div className="mode-tabs">
-          <button className={mode === "keymap" ? "active" : ""} onClick={() => setMode("keymap")}>
-            {t("keymapTab")}
-          </button>
-          <button className={mode === "matrix" ? "active" : ""} onClick={() => setMode("matrix")}>
-            {t("matrixTestTab")}
-          </button>
-        </div>
-      )}
-      {keyboard && mode === "keymap" && (
-        <>
-          <div className="layout-io">
-            <button onClick={handleExport} disabled={importing}>
-              {t("exportLayout")}
-            </button>
-            <button onClick={() => fileInputRef.current?.click()} disabled={importing}>
-              {importing ? t("importing") : t("importLayout")}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".vil,application/json"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (file) {
-                  void handleImportFile(file);
-                }
-              }}
-            />
-            {ioMessage && <span className="io-message">{ioMessage}</span>}
-          </div>
-          <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer} />
-          <LayoutOptions keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
-          <KeyboardLayout
-            keyboard={keyboard}
-            layer={layer}
-            onKeySelect={(row, col) => setSelected({ kind: "key", row, col })}
-            onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
-          />
-        </>
-      )}
-      {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
-      {selected && mode === "keymap" && <KeycodePicker onPick={handlePick} onClose={() => setSelected(null)} />}
-      {importing && <div className="io-busy-overlay" />}
+      </footer>
     </div>
   );
 }

@@ -1,13 +1,100 @@
+/* Import theme + utilities only, deliberately skipping Preflight (the base
+   layer) — this app predates Tailwind and is full of plain <button>/<h1>
+   elements with their own hand-written CSS; Preflight's reset would strip
+   their native/expected styling app-wide. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+}
+
+/* App brand palette, matching public/Icon.svg's #78555e — the canonical
+   colors for any Tailwind-styled UI in this app. Namespaced with a brand-
+   prefix because daisyui's own theme already claims the plain
+   primary/secondary/etc. tokens and would otherwise win the cascade;
+   daisyui's component classes (btn, card, ...) aren't adopted yet, so this
+   is the source of truth until/unless that changes. */
+@theme {
+  --color-brand-primary: #78555e;
+  --color-brand-primary-container: #ffd1dc;
+  --color-brand-secondary: #2f6a3f;
+  --color-brand-secondary-container: #b2f2bb;
+  --color-brand-on-secondary-container: #357044;
+  --color-brand-tertiary: #665f36;
+  --color-brand-tertiary-container: #e9ddab;
+  --color-brand-background: #fbf9f1;
+  --color-brand-surface-container-highest: #e4e3db;
+  --color-brand-on-surface: #1b1c17;
+  --color-brand-on-surface-variant: #4f4446;
+  --color-brand-outline: #817476;
+}
+
 :root {
   color-scheme: light dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
+  background: var(--color-brand-background);
+}
+
+/* Waiting-for-connection hero: gentle float + squash-bounce button press. */
+@keyframes kawaii-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes kawaii-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-kawaii-float {
+  animation: kawaii-float 4s ease-in-out infinite;
+}
+
+.animate-kawaii-pulse {
+  animation: kawaii-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* This screen can sit idle indefinitely waiting for a device; don't spend
+   battery/GPU on decorative motion for users who've asked to avoid it. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-kawaii-float,
+  .animate-kawaii-pulse {
+    animation: none;
+  }
+}
+
+.kawaii-btn {
+  transition:
+    transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    box-shadow 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 6px 0 0 rgba(0, 0, 0, 0.1);
+}
+
+.kawaii-btn:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.1);
 }
 
 .app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
   max-width: 1000px;
   margin: 0 auto;
   padding: 1rem 1.5rem;
@@ -16,8 +103,26 @@ body {
 .app-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
+}
+
+.app-logo {
+  height: 1.75rem;
+  width: auto;
+}
+
+.app-main {
+  flex: 1;
+}
+
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  margin-top: 2rem;
+  background: #000;
+  color: #fff;
 }
 
 .lang-toggle {
@@ -31,7 +136,9 @@ body {
   margin-bottom: 1rem;
 }
 
-.device-connect .error {
+/* Shared by every connect-flow error message (DeviceConnect, WaitingForConnection,
+   UnlockDialog, MatrixTester) — kept unscoped so it applies wherever it's used. */
+.error {
   color: #d33;
 }
 

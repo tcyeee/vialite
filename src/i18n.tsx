@@ -33,10 +33,17 @@ const MESSAGES = {
   },
 
   // DeviceConnect
-  connectKeyboard: { en: "Connect keyboard", zh: "连接键盘" },
   connecting: { en: "Connecting…", zh: "连接中…" },
   connectedTo: { en: "Connected: {name}", zh: "已连接:{name}" },
   disconnect: { en: "Disconnect", zh: "断开连接" },
+
+  // WaitingForConnection
+  waitingTitle: { en: "Waiting for connection", zh: "等待连接" },
+  waitingSubtitle: {
+    en: "Click the button below to start detecting your keyboard.",
+    zh: "请点击下方按钮开始检测。",
+  },
+  detectDevice: { en: "Detect device", zh: "检测设备" },
 
   // LayerTabs
   layerN: { en: "Layer {n}", zh: "层 {n}" },
