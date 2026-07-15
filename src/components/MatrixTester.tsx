@@ -1,0 +1,170 @@
+// Switch matrix tester, ported from vial-gui's editor/matrix_test.py.
+// Requires the keyboard to be unlocked (the firmware refuses to report matrix
+// state otherwise, to prevent a web page from keylogging).
+//
+// Unlike vial-gui (which leaves the board unlocked and offers Security->Lock),
+// nothing else in Vialite needs the unlocked state, so we re-lock on exit.
+
+import { useEffect, useState } from "react";
+import type { Keyboard } from "../protocol/keyboard.ts";
+import { UnlockDialog } from "./UnlockDialog.tsx";
+
+const UNIT = 54; // same scale as KeyboardLayout
+
+const POLL_INTERVAL_MS = 50;
+
+interface Props {
+  keyboard: Keyboard;
+}
+
+export function MatrixTester({ keyboard }: Props) {
+  // null = still checking the lock state
+  const [unlocked, setUnlocked] = useState<boolean | null>(null);
+  const [dialogDismissed, setDialogDismissed] = useState(false);
+  const [pressed, setPressed] = useState<Set<string>>(new Set());
+  const [tested, setTested] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    keyboard
+      .getUnlockStatus()
+      .then((status) => {
+        if (!cancelled) {
+          setUnlocked(status.unlocked);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [keyboard]);
+
+  useEffect(() => {
+    if (!unlocked) {
+      return;
+    }
+    let cancelled = false;
+
+    const loop = async () => {
+      while (!cancelled) {
+        try {
+          const state = await keyboard.getMatrixState();
+          if (cancelled) {
+            return;
+          }
+          setPressed(state);
+          if (state.size > 0) {
+            setTested((prev) => {
+              const next = new Set(prev);
+              for (const pos of state) {
+                next.add(pos);
+              }
+              return next;
+            });
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setError(err instanceof Error ? err.message : String(err));
+          }
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
+    };
+    void loop();
+
+    return () => {
+      cancelled = true;
+      // Nothing else in the app needs the unlocked state; don't leave the
+      // keyboard silently unlocked when the user navigates away.
+      keyboard.lock().catch(() => {});
+    };
+  }, [keyboard, unlocked]);
+
+  if (error) {
+    return <p className="error">Matrix test stopped: {error}</p>;
+  }
+
+  if (unlocked === null) {
+    return <p>Checking keyboard lock state…</p>;
+  }
+
+  if (!unlocked) {
+    if (dialogDismissed) {
+      return (
+        <div className="matrix-tester">
+          <p>The keyboard must be unlocked before its switch matrix can be tested.</p>
+          <button onClick={() => setDialogDismissed(false)}>Unlock</button>
+        </div>
+      );
+    }
+    return (
+      <UnlockDialog
+        keyboard={keyboard}
+        onUnlocked={() => setUnlocked(true)}
+        onCancel={() => setDialogDismissed(true)}
+      />
+    );
+  }
+
+  const rightEdges = [
+    ...keyboard.keys.map((k) => k.x + k.width),
+    ...keyboard.encoders.map((e) => e.x + e.width),
+    0,
+  ];
+  const bottomEdges = [
+    ...keyboard.keys.map((k) => k.y + k.height),
+    ...keyboard.encoders.map((e) => e.y + e.height),
+    0,
+  ];
+
+  return (
+    <div className="matrix-tester">
+      <p>
+        Press every key on the keyboard; keys light up while held and stay marked once they have
+        registered.
+      </p>
+      <div
+        className="keyboard-layout"
+        style={{ width: Math.max(...rightEdges) * UNIT, height: Math.max(...bottomEdges) * UNIT }}
+      >
+        {keyboard.keys.map((key) => {
+          const pos = `${key.row},${key.col}`;
+          const state = pressed.has(pos) ? " pressed" : tested.has(pos) ? " tested" : "";
+          return (
+            <div
+              key={pos}
+              className={`matrix-key${state}`}
+              title={pos}
+              style={{
+                left: key.x * UNIT,
+                top: key.y * UNIT,
+                width: key.width * UNIT - 4,
+                height: key.height * UNIT - 4,
+              }}
+            />
+          );
+        })}
+        {keyboard.encoders.map((encoder) => (
+          <div
+            key={`encoder-${encoder.index}`}
+            className="encoder"
+            title={`Encoder ${encoder.index}`}
+            style={{
+              left: encoder.x * UNIT,
+              top: encoder.y * UNIT,
+              width: encoder.width * UNIT - 4,
+              height: encoder.height * UNIT - 4,
+            }}
+          />
+        ))}
+      </div>
+      <button onClick={() => setTested(new Set())}>Reset</button>
+    </div>
+  );
+}

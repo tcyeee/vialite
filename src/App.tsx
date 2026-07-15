@@ -4,6 +4,7 @@ import { KeyboardLayout } from "./components/KeyboardLayout.tsx";
 import { KeycodePicker } from "./components/KeycodePicker.tsx";
 import { LayerTabs } from "./components/LayerTabs.tsx";
 import { LayoutOptions } from "./components/LayoutOptions.tsx";
+import { MatrixTester } from "./components/MatrixTester.tsx";
 import { Keyboard } from "./protocol/keyboard.ts";
 import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
@@ -22,6 +23,7 @@ function App() {
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
   const [productName, setProductName] = useState<string | undefined>();
   const [layer, setLayer] = useState(0);
+  const [mode, setMode] = useState<"keymap" | "matrix">("keymap");
   const [selected, setSelected] = useState<Selected | null>(null);
   // Keyboard mutates its internal keymap in place; bumping this forces a
   // re-render so KeyboardLayout picks up the new label after a remap.
@@ -60,6 +62,7 @@ function App() {
       setProductName(transport.productName);
       setLayer(0);
       setSelected(null);
+      setMode("keymap");
       setError(null);
       setStatus("connected");
     },
@@ -189,7 +192,17 @@ function App() {
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
       />
-      {keyboard && (
+      {keyboard && keyboard.supportsMatrixTester && (
+        <div className="mode-tabs">
+          <button className={mode === "keymap" ? "active" : ""} onClick={() => setMode("keymap")}>
+            Keymap
+          </button>
+          <button className={mode === "matrix" ? "active" : ""} onClick={() => setMode("matrix")}>
+            Matrix test
+          </button>
+        </div>
+      )}
+      {keyboard && mode === "keymap" && (
         <>
           <div className="layout-io">
             <button onClick={handleExport} disabled={importing}>
@@ -223,7 +236,8 @@ function App() {
           />
         </>
       )}
-      {selected && <KeycodePicker onPick={handlePick} onClose={() => setSelected(null)} />}
+      {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
+      {selected && mode === "keymap" && <KeycodePicker onPick={handlePick} onClose={() => setSelected(null)} />}
       {importing && <div className="io-busy-overlay" />}
     </div>
   );
