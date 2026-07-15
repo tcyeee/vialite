@@ -8,6 +8,11 @@
   themes: light --default, dark --prefersdark;
 }
 
+/* `dark:` utilities key off the manually-toggled `data-theme` attribute
+   (set by ThemeProvider in theme.tsx) instead of Tailwind's default
+   prefers-color-scheme media query, so the in-app toggle actually wins. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* App brand palette, matching public/Icon.svg's #78555e — the canonical
    colors for any Tailwind-styled UI in this app. Namespaced with a brand-
    prefix because daisyui's own theme already claims the plain
@@ -27,6 +32,26 @@
   --color-brand-on-surface: #1b1c17;
   --color-brand-on-surface-variant: #4f4446;
   --color-brand-outline: #817476;
+}
+
+/* Dark equivalents of the brand palette above, same hues rebalanced for a
+   dark surface (MD3-style tone inversion). Scoped to the manually-toggled
+   `data-theme="dark"` attribute — the unlayered rule beats @theme's
+   layer(theme) regardless of selector specificity, so this overrides the
+   light values whenever the attribute is present. */
+:root[data-theme="dark"] {
+  --color-brand-primary: #e6bac4;
+  --color-brand-primary-container: #4a2c34;
+  --color-brand-secondary: #8fd9a0;
+  --color-brand-secondary-container: #1f4a2a;
+  --color-brand-on-secondary-container: #9fe8ac;
+  --color-brand-tertiary: #d3c896;
+  --color-brand-tertiary-container: #4a4526;
+  --color-brand-background: #18191b;
+  --color-brand-surface-container-highest: #303032;
+  --color-brand-on-surface: #e7e2e4;
+  --color-brand-on-surface-variant: #cbbfc1;
+  --color-brand-outline: #948e90;
 }
 
 :root {
@@ -79,6 +104,27 @@ body {
   }
 }
 
+@keyframes sidebar-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sidebar-appear {
+  animation: sidebar-appear 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-appear {
+    animation: none;
+  }
+}
+
 .kawaii-btn {
   transition:
     transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275),
@@ -91,67 +137,10 @@ body {
   box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.1);
 }
 
-.app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 1rem 1.5rem;
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.app-logo {
-  height: 1.75rem;
-  width: auto;
-}
-
-.app-main {
-  flex: 1;
-}
-
-.app-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 50px;
-  margin-top: 2rem;
-  background: #000;
-  color: #fff;
-}
-
-.lang-toggle {
-  min-width: 3.5rem;
-}
-
-.device-connect {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
 /* Shared by every connect-flow error message (DeviceConnect, WaitingForConnection,
    UnlockDialog, MatrixTester) — kept unscoped so it applies wherever it's used. */
 .error {
   color: #d33;
-}
-
-.layout-io {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.layout-io .io-message {
-  font-size: 0.85rem;
-  opacity: 0.8;
 }
 
 /* Blocks all interaction while a .vil import is writing to the device. */
@@ -161,28 +150,21 @@ body {
   cursor: progress;
 }
 
-.layer-tabs {
-  display: flex;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
-}
-
-.layer-tabs button.active {
-  font-weight: bold;
-  text-decoration: underline;
-}
-
 .layout-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1.5rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1.25rem;
 }
 
 .layout-options label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-brand-outline);
+  color: var(--color-brand-on-surface-variant);
   font-size: 0.85rem;
 }
 
@@ -324,21 +306,6 @@ body {
 .picker-error {
   color: #d33;
   margin: 0.25rem 0 0.5rem;
-}
-
-.mode-tabs {
-  display: flex;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
-}
-
-.mode-tabs button.active {
-  font-weight: bold;
-  text-decoration: underline;
-}
-
-.view-mode-tabs {
-  margin-bottom: 0.5rem;
 }
 
 .keyboard-layout-3d {

@@ -10,10 +10,6 @@ const STORAGE_KEY = "vialite-lang";
 
 const MESSAGES = {
   // App
-  keymapTab: { en: "Keymap", zh: "键位" },
-  matrixTestTab: { en: "Matrix test", zh: "矩阵测试" },
-  view2d: { en: "2D", zh: "2D 平面" },
-  view3d: { en: "3D", zh: "3D 预览" },
   exportLayout: { en: "Export layout", zh: "导出配置" },
   importLayout: { en: "Import layout", zh: "导入配置" },
   importing: { en: "Importing…", zh: "导入中…" },
@@ -33,6 +29,21 @@ const MESSAGES = {
     en: "Keyboard disconnected — plug it back in and reconnect.",
     zh: "键盘已断开——重新插入后再连接。",
   },
+  keyboardLayoutTitle: { en: "Keyboard Layout", zh: "键盘布局" },
+  layoutOptionsTitle: { en: "Layout options", zh: "布局选项" },
+  generalSettingsTitle: { en: "General", zh: "通用设置" },
+  languageTitle: { en: "Language", zh: "语言" },
+  themeTitle: { en: "Appearance", zh: "外观" },
+  themeLight: { en: "Light", zh: "浅色" },
+  themeDark: { en: "Dark", zh: "深色" },
+  exportLayoutDesc: { en: "Save the current keymap to a .vil file", zh: "将当前配置保存为 .vil 文件" },
+  importLayoutDesc: { en: "Load a keymap from a .vil file", zh: "从 .vil 文件加载配置" },
+
+  // Sidebar
+  navHome: { en: "Home", zh: "主页" },
+  navMatrixTest: { en: "Matrix Test", zh: "矩阵测试" },
+  navAdvanced: { en: "Advanced", zh: "高级" },
+  comingSoon: { en: "Coming soon", zh: "即将推出" },
 
   // DeviceConnect
   connecting: { en: "Connecting…", zh: "连接中…" },
@@ -46,6 +57,8 @@ const MESSAGES = {
     zh: "请点击下方按钮开始检测。",
   },
   detectDevice: { en: "Detect device", zh: "检测设备" },
+  toggleLanguage: { en: "Switch language", zh: "切换语言" },
+  toggleTheme: { en: "Toggle theme", zh: "切换主题" },
 
   // LayerTabs
   layerN: { en: "Layer {n}", zh: "层 {n}" },

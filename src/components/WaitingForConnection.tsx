@@ -1,5 +1,6 @@
 import { Component, lazy, Suspense, useState, type ReactNode, type SVGProps } from "react";
 import { useI18n } from "../i18n.tsx";
+import { useTheme } from "../theme.tsx";
 import type { ConnectionStatus } from "./DeviceConnect.tsx";
 
 interface Props {
@@ -32,12 +33,13 @@ class ModelErrorBoundary extends Component<{ onError: () => void; children: Reac
 
 export function WaitingForConnection({ status, error, onConnect }: Props) {
   const { lang, setLang, t } = useI18n();
+  const { theme, setTheme } = useTheme();
   const connecting = status === "connecting";
   const [modelReady, setModelReady] = useState(false);
   const [modelFailed, setModelFailed] = useState(false);
 
   return (
-    <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden bg-brand-background p-4">
+    <div className="relative box-border flex h-screen flex-col items-center justify-center overflow-hidden bg-brand-background p-4">
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-20 -left-20 h-[400px] w-[400px] rounded-full bg-brand-primary-container/40 blur-3xl" />
         <div className="absolute -right-10 bottom-0 h-[300px] w-[300px] rounded-full bg-brand-secondary-container/40 blur-3xl" />
@@ -46,15 +48,28 @@ export function WaitingForConnection({ status, error, onConnect }: Props) {
 
       <img className="fixed top-6 left-6 h-12 w-auto md:h-16" src="/logo-full.svg" alt="Vialite" />
 
-      <button
-        type="button"
-        className="fixed top-4 right-4 min-w-[3.5rem] rounded-lg border border-brand-outline/40 bg-white/60 px-3 py-1 text-sm font-medium text-brand-on-surface backdrop-blur-md"
-        onClick={() => setLang(lang === "zh" ? "en" : "zh")}
-      >
-        {lang === "zh" ? "EN" : "中文"}
-      </button>
+      <div className="fixed top-4 right-4 flex items-center gap-2">
+        <button
+          type="button"
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-brand-outline/40 bg-white/60 text-brand-on-surface backdrop-blur-md transition hover:bg-white/80 dark:bg-black/40 dark:hover:bg-black/60"
+          onClick={() => setLang(lang === "zh" ? "en" : "zh")}
+          aria-label={t("toggleLanguage")}
+          title={t("toggleLanguage")}
+        >
+          <GlobeIcon className="h-7 w-7" />
+        </button>
+        <button
+          type="button"
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-brand-outline/40 bg-white/60 text-brand-on-surface backdrop-blur-md transition hover:bg-white/80 dark:bg-black/40 dark:hover:bg-black/60"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          aria-label={t("toggleTheme")}
+          title={t("toggleTheme")}
+        >
+          {theme === "dark" ? <SunIcon className="h-7 w-7" /> : <MoonIcon className="h-7 w-7" />}
+        </button>
+      </div>
 
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border-2 border-brand-surface-container-highest bg-white/60 p-8 text-center shadow-sm backdrop-blur-md md:p-16">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border-2 border-brand-surface-container-highest bg-white/60 p-8 text-center shadow-sm backdrop-blur-md md:p-16 dark:bg-black/30">
         <div className="relative mx-auto mb-6 h-40 w-full max-w-xs md:h-56">
           <div className="animate-kawaii-pulse absolute inset-x-0 top-1/2 -z-10 h-2/3 -translate-y-1/2 rounded-full bg-brand-secondary-container/30 blur-2xl" />
           <div
@@ -145,7 +160,41 @@ function SearchIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function SpinnerIcon(props: SVGProps<SVGSVGElement>) {
+function GlobeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <ellipse cx="12" cy="12" rx="4" ry="9" />
+      <path strokeLinecap="round" d="M3.5 9h17M3.5 15h17" />
+    </svg>
+  );
+}
+
+function SunIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
+      <circle cx="12" cy="12" r="4.5" />
+      <path
+        strokeLinecap="round"
+        d="M12 2.5v2.25M12 19.25v2.25M4.4 4.4l1.6 1.6M18 18l1.6 1.6M2.5 12h2.25M19.25 12h2.25M4.4 19.6 6 18M18 6l1.6-1.6"
+      />
+    </svg>
+  );
+}
+
+function MoonIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"
+      />
+    </svg>
+  );
+}
+
+export function SpinnerIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...props}>
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity="0.25" />

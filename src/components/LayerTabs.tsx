@@ -9,9 +9,15 @@ interface Props {
 export function LayerTabs({ layers, active, onSelect }: Props) {
   const { t } = useI18n();
   return (
-    <div className="layer-tabs">
+    <div role="tablist" className="tabs tabs-lift mb-5">
       {Array.from({ length: layers }, (_, i) => (
-        <button key={i} className={i === active ? "active" : ""} onClick={() => onSelect(i)}>
+        <button
+          key={i}
+          type="button"
+          role="tab"
+          className={i === active ? "tab tab-active" : "tab"}
+          onClick={() => onSelect(i)}
+        >
           {t("layerN", { n: i })}
         </button>
       ))}
