@@ -190,11 +190,14 @@ export class Keyboard {
   }
 
   async setLayoutOptions(choices: number[]): Promise<void> {
-    if (!this.layoutLabels) {
+    if (!this.layoutLabels || this.layoutOptions === -1) {
       return;
     }
-    const options = packLayoutOptions(choices, this.layoutLabels);
-    if (this.layoutOptions === -1 || this.layoutOptions === options) {
+    await this.writeLayoutOptions(packLayoutOptions(choices, this.layoutLabels));
+  }
+
+  private async writeLayoutOptions(options: number): Promise<void> {
+    if (this.layoutOptions === options) {
       return;
     }
     const cmd = new Uint8Array(6);
@@ -430,6 +433,11 @@ export class Keyboard {
   async restoreLayout(file: ParsedVilFile): Promise<VilRestoreReport> {
     const unknown = new Set<string>();
     let written = 0;
+
+    // Like vial-gui, a .vil restore includes the board's layout options.
+    if (file.layoutOptions >= 0 && this.layoutLabels && this.layoutOptions !== -1) {
+      await this.writeLayoutOptions(file.layoutOptions);
+    }
 
     for (let l = 0; l < file.layout.length; l++) {
       const layer = file.layout[l];

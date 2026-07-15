@@ -6,7 +6,7 @@
 //     "uid": <u64 integer>,                        // keyboard id from CMD_VIAL_GET_KEYBOARD_ID
 //     "layout": [layer][row][col],                 // qmk_id string, or -1 for positions
 //                                                  // absent from the physical keymap
-//     "encoder_layout": [layer][encoder] = [cw, ccw],
+//     "encoder_layout": [layer][encoder] = [ccw, cw], // direction 0, direction 1
 //     "layout_options": <int>,                     // -1 when the board has no layout options
 //     "via_protocol": <int>, "vial_protocol": <int>,
 //     "tap_dance": [...], "combo": [...], "key_override": [...],
@@ -30,7 +30,7 @@ export interface VilSnapshot {
   layoutOptions: number;
   /** [layer][row][col] -> qmk_id, or -1 where the matrix position has no key. */
   layout: (string | -1)[][][];
-  /** [layer][encoderIndex] -> [cw, ccw] qmk_ids, -1 for absent encoder slots. */
+  /** [layer][encoderIndex] -> [ccw, cw] qmk_ids, -1 for absent encoder slots. */
   encoderLayout: [string | -1, string | -1][][];
 }
 
@@ -46,8 +46,10 @@ export interface ParsedVilFile {
   uid: bigint | null;
   /** [layer][row][col] entries; string qmk_id or legacy integer keycode or -1. */
   layout: unknown[][][];
-  /** [layer][encoderIndex] -> [cw, ccw]. */
+  /** [layer][encoderIndex] -> [ccw, cw]. */
   encoderLayout: unknown[][][];
+  /** Packed layout-options value, -1 when absent from the file. */
+  layoutOptions: number;
   /** Human-readable names of unsupported features the file carries real data for. */
   skippedFeatures: string[];
 }
@@ -107,7 +109,10 @@ export function parseVil(text: string): ParsedVilFile {
     uid = BigInt(uidMatch[1]);
   }
 
-  return { uid, layout, encoderLayout, skippedFeatures: detectSkippedFeatures(obj) };
+  const layoutOptions =
+    typeof obj.layout_options === "number" && Number.isInteger(obj.layout_options) ? obj.layout_options : -1;
+
+  return { uid, layout, encoderLayout, layoutOptions, skippedFeatures: detectSkippedFeatures(obj) };
 }
 
 /**
