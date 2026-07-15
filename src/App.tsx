@@ -3,13 +3,13 @@ import { DeviceConnect, type ConnectionStatus } from "./components/DeviceConnect
 import { KeyboardLayout } from "./components/KeyboardLayout.tsx";
 import { KeycodePicker } from "./components/KeycodePicker.tsx";
 import { LayerTabs } from "./components/LayerTabs.tsx";
+import { LayoutOptions } from "./components/LayoutOptions.tsx";
 import { Keyboard } from "./protocol/keyboard.ts";
 import { HidTransport } from "./protocol/transport.ts";
 
-interface SelectedKey {
-  row: number;
-  col: number;
-}
+type Selected =
+  | { kind: "key"; row: number; col: number }
+  | { kind: "encoder"; index: number; direction: 0 | 1 };
 
 // Module-level so StrictMode's double-invoked mount effect can't trigger two
 // parallel auto-connect attempts.
@@ -21,7 +21,7 @@ function App() {
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
   const [productName, setProductName] = useState<string | undefined>();
   const [layer, setLayer] = useState(0);
-  const [selected, setSelected] = useState<SelectedKey | null>(null);
+  const [selected, setSelected] = useState<Selected | null>(null);
   // Keyboard mutates its internal keymap in place; bumping this forces a
   // re-render so KeyboardLayout picks up the new label after a remap.
   const [, forceUpdate] = useState(0);
@@ -113,7 +113,11 @@ function App() {
       }
       setSelected(null);
       try {
-        await keyboard.setKey(layer, selected.row, selected.col, qmkId);
+        if (selected.kind === "key") {
+          await keyboard.setKey(layer, selected.row, selected.col, qmkId);
+        } else {
+          await keyboard.setEncoder(layer, selected.index, selected.direction, qmkId);
+        }
         setError(null);
       } catch (err) {
         setError(`Failed to write key: ${err instanceof Error ? err.message : String(err)}`);
@@ -136,7 +140,13 @@ function App() {
       {keyboard && (
         <>
           <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer} />
-          <KeyboardLayout keyboard={keyboard} layer={layer} onKeySelect={(row, col) => setSelected({ row, col })} />
+          <LayoutOptions keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+          <KeyboardLayout
+            keyboard={keyboard}
+            layer={layer}
+            onKeySelect={(row, col) => setSelected({ kind: "key", row, col })}
+            onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
+          />
         </>
       )}
       {selected && <KeycodePicker onPick={handlePick} onClose={() => setSelected(null)} />}
