@@ -89,3 +89,49 @@ body {
   white-space: pre-line;
   font-size: 0.75rem;
 }
+
+.picker-grid button.masked {
+  font-style: italic;
+}
+
+.picker-toolbar,
+.picker-anykey {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.picker-toolbar {
+  position: sticky;
+  top: -1rem;
+  background: canvas;
+  padding: 0.5rem 0;
+  z-index: 1;
+}
+
+.picker-toolbar input,
+.picker-anykey input {
+  flex: 1;
+  min-width: 0;
+}
+
+.picker-toolbar .listen-toggle.active {
+  font-weight: bold;
+  outline: 2px solid #d33;
+}
+
+.picker-pending {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px dashed #888;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.picker-error {
+  color: #d33;
+  margin: 0.25rem 0 0.5rem;
+}
