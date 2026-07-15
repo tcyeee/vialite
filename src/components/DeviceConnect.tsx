@@ -5,18 +5,22 @@ interface Props {
   error: string | null;
   productName?: string;
   onConnect: () => void;
+  onDisconnect: () => void;
 }
 
-export function DeviceConnect({ status, error, productName, onConnect }: Props) {
+export function DeviceConnect({ status, error, productName, onConnect, onDisconnect }: Props) {
   return (
     <div className="device-connect">
-      <button onClick={onConnect} disabled={status === "connecting"}>
-        {status === "connected"
-          ? `Connected: ${productName}`
-          : status === "connecting"
-            ? "Connecting..."
-            : "Connect keyboard"}
-      </button>
+      {status === "connected" ? (
+        <>
+          <span>Connected: {productName}</span>
+          <button onClick={onDisconnect}>Disconnect</button>
+        </>
+      ) : (
+        <button onClick={onConnect} disabled={status === "connecting"}>
+          {status === "connecting" ? "Connecting..." : "Connect keyboard"}
+        </button>
+      )}
       {error && <p className="error">{error}</p>}
     </div>
   );
