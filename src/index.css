@@ -13,6 +13,17 @@ body {
   padding: 1rem 1.5rem;
 }
 
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lang-toggle {
+  min-width: 3.5rem;
+}
+
 .device-connect {
   display: flex;
   align-items: center;

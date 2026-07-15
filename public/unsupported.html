@@ -24,7 +24,9 @@
       .error {
         color: #d33;
       }
-      #reason-insecure {
+      /* JS reveals the one block matching the language and ?reason=; the
+         English "unsupported" block is the no-JS fallback. */
+      .reason {
         display: none;
       }
     </style>
@@ -32,7 +34,7 @@
   <body>
     <div class="app">
       <h1>Vialite</h1>
-      <div id="reason-unsupported">
+      <div class="reason" id="unsupported-en" style="display: block">
         <p class="error">Your browser does not support WebHID, which Vialite needs to talk to your keyboard.</p>
         <p>Please use one of the following browsers on desktop:</p>
         <ul>
@@ -42,7 +44,7 @@
         </ul>
         <p>Firefox and Safari do not currently support WebHID.</p>
       </div>
-      <div id="reason-insecure">
+      <div class="reason" id="insecure-en">
         <p class="error">This page was loaded over an insecure connection (plain HTTP).</p>
         <p>
           WebHID, which Vialite needs to talk to your keyboard, is only available on pages served over
@@ -50,12 +52,46 @@
           an <code>https://</code> URL instead.
         </p>
       </div>
+      <div class="reason" id="unsupported-zh">
+        <p class="error">当前浏览器不支持 WebHID,Vialite 需要它才能与键盘通信。</p>
+        <p>请在桌面端使用以下浏览器之一:</p>
+        <ul>
+          <li>Google Chrome(89+)</li>
+          <li>Microsoft Edge(89+)</li>
+          <li>Opera(75+)</li>
+        </ul>
+        <p>Firefox 和 Safari 目前不支持 WebHID。</p>
+      </div>
+      <div class="reason" id="insecure-zh">
+        <p class="error">当前页面通过不安全的连接(HTTP)加载。</p>
+        <p>
+          Vialite 依赖的 WebHID 只在 <strong>HTTPS</strong> 页面(或 <code>localhost</code>)上可用。
+          浏览器本身没有问题——请改用 <code>https://</code> 地址重新访问本站。
+        </p>
+      </div>
     </div>
     <script>
-      if (new URLSearchParams(location.search).get("reason") === "insecure") {
-        document.getElementById("reason-unsupported").style.display = "none";
-        document.getElementById("reason-insecure").style.display = "block";
-      }
+      (function () {
+        var lang = "en";
+        try {
+          var stored = localStorage.getItem("vialite-lang");
+          if (stored === "zh" || stored === "en") {
+            lang = stored;
+          } else if ((navigator.language || "").toLowerCase().indexOf("zh") === 0) {
+            lang = "zh";
+          }
+        } catch (e) {
+          /* fall back to en */
+        }
+        var reason =
+          new URLSearchParams(location.search).get("reason") === "insecure" ? "insecure" : "unsupported";
+        document.getElementById("unsupported-en").style.display = "none";
+        document.getElementById(reason + "-" + lang).style.display = "block";
+        if (lang === "zh") {
+          document.documentElement.lang = "zh-CN";
+          document.title = "Vialite — 浏览器不受支持";
+        }
+      })();
     </script>
   </body>
 </html>

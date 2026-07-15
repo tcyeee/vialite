@@ -5,6 +5,7 @@ import { KeycodePicker } from "./components/KeycodePicker.tsx";
 import { LayerTabs } from "./components/LayerTabs.tsx";
 import { LayoutOptions } from "./components/LayoutOptions.tsx";
 import { MatrixTester } from "./components/MatrixTester.tsx";
+import { useI18n } from "./i18n.tsx";
 import { Keyboard } from "./protocol/keyboard.ts";
 import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
@@ -18,6 +19,7 @@ type Selected =
 let autoConnectStarted = false;
 
 function App() {
+  const { lang, setLang, t } = useI18n();
   const [status, setStatus] = useState<ConnectionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
@@ -54,7 +56,7 @@ function App() {
         setProductName(undefined);
         setSelected(null);
         setStatus("idle");
-        setError("Keyboard disconnected — plug it back in and reconnect.");
+        setError(t("keyboardDisconnected"));
       };
       const kb = new Keyboard(transport);
       await kb.reload();
@@ -66,7 +68,7 @@ function App() {
       setError(null);
       setStatus("connected");
     },
-    [teardown],
+    [teardown, t],
   );
 
   const handleConnect = useCallback(async () => {
@@ -127,11 +129,11 @@ function App() {
         }
         setError(null);
       } catch (err) {
-        setError(`Failed to write key: ${err instanceof Error ? err.message : String(err)}`);
+        setError(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
       }
       forceUpdate((r) => r + 1);
     },
-    [keyboard, selected, layer],
+    [keyboard, selected, layer, t],
   );
 
   const handleExport = useCallback(() => {
@@ -156,35 +158,37 @@ function App() {
       setIoMessage(null);
       try {
         const parsed = parseVil(await file.text());
-        if (
-          parsed.uid !== keyboard.uid &&
-          !window.confirm("Saved keymap belongs to a different keyboard, are you sure you want to continue?")
-        ) {
+        if (parsed.uid !== keyboard.uid && !window.confirm(t("importUidMismatch"))) {
           return;
         }
         setImporting(true);
         const report = await keyboard.restoreLayout(parsed);
-        const notes: string[] = [`Imported: ${report.written} assignment(s) written.`];
+        const notes: string[] = [t("importWritten", { n: report.written })];
         if (report.unknownKeycodes.length > 0) {
-          notes.push(`Skipped unsupported keycodes: ${report.unknownKeycodes.join(", ")}.`);
+          notes.push(t("importSkippedKeycodes", { list: report.unknownKeycodes.join(", ") }));
         }
         if (parsed.skippedFeatures.length > 0) {
-          notes.push(`File contains ${parsed.skippedFeatures.join(", ")} — not supported yet, not applied.`);
+          notes.push(t("importSkippedFeatures", { list: parsed.skippedFeatures.join(", ") }));
         }
         setIoMessage(notes.join(" "));
       } catch (err) {
-        setIoMessage(`Import failed: ${err instanceof Error ? err.message : String(err)}`);
+        setIoMessage(t("importFailed", { error: err instanceof Error ? err.message : String(err) }));
       } finally {
         setImporting(false);
         forceUpdate((r) => r + 1);
       }
     },
-    [keyboard],
+    [keyboard, t],
   );
 
   return (
     <div className="app">
-      <h1>Vialite</h1>
+      <div className="app-header">
+        <h1>Vialite</h1>
+        <button className="lang-toggle" onClick={() => setLang(lang === "zh" ? "en" : "zh")}>
+          {lang === "zh" ? "EN" : "中文"}
+        </button>
+      </div>
       <DeviceConnect
         status={status}
         error={error}
@@ -195,10 +199,10 @@ function App() {
       {keyboard && keyboard.supportsMatrixTester && (
         <div className="mode-tabs">
           <button className={mode === "keymap" ? "active" : ""} onClick={() => setMode("keymap")}>
-            Keymap
+            {t("keymapTab")}
           </button>
           <button className={mode === "matrix" ? "active" : ""} onClick={() => setMode("matrix")}>
-            Matrix test
+            {t("matrixTestTab")}
           </button>
         </div>
       )}
@@ -206,10 +210,10 @@ function App() {
         <>
           <div className="layout-io">
             <button onClick={handleExport} disabled={importing}>
-              Export layout
+              {t("exportLayout")}
             </button>
             <button onClick={() => fileInputRef.current?.click()} disabled={importing}>
-              {importing ? "Importing..." : "Import layout"}
+              {importing ? t("importing") : t("importLayout")}
             </button>
             <input
               ref={fileInputRef}

@@ -6,6 +6,7 @@
 // nothing else in Vialite needs the unlocked state, so we re-lock on exit.
 
 import { useEffect, useState } from "react";
+import { useI18n } from "../i18n.tsx";
 import type { Keyboard } from "../protocol/keyboard.ts";
 import { UnlockDialog } from "./UnlockDialog.tsx";
 
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function MatrixTester({ keyboard }: Props) {
+  const { t } = useI18n();
   // null = still checking the lock state
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [dialogDismissed, setDialogDismissed] = useState(false);
@@ -87,19 +89,19 @@ export function MatrixTester({ keyboard }: Props) {
   }, [keyboard, unlocked]);
 
   if (error) {
-    return <p className="error">Matrix test stopped: {error}</p>;
+    return <p className="error">{t("matrixStopped", { error })}</p>;
   }
 
   if (unlocked === null) {
-    return <p>Checking keyboard lock state…</p>;
+    return <p>{t("checkingLock")}</p>;
   }
 
   if (!unlocked) {
     if (dialogDismissed) {
       return (
         <div className="matrix-tester">
-          <p>The keyboard must be unlocked before its switch matrix can be tested.</p>
-          <button onClick={() => setDialogDismissed(false)}>Unlock</button>
+          <p>{t("mustUnlock")}</p>
+          <button onClick={() => setDialogDismissed(false)}>{t("unlock")}</button>
         </div>
       );
     }
@@ -125,10 +127,7 @@ export function MatrixTester({ keyboard }: Props) {
 
   return (
     <div className="matrix-tester">
-      <p>
-        Press every key on the keyboard; keys light up while held and stay marked once they have
-        registered.
-      </p>
+      <p>{t("matrixInstructions")}</p>
       <div
         className="keyboard-layout"
         style={{ width: Math.max(...rightEdges) * UNIT, height: Math.max(...bottomEdges) * UNIT }}
@@ -164,7 +163,7 @@ export function MatrixTester({ keyboard }: Props) {
           />
         ))}
       </div>
-      <button onClick={() => setTested(new Set())}>Reset</button>
+      <button onClick={() => setTested(new Set())}>{t("reset")}</button>
     </div>
   );
 }

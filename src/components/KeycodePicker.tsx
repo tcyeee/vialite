@@ -7,7 +7,24 @@ import {
   serialize,
   type KeycodeDef,
 } from "../protocol/keycodes.ts";
+import { useI18n, type MessageKey } from "../i18n.tsx";
 import { EVENT_CODE_TO_QMK } from "./keyEventMap.ts";
+
+/** Maps KEYCODE_CATEGORIES names (defined in keycodes.ts) to translation keys. */
+const CATEGORY_KEYS: Record<string, MessageKey> = {
+  Basic: "categoryBasic",
+  Numpad: "categoryNumpad",
+  Navigation: "categoryNavigation",
+  Shifted: "categoryShifted",
+  "ISO/International": "categoryIso",
+  "Fn keys": "categoryFn",
+  Layers: "categoryLayers",
+  Quantum: "categoryQuantum",
+  Macros: "categoryMacros",
+  Media: "categoryMedia",
+  Mouse: "categoryMouse",
+  Lighting: "categoryLighting",
+};
 
 interface Props {
   onPick: (qmkId: string) => void;
@@ -15,6 +32,7 @@ interface Props {
 }
 
 export function KeycodePicker({ onPick, onClose }: Props) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   // Masked template (e.g. "LCTL_T(kc)") waiting for its inner basic key.
   const [pending, setPending] = useState<KeycodeDef | null>(null);
@@ -32,7 +50,7 @@ export function KeycodePicker({ onPick, onClose }: Props) {
       }
       if (pending) {
         if (!isBasicQmkId(entry.qmkId)) {
-          setHint(`${entry.qmkId} cannot be nested inside ${pending.qmkId}; pick a basic key`);
+          setHint(t("cannotNest", { qmkId: entry.qmkId, template: pending.qmkId }));
           return;
         }
         onPick(pending.qmkId.replace("kc", entry.qmkId));
@@ -40,7 +58,7 @@ export function KeycodePicker({ onPick, onClose }: Props) {
       }
       onPick(entry.qmkId);
     },
-    [pending, onPick],
+    [pending, onPick, t],
   );
 
   const pickByQmkId = useCallback(
@@ -63,7 +81,7 @@ export function KeycodePicker({ onPick, onClose }: Props) {
         if (qmkId) {
           pickByQmkId(qmkId);
         } else {
-          setHint(`no keycode mapping for "${e.code}"`);
+          setHint(t("noKeyMapping", { code: e.code }));
         }
         return;
       }
@@ -77,7 +95,7 @@ export function KeycodePicker({ onPick, onClose }: Props) {
     };
     document.addEventListener("keydown", handler, true);
     return () => document.removeEventListener("keydown", handler, true);
-  }, [listening, pending, onClose, pickByQmkId]);
+  }, [listening, pending, onClose, pickByQmkId, t]);
 
   const submitAny = () => {
     const text = anyValue.trim();
@@ -114,26 +132,26 @@ export function KeycodePicker({ onPick, onClose }: Props) {
         <div className="picker-toolbar">
           <input
             type="search"
-            placeholder="Search keycodes…"
+            placeholder={t("searchPlaceholder")}
             value={query}
             autoFocus
             onChange={(e) => setQuery(e.target.value)}
           />
           <button
             className={listening ? "listen-toggle active" : "listen-toggle"}
-            title="Press a key on your active keyboard to assign it"
+            title={t("listenTooltip")}
             onClick={() => {
               setListening((v) => !v);
               setHint(null);
             }}
           >
-            {listening ? "Listening… (Esc to stop)" : "Assign by keypress"}
+            {listening ? t("listening") : t("assignByKeypress")}
           </button>
         </div>
         <div className="picker-anykey">
           <input
             type="text"
-            placeholder="Any key: e.g. LT(2,KC_A), LCTL(KC_C), 0x5c00"
+            placeholder={t("anyKeyPlaceholder")}
             value={anyValue}
             onChange={(e) => {
               setAnyValue(e.target.value);
@@ -145,19 +163,19 @@ export function KeycodePicker({ onPick, onClose }: Props) {
               }
             }}
           />
-          <button onClick={submitAny}>Set</button>
+          <button onClick={submitAny}>{t("set")}</button>
         </div>
         {anyError && <p className="picker-error">{anyError}</p>}
         {pending && (
           <div className="picker-pending">
-            <span>{pending.qmkId.replace("kc", "…")} — now pick the inner key</span>
-            <button onClick={() => setPending(null)}>Cancel</button>
+            <span>{t("pickInnerKey", { template: pending.qmkId.replace("kc", "…") })}</span>
+            <button onClick={() => setPending(null)}>{t("cancel")}</button>
           </div>
         )}
         {hint && <p className="picker-error">{hint}</p>}
         {categories.map((category) => (
           <section key={category.name}>
-            <h4>{category.name}</h4>
+            <h4>{CATEGORY_KEYS[category.name] ? t(CATEGORY_KEYS[category.name]) : category.name}</h4>
             <div className="picker-grid">
               {category.entries.map((entry) => (
                 <button
@@ -172,7 +190,7 @@ export function KeycodePicker({ onPick, onClose }: Props) {
             </div>
           </section>
         ))}
-        {categories.length === 0 && <p>No keycodes match “{query}”.</p>}
+        {categories.length === 0 && <p>{t("noMatch", { query })}</p>}
       </div>
     </div>
   );

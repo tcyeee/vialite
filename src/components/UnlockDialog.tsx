@@ -3,6 +3,7 @@
 // counter counts down to 0 and drives the progress bar.
 
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "../i18n.tsx";
 import type { Keyboard } from "../protocol/keyboard.ts";
 
 const UNIT = 27; // half of KeyboardLayout's UNIT: a small reference rendering
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function UnlockDialog({ keyboard, onUnlocked, onCancel }: Props) {
+  const { t } = useI18n();
   const [unlockKeys, setUnlockKeys] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -91,12 +93,9 @@ export function UnlockDialog({ keyboard, onUnlocked, onCancel }: Props) {
   return (
     <div className="picker-overlay" onClick={handleCancel}>
       <div className="picker unlock-dialog" onClick={(e) => e.stopPropagation()}>
-        <h4>Unlock keyboard</h4>
-        <p>
-          In order to proceed, the keyboard must be set into unlocked mode. You should only perform
-          this operation on computers that you trust.
-        </p>
-        <p>Press and hold the highlighted keys until the progress bar fills up:</p>
+        <h4>{t("unlockTitle")}</h4>
+        <p>{t("unlockWarning")}</p>
+        <p>{t("unlockHold")}</p>
         <div className="unlock-reference" style={{ width, height }}>
           {keyboard.keys.map((key) => (
             <div
@@ -115,7 +114,7 @@ export function UnlockDialog({ keyboard, onUnlocked, onCancel }: Props) {
           <div className="unlock-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>
         {error && <p className="error">{error}</p>}
-        <button onClick={handleCancel}>Cancel</button>
+        <button onClick={handleCancel}>{t("cancel")}</button>
       </div>
     </div>
   );
