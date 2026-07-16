@@ -24,7 +24,7 @@ export function LayerTabs({ layers, active, onSelect, children }: Props) {
             checked={i === active}
             onChange={() => onSelect(i)}
           />
-          <div className="tab-content bg-base-100 border-base-300 w-fit justify-self-start p-6">{i === active && children}</div>
+          <div className="tab-content bg-base-100 border-base-300 p-6">{i === active && children}</div>
         </Fragment>
       ))}
     </div>

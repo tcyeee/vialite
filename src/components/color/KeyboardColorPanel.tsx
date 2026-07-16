@@ -28,8 +28,11 @@ export function KeyboardColorPanel({ keyboard }: { keyboard: Keyboard }) {
   const { t } = useI18n();
   const [size, setSize] = useState<PreviewSize>(readStoredSize);
 
+  const currentIndex = SIZES.indexOf(size);
+
   const onSizeChange = (index: number) => {
-    const next = SIZES[index];
+    const clamped = Math.min(SIZES.length - 1, Math.max(0, index));
+    const next = SIZES[clamped];
     setSize(next);
     try {
       window.localStorage.setItem(SIZE_KEY, next);
@@ -43,18 +46,34 @@ export function KeyboardColorPanel({ keyboard }: { keyboard: Keyboard }) {
       <div className="flex items-start gap-4">
         <span className="shrink-0 text-sm font-medium text-brand-on-surface-variant">{t("displaySizeTitle")}</span>
         <div className="flex w-full max-w-xs items-center gap-2 text-brand-on-surface-variant">
-          <MinusIcon className="h-4 w-4 shrink-0" />
+          <button
+            type="button"
+            onClick={() => onSizeChange(currentIndex - 1)}
+            disabled={currentIndex <= 0}
+            aria-label={t("displaySizeSmaller")}
+            className="btn btn-ghost btn-circle btn-xs disabled:opacity-30"
+          > 
+            <MinusIcon className="h-4 w-4" />
+          </button>
           <input
             type="range"
             min={0}
             max={SIZES.length - 1}
             step={1}
-            value={SIZES.indexOf(size)}
+            value={currentIndex}
             onChange={(e) => onSizeChange(Number(e.target.value))}
-            className="range range-primary range-sm"
+            className="range range-primary range-xs"
             aria-label={t("displaySizeTitle")}
           />
-          <PlusIcon className="h-4 w-4 shrink-0" />
+          <button
+            type="button"
+            onClick={() => onSizeChange(currentIndex + 1)}
+            disabled={currentIndex >= SIZES.length - 1}
+            aria-label={t("displaySizeLarger")}
+            className="btn btn-ghost btn-circle btn-xs disabled:opacity-30"
+          >
+            <PlusIcon className="h-4 w-4" />
+          </button>
         </div>
       </div>
 

@@ -232,6 +232,12 @@ body {
   position: relative;
 }
 
+/* Case (外壳): a solid bezel wrapping the plate. Color and thickness (padding)
+   are set inline from the panel's settings; no border. */
+.keyboard-case {
+  border-radius: 10px;
+}
+
 .keyboard-layout .key {
   position: absolute;
   display: flex;

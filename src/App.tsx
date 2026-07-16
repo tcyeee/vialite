@@ -293,8 +293,8 @@ function App() {
     <div className="min-h-screen bg-white dark:bg-black/30 dark:backdrop-blur-md">
       <Navbar />
       <div className="p-4 md:p-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+        <div className="mx-auto max-w-[1600px]">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6 lg:gap-8 xl:gap-10 2xl:gap-12">
             <Sidebar
               productName={productName}
               onDisconnect={handleDisconnect}

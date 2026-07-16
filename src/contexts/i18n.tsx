@@ -131,6 +131,12 @@ const MESSAGES = {
     zh: "从已连接键盘读取到的配列",
   },
   displaySizeTitle: { en: "Display size", zh: "显示尺寸" },
+  displaySizeSmaller: { en: "Smaller", zh: "缩小" },
+  displaySizeLarger: { en: "Larger", zh: "放大" },
+  keySpacingTitle: { en: "Key spacing", zh: "按键间距" },
+  caseThicknessTitle: { en: "Case thickness", zh: "外壳厚度" },
+  caseColorTitle: { en: "Case color", zh: "外壳颜色" },
+  plateColorTitle: { en: "Plate color", zh: "定位板颜色" },
   exportLayoutDesc: { en: "Save the current keymap to a .vil file", zh: "将当前配置保存为 .vil 文件" },
   importLayoutDesc: { en: "Load a keymap from a .vil file", zh: "从 .vil 文件加载配置" },
 

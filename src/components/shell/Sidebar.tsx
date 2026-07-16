@@ -198,7 +198,7 @@ export function Sidebar({
                   key={labelKey}
                   className={
                     "flex h-[52px] w-full cursor-default items-center gap-3 whitespace-nowrap px-4 text-brand-on-surface-variant opacity-40 transition-[border-radius] duration-300 ease-out " +
-                    (collapsed ? "tooltip tooltip-right rounded-full" : "rounded-2xl")
+                    (collapsed ? "tooltip tooltip-right rounded-full" : "overflow-hidden rounded-2xl")
                   }
                   data-tip={collapsed ? t("comingSoon") : undefined}
                   title={collapsed ? undefined : t("comingSoon")}
@@ -219,7 +219,7 @@ export function Sidebar({
                   type="button"
                   onClick={() => onNavigate(itemMode)}
                   className={
-                    "flex h-[52px] w-full items-center gap-3 whitespace-nowrap border-none px-4 text-left transition-[background-color,color,border-radius] duration-300 ease-out " +
+                    "flex h-[52px] w-full items-center gap-3 overflow-hidden whitespace-nowrap border-none px-4 text-left transition-[background-color,color,border-radius] duration-300 ease-out " +
                     (collapsed ? "rounded-full " : "rounded-2xl ") +
                     (active
                       ? "bg-brand-secondary-container font-semibold text-brand-on-secondary-container"
