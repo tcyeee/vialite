@@ -87,6 +87,10 @@ const MESSAGES = {
   mouseKeyWheelInterval: { en: "Time between wheel movements", zh: "滚轮每次滚动的间隔时间" },
   mouseKeyWheelMaxSpeed: { en: "Maximum number of scroll steps per scroll action", zh: "每次滚动的最大步数" },
   mouseKeyWheelTimeToMax: { en: "Time until maximum scroll speed is reached", zh: "达到最大滚动速度所需时间" },
+  unitMs: { en: "ms", zh: "毫秒" },
+  unitPx: { en: "px", zh: "像素" },
+  unitSteps: { en: "steps", zh: "步" },
+  unitTaps: { en: "taps", zh: "次" },
   resetAllSettings: { en: "Reset all settings", zh: "重置所有设置" },
   resetAllSettingsConfirm: {
     en: "Revert every setting on this page back to when this keyboard connected?",
@@ -107,6 +111,7 @@ const MESSAGES = {
   navCombo: { en: "Combo", zh: "组合键" },
   navAdvanced: { en: "QMK Settings", zh: "QMK 设置" },
   comingSoon: { en: "Coming soon", zh: "即将推出" },
+  resizeSidebar: { en: "Resize sidebar", zh: "拖动调整侧边栏宽度" },
 
   // Shared
   save: { en: "Save", zh: "保存" },
@@ -148,15 +153,22 @@ const MESSAGES = {
   tapDanceOnHold: { en: "On hold", zh: "长按" },
   tapDanceOnDoubleTap: { en: "On double tap", zh: "双击" },
   tapDanceOnTapHold: { en: "On tap + hold", zh: "单击后长按" },
-  tapDanceTappingTerm: { en: "Tapping term (ms)", zh: "点击判定时长(ms)" },
+  tapDanceTappingTerm: { en: "Tapping term", zh: "点击判定时长" },
   tapDanceHint: {
     en: "Use TD(n) in the keymap to trigger tap dance n.",
     zh: "在按键映射中使用 TD(n) 来触发对应编号的点击舞步。",
   },
   tapDanceTermMs: { en: "{ms} ms", zh: "{ms} 毫秒" },
+  msUnit: { en: "ms", zh: "毫秒" },
   tapDanceDeleteConfirm: {
     en: "Delete this tap dance? This clears all its actions.",
     zh: "确定要删除这个点击舞步吗?这会清空它的所有动作。",
+  },
+  tapDanceAdd: { en: "Add tap dance", zh: "添加点击舞步" },
+  tapDanceEmpty: { en: "No tap dances configured yet.", zh: "还没有配置任何点击舞步。" },
+  tapDanceFull: {
+    en: "All tap dance slots are in use.",
+    zh: "点击舞步槽位已全部用完。",
   },
 
   // ComboPanel

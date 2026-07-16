@@ -22,11 +22,13 @@ const DISMISS_MS = 5000;
 
 // Written out as full literal strings (not `alert-${kind}`) so Tailwind's JIT
 // scanner can actually find and generate these classes.
+// `warning` intentionally reuses alert-error's red styling instead of daisyUI's
+// default amber — warnings here (e.g. device disconnected) should read as red.
 const ALERT_CLASS: Record<ToastKind, string> = {
   error: "alert alert-error",
   success: "alert alert-success",
   info: "alert alert-info",
-  warning: "alert alert-warning",
+  warning: "alert alert-error",
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   KEYCODE_CATEGORIES,
   deserialize,
@@ -126,7 +127,7 @@ export function KeycodePicker({ onPick, onClose }: Props) {
     })).filter((cat) => cat.entries.length > 0);
   }, [q]);
 
-  return (
+  return createPortal(
     <div className="picker-overlay" onClick={onClose}>
       <div className="picker" onClick={(e) => e.stopPropagation()}>
         <div className="picker-toolbar">
@@ -192,6 +193,7 @@ export function KeycodePicker({ onPick, onClose }: Props) {
         ))}
         {categories.length === 0 && <p>{t("noMatch", { query })}</p>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

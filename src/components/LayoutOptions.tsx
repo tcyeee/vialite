@@ -40,7 +40,7 @@ export function LayoutOptions({ keyboard, onChange }: Props) {
             control={
               <input
                 type="checkbox"
-                className="toggle"
+                className="toggle mr-2"
                 checked={choices[i] === 1}
                 onChange={(e) => void update(i, e.target.checked ? 1 : 0)}
                 aria-label={item}

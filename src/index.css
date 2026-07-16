@@ -122,6 +122,30 @@ body {
   }
 }
 
+/* Sidebar connection-status dot: a slow glow+fade "breathing" LED, distinct
+   from kawaii-pulse's plain opacity blink. */
+@keyframes status-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-secondary) 55%, transparent);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-brand-secondary) 0%, transparent);
+  }
+}
+
+.animate-status-breathe {
+  animation: status-breathe 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-status-breathe {
+    animation: none;
+  }
+}
+
 @keyframes sidebar-appear {
   from {
     opacity: 0;

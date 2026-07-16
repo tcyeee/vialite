@@ -20,7 +20,7 @@ export function KeySlot({ qmkId, onChange, className }: Props) {
         title={qmkId}
         onClick={() => setPicking(true)}
       >
-        {kcLabel(qmkId) || qmkId}
+        {kcLabel(qmkId)}
       </button>
       {picking && (
         <KeycodePicker

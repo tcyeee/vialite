@@ -1,4 +1,4 @@
-import { useRef, type ReactNode, type SVGProps } from "react";
+import { useLayoutEffect, useRef, type ReactNode, type SVGProps } from "react";
 import { useI18n, type MessageKey } from "../i18n.tsx";
 import type { Keyboard } from "../protocol/keyboard.ts";
 import { ComboSettings } from "./ComboSettings.tsx";
@@ -16,6 +16,11 @@ interface Props {
   onImportFile: (file: File) => void;
   /** Called after any layout-option or QMK-setting write (including a reset), so the parent re-renders. */
   onChange: () => void;
+  /**
+   * Reports the titleKeys of every section actually rendered (in DOM order), so a sidebar table
+   * of contents can be built without duplicating each section's own visibility logic.
+   */
+  onSectionsChange?: (sections: MessageKey[]) => void;
 }
 
 /** One row of a daisyUI `list`: icon + label(/description) on the left, a control on the right. */
@@ -50,7 +55,7 @@ export function SettingsRow({
  */
 export type QmkSettingField =
   | { type: "boolean"; qsid: number; bit: number; labelKey: MessageKey }
-  | { type: "integer"; qsid: number; min: number; max: number; labelKey: MessageKey };
+  | { type: "integer"; qsid: number; min: number; max: number; labelKey: MessageKey; unitKey: MessageKey };
 
 /**
  * A titled `list` of QMK Settings fields; renders (and only renders) when at
@@ -93,7 +98,7 @@ export function QmkSettingsSection({
   };
 
   return (
-    <section>
+    <section id={titleKey} data-qmk-toc>
       <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">{t(titleKey)}</h2>
       <ul className="list rounded-box border border-brand-outline/30">
         {supported.map((field, i) => (
@@ -105,26 +110,29 @@ export function QmkSettingsSection({
               field.type === "boolean" ? (
                 <input
                   type="checkbox"
-                  className="toggle"
+                  className="toggle mr-2"
                   checked={keyboard.getQmkSettingBit(field.qsid, field.bit)}
                   onChange={(e) => void updateBit(field.qsid, field.bit, e.target.checked)}
                   aria-label={t(field.labelKey)}
                 />
               ) : (
-                <input
-                  type="number"
-                  className="input input-sm w-24"
-                  min={field.min}
-                  max={field.max}
-                  value={keyboard.getQmkSettingValue(field.qsid) ?? field.min}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    if (!Number.isNaN(v)) {
-                      void updateValue(field.qsid, Math.min(field.max, Math.max(field.min, v)));
-                    }
-                  }}
-                  aria-label={t(field.labelKey)}
-                />
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    className="input input-sm w-24"
+                    min={field.min}
+                    max={field.max}
+                    value={keyboard.getQmkSettingValue(field.qsid) ?? field.min}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (!Number.isNaN(v)) {
+                        void updateValue(field.qsid, Math.min(field.max, Math.max(field.min, v)));
+                      }
+                    }}
+                    aria-label={t(field.labelKey)}
+                  />
+                  <span className="w-12 shrink-0 text-xs text-brand-on-surface-variant">{t(field.unitKey)}</span>
+                </div>
               )
             }
           />
@@ -134,10 +142,30 @@ export function QmkSettingsSection({
   );
 }
 
-export function QmkSettingsPanel({ keyboard, importing, onExport, onImportFile, onChange }: Props) {
+export function QmkSettingsPanel({
+  keyboard,
+  importing,
+  onExport,
+  onImportFile,
+  onChange,
+  onSectionsChange,
+}: Props) {
   const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const hasLayoutOptions = !!keyboard.layoutLabels && keyboard.layoutLabels.length > 0 && keyboard.layoutOptions >= 0;
+
+  // Scan for whichever sections actually rendered (some hide themselves when the connected
+  // keyboard doesn't expose their qsid) instead of re-deriving each section's own visibility rule.
+  useLayoutEffect(() => {
+    if (!onSectionsChange) {
+      return;
+    }
+    const ids = Array.from(containerRef.current?.querySelectorAll<HTMLElement>("[data-qmk-toc]") ?? []).map(
+      (el) => el.id as MessageKey,
+    );
+    onSectionsChange(ids);
+  });
 
   const resetAll = async () => {
     if (!window.confirm(t("resetAllSettingsConfirm"))) {
@@ -152,8 +180,8 @@ export function QmkSettingsPanel({ keyboard, importing, onExport, onImportFile, 
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <section>
+    <div ref={containerRef} className="flex flex-col gap-6">
+      <section id="generalSettingsTitle" data-qmk-toc>
         <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">{t("generalSettingsTitle")}</h2>
         <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
@@ -205,7 +233,7 @@ export function QmkSettingsPanel({ keyboard, importing, onExport, onImportFile, 
         </ul>
       </section>
       {hasLayoutOptions && (
-        <section>
+        <section id="layoutOptionsTitle" data-qmk-toc>
           <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">{t("layoutOptionsTitle")}</h2>
           <LayoutOptions keyboard={keyboard} onChange={onChange} />
         </section>

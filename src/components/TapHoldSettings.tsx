@@ -30,7 +30,14 @@ interface Props {
  * qsids the connected firmware actually reports end up rendered.
  */
 const FIELDS: QmkSettingField[] = [
-  { type: "integer", qsid: QMK_SETTINGS_QSID_TAPPING_TERM, min: 0, max: 10000, labelKey: "tapHoldTappingTerm" },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_TAPPING_TERM,
+    min: 0,
+    max: 10000,
+    labelKey: "tapHoldTappingTerm",
+    unitKey: "unitMs",
+  },
   { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 0, labelKey: "tapHoldPermissiveHold" },
   { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 1, labelKey: "tapHoldIgnoreModTapInterrupt" },
   { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 2, labelKey: "tapHoldTappingForceHold" },
@@ -38,18 +45,47 @@ const FIELDS: QmkSettingField[] = [
   { type: "boolean", qsid: QMK_SETTINGS_QSID_PERMISSIVE_HOLD, bit: 0, labelKey: "tapHoldPermissiveHold" },
   { type: "boolean", qsid: QMK_SETTINGS_QSID_HOLD_ON_OTHER_KEY_PRESS, bit: 0, labelKey: "tapHoldHoldOnOtherKeyPress" },
   { type: "boolean", qsid: QMK_SETTINGS_QSID_RETRO_TAPPING, bit: 0, labelKey: "tapHoldRetroTapping" },
-  { type: "integer", qsid: QMK_SETTINGS_QSID_QUICK_TAP_TERM, min: 0, max: 10000, labelKey: "tapHoldQuickTapTerm" },
-  { type: "integer", qsid: QMK_SETTINGS_QSID_TAP_CODE_DELAY, min: 0, max: 1000, labelKey: "tapHoldTapCodeDelay" },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_QUICK_TAP_TERM,
+    min: 0,
+    max: 10000,
+    labelKey: "tapHoldQuickTapTerm",
+    unitKey: "unitMs",
+  },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_TAP_CODE_DELAY,
+    min: 0,
+    max: 1000,
+    labelKey: "tapHoldTapCodeDelay",
+    unitKey: "unitMs",
+  },
   {
     type: "integer",
     qsid: QMK_SETTINGS_QSID_TAP_HOLD_CAPS_DELAY,
     min: 0,
     max: 1000,
     labelKey: "tapHoldTapHoldCapsDelay",
+    unitKey: "unitMs",
   },
-  { type: "integer", qsid: QMK_SETTINGS_QSID_TAPPING_TOGGLE, min: 0, max: 100, labelKey: "tapHoldTappingToggle" },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_TAPPING_TOGGLE,
+    min: 0,
+    max: 100,
+    labelKey: "tapHoldTappingToggle",
+    unitKey: "unitTaps",
+  },
   { type: "boolean", qsid: QMK_SETTINGS_QSID_CHORDAL_HOLD, bit: 0, labelKey: "tapHoldChordalHold" },
-  { type: "integer", qsid: QMK_SETTINGS_QSID_FLOW_TAP, min: 0, max: 10000, labelKey: "tapHoldFlowTap" },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_FLOW_TAP,
+    min: 0,
+    max: 10000,
+    labelKey: "tapHoldFlowTap",
+    unitKey: "unitMs",
+  },
 ];
 
 /** Tap-Hold QMK-Settings fields; hidden entirely when the device exposes none of the qsids above. */

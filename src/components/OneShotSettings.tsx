@@ -10,8 +10,22 @@ interface Props {
 
 /** vial-gui's qmk_settings.json "One Shot Keys" tab (qsid 5 tap-toggle count, qsid 6 timeout in ms). */
 const FIELDS: QmkSettingField[] = [
-  { type: "integer", qsid: QMK_SETTINGS_QSID_ONESHOT_TAP_TOGGLE, min: 0, max: 50, labelKey: "oneShotTapToggle" },
-  { type: "integer", qsid: QMK_SETTINGS_QSID_ONESHOT_TIMEOUT, min: 0, max: 60000, labelKey: "oneShotTimeoutMs" },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_ONESHOT_TAP_TOGGLE,
+    min: 0,
+    max: 50,
+    labelKey: "oneShotTapToggle",
+    unitKey: "unitTaps",
+  },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_ONESHOT_TIMEOUT,
+    min: 0,
+    max: 60000,
+    labelKey: "oneShotTimeoutMs",
+    unitKey: "unitMs",
+  },
 ];
 
 /** One Shot Keys QMK-Settings fields; hidden entirely when the device exposes neither qsid. */

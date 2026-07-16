@@ -11,7 +11,7 @@ import { QmkSettingsPanel } from "./components/QmkSettingsPanel.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { TapDancePanel } from "./components/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/WaitingForConnection.tsx";
-import { useI18n } from "./i18n.tsx";
+import { useI18n, type MessageKey } from "./i18n.tsx";
 import { Keyboard } from "./protocol/keyboard.ts";
 import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
@@ -41,6 +41,7 @@ function App() {
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("keymap");
   const [selected, setSelected] = useState<Selected | null>(null);
+  const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
   // Keyboard mutates its internal keymap in place; bumping this forces a
   // re-render so KeyboardLayout picks up the new label after a remap.
   const [, forceUpdate] = useState(0);
@@ -112,8 +113,17 @@ function App() {
     await teardown();
     setError(null);
     setStatus("idle");
-    showToast(t("deviceDisconnected"), "info");
+    setQmkSections([]);
+    showToast(t("deviceDisconnected"), "warning");
   }, [teardown, t, showToast]);
+
+  // Bails out (returns the same array reference) when the section list is unchanged, so this
+  // doesn't cause QmkSettingsPanel's per-render effect to re-trigger a parent re-render forever.
+  const handleQmkSectionsChange = useCallback((sections: MessageKey[]) => {
+    setQmkSections((prev) =>
+      prev.length === sections.length && prev.every((id, i) => id === sections[i]) ? prev : sections,
+    );
+  }, []);
 
   // Reconnect to an already-authorized keyboard on page load, so returning
   // users don't have to go through the device chooser every time. Status
@@ -236,6 +246,7 @@ function App() {
               macroSupported={!!keyboard && keyboard.macroCount > 0}
               tapDanceSupported={!!keyboard && keyboard.tapDanceCount > 0}
               comboSupported={!!keyboard && keyboard.comboCount > 0}
+              qmkSections={qmkSections}
               onNavigate={(next) => {
                 setMode(next);
                 setSelected(null);
@@ -287,6 +298,7 @@ function App() {
                   onExport={handleExport}
                   onImportFile={handleImportFile}
                   onChange={() => forceUpdate((r) => r + 1)}
+                  onSectionsChange={handleQmkSectionsChange}
                 />
               )}
             </main>

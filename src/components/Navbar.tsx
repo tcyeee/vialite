@@ -22,17 +22,18 @@ export function Navbar() {
           {lang === "zh" ? "中文" : "English"}
         </button>
         <label
-          className="btn btn-circle btn-ghost text-brand-on-surface"
+          className="btn btn-sm btn-circle btn-outline swap swap-rotate text-brand-on-surface"
           title={t("toggleTheme")}
         >
-          {theme === "dark" ? <MoonIcon className="h-4.5 w-4.5" /> : <SunIcon className="h-4.5 w-4.5" />}
           <input
             type="checkbox"
-            className="hidden"
+            className="theme-controller"
             checked={theme === "dark"}
             onChange={(e) => setTheme(e.target.checked ? "dark" : "light")}
             aria-label={t("toggleTheme")}
           />
+          <SunIcon className="swap-off h-4 w-4" />
+          <MoonIcon className="swap-on h-4 w-4" />
         </label>
       </div>
     </div>

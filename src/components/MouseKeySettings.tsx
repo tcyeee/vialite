@@ -21,16 +21,45 @@ interface Props {
 
 /** vial-gui's qmk_settings.json "Mouse keys" tab (qsid 9-17, all plain integers). */
 const FIELDS: QmkSettingField[] = [
-  { type: "integer", qsid: QMK_SETTINGS_QSID_MOUSEKEY_DELAY, min: 0, max: 10000, labelKey: "mouseKeyDelay" },
-  { type: "integer", qsid: QMK_SETTINGS_QSID_MOUSEKEY_INTERVAL, min: 0, max: 10000, labelKey: "mouseKeyInterval" },
-  { type: "integer", qsid: QMK_SETTINGS_QSID_MOUSEKEY_STEP_SIZE, min: 0, max: 1000, labelKey: "mouseKeyStepSize" },
-  { type: "integer", qsid: QMK_SETTINGS_QSID_MOUSEKEY_MAX_SPEED, min: 0, max: 1000, labelKey: "mouseKeyMaxSpeed" },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_MOUSEKEY_DELAY,
+    min: 0,
+    max: 10000,
+    labelKey: "mouseKeyDelay",
+    unitKey: "unitMs",
+  },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_MOUSEKEY_INTERVAL,
+    min: 0,
+    max: 10000,
+    labelKey: "mouseKeyInterval",
+    unitKey: "unitMs",
+  },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_MOUSEKEY_STEP_SIZE,
+    min: 0,
+    max: 1000,
+    labelKey: "mouseKeyStepSize",
+    unitKey: "unitPx",
+  },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_MOUSEKEY_MAX_SPEED,
+    min: 0,
+    max: 1000,
+    labelKey: "mouseKeyMaxSpeed",
+    unitKey: "unitPx",
+  },
   {
     type: "integer",
     qsid: QMK_SETTINGS_QSID_MOUSEKEY_TIME_TO_MAX,
     min: 0,
     max: 1000,
     labelKey: "mouseKeyTimeToMax",
+    unitKey: "unitMs",
   },
   {
     type: "integer",
@@ -38,6 +67,7 @@ const FIELDS: QmkSettingField[] = [
     min: 0,
     max: 10000,
     labelKey: "mouseKeyWheelDelay",
+    unitKey: "unitMs",
   },
   {
     type: "integer",
@@ -45,6 +75,7 @@ const FIELDS: QmkSettingField[] = [
     min: 0,
     max: 10000,
     labelKey: "mouseKeyWheelInterval",
+    unitKey: "unitMs",
   },
   {
     type: "integer",
@@ -52,6 +83,7 @@ const FIELDS: QmkSettingField[] = [
     min: 0,
     max: 1000,
     labelKey: "mouseKeyWheelMaxSpeed",
+    unitKey: "unitSteps",
   },
   {
     type: "integer",
@@ -59,6 +91,7 @@ const FIELDS: QmkSettingField[] = [
     min: 0,
     max: 1000,
     labelKey: "mouseKeyWheelTimeToMax",
+    unitKey: "unitMs",
   },
 ];
 
