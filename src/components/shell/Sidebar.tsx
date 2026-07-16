@@ -53,6 +53,12 @@ interface Props {
   /** titleKeys of the QMK Settings sections currently rendered in the page, in DOM order. */
   qmkSections: MessageKey[];
   onNavigate: (mode: PageMode) => void;
+  /**
+   * Gates the slide-in entrance animation. Held false while the connect-success page transition is
+   * still running (the sidebar would otherwise animate off-screen, behind the rising config page),
+   * then flipped true once the page has settled so the entrance actually plays in view.
+   */
+  appear: boolean;
 }
 
 /**
@@ -117,6 +123,7 @@ export function Sidebar({
   comboSupported,
   qmkSections,
   onNavigate,
+  appear,
 }: Props) {
   const { t } = useI18n();
   const supportedByKind: Partial<Record<NavKind, boolean>> = {
@@ -168,7 +175,14 @@ export function Sidebar({
 
   return (
     <div
-      className="sidebar-appear relative w-full shrink-0 transition-[width] duration-300 ease-out md:sticky md:top-20 md:-ml-[30px] md:w-[var(--sidebar-w)] md:self-start"
+      className={
+        // While the connect-success transition is running, keep the sidebar invisible (space still
+        // reserved) rather than at rest — otherwise it shows once during the page rise and then
+        // "appears again" when the entrance animation fires. opacity-0 → sidebar-appear (which
+        // keyframes from opacity 0) hands off with no flash, so the entrance plays exactly once.
+        (appear ? "sidebar-appear " : "opacity-0 ") +
+        "relative w-full shrink-0 transition-[width] duration-300 ease-out md:sticky md:top-20 md:-ml-[30px] md:w-[var(--sidebar-w)] md:self-start"
+      }
       style={{ "--sidebar-w": `${collapsed ? COLLAPSED_SIDEBAR_WIDTH : sidebarWidth}px` } as CSSProperties}
     >
       <aside className="flex flex-col rounded-[2rem] bg-brand-background px-6 py-6">
@@ -201,7 +215,7 @@ export function Sidebar({
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   {!collapsed && (
-                    <span className="nav-label-appear" style={labelDelay}>
+                    <span className={appear ? "nav-label-appear" : undefined} style={labelDelay}>
                       {t(labelKey)}
                     </span>
                   )}
@@ -224,7 +238,7 @@ export function Sidebar({
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   {!collapsed && (
-                    <span className="nav-label-appear" style={labelDelay}>
+                    <span className={appear ? "nav-label-appear" : undefined} style={labelDelay}>
                       {t(labelKey)}
                     </span>
                   )}

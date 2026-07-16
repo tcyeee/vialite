@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
+import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
 import { KeyboardLayout, type KeyPart } from "./components/keymap/KeyboardLayout.tsx";
-import { HoldEditor } from "./components/keymap/HoldEditor.tsx";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
 import { KeycodePicker } from "./components/common/KeycodePicker.tsx";
+import { KeycodeTabs } from "./components/keymap/KeycodeTabs.tsx";
 import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
-import { QuickConfig104 } from "./components/keymap/QuickConfig104.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { Navbar } from "./components/shell/Navbar.tsx";
@@ -49,8 +49,6 @@ function App() {
   const [mode, setMode] = useState<PageMode>("keymap");
   const [selected, setSelected] = useState<Selected | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  // Key whose hold (long-press) action is being edited in the HoldEditor modal.
-  const [holdEditKey, setHoldEditKey] = useState<{ row: number; col: number } | null>(null);
   const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
   const [qmkPendingCount, setQmkPendingCount] = useState(0);
   const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
@@ -237,24 +235,18 @@ function App() {
       }
       try {
         if (selected.kind === "key") {
-          // The hold sub-part is edited only through the HoldEditor modal — a
-          // keycode pick here would be ambiguous, so ignore it.
-          if (selected.part === "hold") {
-            return;
-          }
-          // Editing just the tap half of a dual-role cap swaps its inner key and
-          // keeps the hold role; a non-basic pick can't nest, so fall back to
-          // replacing the whole cap. Any other case writes the pick as-is.
+          const current = keyboard.getKey(layer, selected.row, selected.col);
+          // The tap half of a dual-role cap swaps the inner key while keeping the
+          // hold (falling back to writing the pick as-is if it can't recombine); a
+          // plain cap writes the pick whole. The hold half is edited separately by
+          // the dual-role editor, not through this pick flow.
           let toWrite = qmkId;
-          if (selected.part === "tap") {
-            const current = keyboard.getKey(layer, selected.row, selected.col);
-            if (dualRole(current)) {
-              try {
-                toWrite = withTap(current, qmkId);
-              } catch {
-                toWrite = qmkId;
-              }
+          try {
+            if (selected.part === "tap" && dualRole(current)) {
+              toWrite = withTap(current, qmkId);
             }
+          } catch {
+            toWrite = qmkId;
           }
           await keyboard.setKey(layer, selected.row, selected.col, toWrite);
         } else {
@@ -277,27 +269,27 @@ function App() {
     [handleAssign],
   );
 
-  // Closes the hold editor and drops the "hold" sub-selection so the quick-config
-  // board below resumes editing the whole cap.
-  const closeHoldEditor = useCallback(() => {
-    setHoldEditKey(null);
-    setSelected((prev) => (prev?.kind === "key" ? { kind: "key", row: prev.row, col: prev.col } : prev));
-  }, []);
-
-  // HoldEditor apply — writes the rebuilt dual-role keycode, then closes.
-  const handleHoldApply = useCallback(
+  // Dual-role hold editor writes a fully-rebuilt keycode (Mod-Tap / Layer-Tap /
+  // plain tap) straight to the selected cap — no recombination. Choosing 无
+  // yields a non-dual-role key, so the hold sub-selection is dropped and the cap
+  // falls back to the normal whole-key flow (quick-config reappears).
+  const handleHoldWrite = useCallback(
     async (qmkId: string) => {
-      if (keyboard && holdEditKey) {
-        try {
-          await keyboard.setKey(layer, holdEditKey.row, holdEditKey.col, qmkId);
-        } catch (err) {
-          showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
-        }
-        forceUpdate((r) => r + 1);
+      if (!keyboard || selected?.kind !== "key") {
+        return;
       }
-      closeHoldEditor();
+      const { row, col } = selected;
+      try {
+        await keyboard.setKey(layer, row, col, qmkId);
+      } catch (err) {
+        showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
+      }
+      if (!dualRole(qmkId)) {
+        setSelected({ kind: "key", row, col });
+      }
+      forceUpdate((r) => r + 1);
     },
-    [keyboard, holdEditKey, layer, t, showToast, closeHoldEditor],
+    [keyboard, selected, layer, t, showToast],
   );
 
   const handleExport = useCallback(() => {
@@ -392,6 +384,7 @@ function App() {
               comboSupported={!!keyboard && keyboard.comboCount > 0}
               qmkSections={qmkSections}
               onNavigate={navigate}
+              appear={!inTransition}
             />
             <main className="min-w-0 flex-1 p-6 md:p-8">
               <div className="mb-6 flex items-center gap-2">
@@ -427,12 +420,12 @@ function App() {
                         layer={layer}
                         selected={selected}
                         onKeySelect={(row, col, part) => {
-                          // Clicking the hold band selects that sub-part and opens
-                          // the dedicated hold editor; the top / whole cap toggles
-                          // selection for the normal quick-config + picker flow.
+                          // Clicking the hold band selects that sub-part, which
+                          // swaps the quick-config grid below for the dedicated
+                          // dual-role editor; the top / whole cap toggles selection
+                          // for the normal quick-config + picker flow.
                           if (part === "hold") {
                             setSelected({ kind: "key", row, col, part: "hold" });
-                            setHoldEditKey({ row, col });
                             return;
                           }
                           setSelected((prev) =>
@@ -450,26 +443,30 @@ function App() {
                       />
                     </div>
                   </LayerTabs>
-                  <section className="mt-6">
-                    <div className="mb-2 flex items-center gap-3">
-                      <h2 className="text-lg font-semibold text-brand-on-surface">
-                        {t("quickConfigTitle")}
-                      </h2>
-                      <button
-                        className="btn btn-sm btn-outline"
-                        disabled={!selected}
-                        onClick={() => setPickerOpen(true)}
-                      >
-                        {t("advancedPicker")}
-                      </button>
-                    </div>
-                    <p className="mb-3 text-sm opacity-70">
-                      {selected ? t("quickConfigHint") : t("quickConfigNoSelection")}
-                    </p>
-                    <div className="overflow-x-auto">
-                      <QuickConfig104 onPick={handleAssign} disabled={!selected} />
-                    </div>
-                  </section>
+                  {selected?.kind === "key" && selected.part === "hold" ? (
+                    <DualRoleEditor
+                      key={`${selected.row},${selected.col}`}
+                      qmkId={keyboard.getKey(layer, selected.row, selected.col)}
+                      layerCount={keyboard.layers}
+                      onWrite={handleHoldWrite}
+                    />
+                  ) : selected ? (
+                    <section className="mt-6">
+                      <div className="mb-3 flex items-center gap-3">
+                        <h2 className="text-lg font-semibold text-brand-on-surface">
+                          {t("quickConfigTitle")}
+                        </h2>
+                        <button className="btn btn-sm btn-outline" onClick={() => setPickerOpen(true)}>
+                          {t("advancedPicker")}
+                        </button>
+                      </div>
+                      <KeycodeTabs onPick={handleAssign} />
+                    </section>
+                  ) : (
+                    <section className="mt-6">
+                      <p className="text-sm opacity-70">{t("selectKeyFirst")}</p>
+                    </section>
+                  )}
                 </>
               )}
               {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
@@ -505,14 +502,6 @@ function App() {
       </div>
           {pickerOpen && selected && mode === "keymap" && (
             <KeycodePicker onPick={handlePick} onClose={() => setPickerOpen(false)} />
-          )}
-          {holdEditKey && keyboard && mode === "keymap" && (
-            <HoldEditor
-              qmkId={keyboard.getKey(layer, holdEditKey.row, holdEditKey.col)}
-              layerCount={keyboard.layers}
-              onApply={handleHoldApply}
-              onClose={closeHoldEditor}
-            />
           )}
           {importing && <div className="io-busy-overlay" />}
         </div>

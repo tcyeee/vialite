@@ -146,25 +146,28 @@ export const QUICK_CONFIG_QMK_IDS: ReadonlySet<string> = new Set(KEYS_104.map((k
 interface Props {
   onPick: (qmkId: string) => void;
   disabled?: boolean;
+  /** Multiplier on the key unit size (default 1). */
+  scale?: number;
 }
 
-export function QuickConfig104({ onPick, disabled }: Props) {
+export function QuickConfig104({ onPick, disabled, scale = 1 }: Props) {
+  const unit = UNIT * scale;
   return (
     <div
       className="keyboard-layout"
       style={{
-        width: BOARD_WIDTH * UNIT,
-        height: BOARD_HEIGHT * UNIT,
+        width: BOARD_WIDTH * unit,
+        height: BOARD_HEIGHT * unit,
         opacity: disabled ? 0.5 : 1,
         pointerEvents: disabled ? "none" : undefined,
       }}
     >
       {KEYS_104.map((k) => {
         const style: CSSProperties = {
-          left: k.x * UNIT,
-          top: k.y * UNIT,
-          width: (k.w ?? 1) * UNIT - GAP,
-          height: (k.h ?? 1) * UNIT - GAP,
+          left: k.x * unit,
+          top: k.y * unit,
+          width: (k.w ?? 1) * unit - GAP,
+          height: (k.h ?? 1) * unit - GAP,
         };
         return (
           <button

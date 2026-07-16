@@ -1,10 +1,13 @@
-import { useState, type SVGProps } from "react";
+import { useEffect, useRef, useState, type SVGProps } from "react";
+import { flushSync } from "react-dom";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { KeycapFace } from "../keymap/KeycapFace.tsx";
 import type { ComboEntry, Keyboard } from "../../protocol/keyboard.ts";
 import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
+import { RenumberPicker } from "../common/RenumberPicker.tsx";
+import { startViewTransition } from "../common/viewTransition.ts";
 
 interface PreviewCardProps {
   index: number;
@@ -18,10 +21,12 @@ interface PreviewCardProps {
   onDelete?: () => void;
   /** Moves this entry to a different (free) slot number, from the edit-face CB picker. */
   onMove?: (toIdx: number) => void;
-  /** Renders already flipped to the editor face, for a freshly added (still-unused) entry. */
-  startInEditMode?: boolean;
-  /** Called when leaving edit mode via the "done" button, so the parent can drop an unused slot. */
-  onCollapse?: () => void;
+  /** Whether this card is the single one currently flipped to its editor face (parent-owned). */
+  editing?: boolean;
+  /** Enter edit mode — the parent makes this the one editing card, un-flipping any other. */
+  onEdit?: () => void;
+  /** Leave edit mode (the "done" button); the parent also drops the slot if it's still unused. */
+  onCloseEdit?: () => void;
 }
 
 /**
@@ -119,42 +124,14 @@ function ComboPreviewCard({
           >
             <div className="card-body gap-1.5 px-4 pt-4 pb-2">
               <div className="mb-1 flex items-center justify-between">
-                <div className="dropdown">
-                  <div
-                    tabIndex={0}
-                    role="button"
-                    className="flex cursor-pointer items-center gap-0.5 text-lg font-bold tracking-tight text-neutral-900 hover:text-primary"
-                    title={t("comboRenumber")}
-                  >
-                    CB-{index}
-                    <ChevronDownIcon className="h-4 w-4 opacity-60" />
-                  </div>
-                  <div
-                    tabIndex={0}
-                    className="dropdown-content z-20 mt-1 grid max-h-72 w-72 grid-cols-5 gap-1.5 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
-                  >
-                    {Array.from({ length: comboCount }).map((_, n) => {
-                      const current = n === index;
-                      const occupied = !current && usedIndices.has(n);
-                      return (
-                        <button
-                          key={n}
-                          type="button"
-                          disabled={occupied}
-                          onClick={(e) => {
-                            e.currentTarget.blur();
-                            if (!current) onMove?.(n);
-                          }}
-                          className={`btn btn-sm ${
-                            current ? "btn-primary" : occupied ? "btn-ghost opacity-30" : "btn-ghost"
-                          }`}
-                        >
-                          {n}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <RenumberPicker
+                  index={index}
+                  count={comboCount}
+                  usedIndices={usedIndices}
+                  prefix="CB"
+                  title={t("comboRenumber")}
+                  onMove={(toIdx) => onMove?.(toIdx)}
+                />
                 <button type="button" className="btn btn-ghost btn-sm text-neutral-500" onClick={closeEdit}>
                   {t("done")}
                 </button>
@@ -192,14 +169,6 @@ function ComboPreviewCard({
         )}
       </div>
     </div>
-  );
-}
-
-function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-    </svg>
   );
 }
 

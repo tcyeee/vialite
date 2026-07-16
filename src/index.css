@@ -282,31 +282,53 @@ body {
   border: 1px solid light-dark(#b0b0b0, #666);
 }
 
+/* Selected indicator: a ring whose hue continuously cycles. Driven by a
+   registered custom property so the color interpolates smoothly around the whole
+   hue wheel (a plain `border-color`/`box-shadow` keyframe animation would instead
+   pass through muddy RGB midpoints). `inherits: true` lets a selected cap's
+   descendants — the ISO-Enter secondary rect, the dual-role hit areas — pick up
+   the same animated hue without each needing its own keyframes. */
+@property --sel-hue {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@keyframes sel-hue-cycle {
+  to {
+    --sel-hue: 360;
+  }
+}
+
 .keyboard-layout .key.selected,
 .keyboard-layout .encoder.selected {
-  border-color: var(--color-brand-primary);
-  box-shadow: 0 0 0 2px var(--color-brand-primary);
-  background: light-dark(#ffd1dc, #5a3b44);
+  border-color: hsl(var(--sel-hue) 85% 55%);
+  box-shadow: 0 0 0 2px hsl(var(--sel-hue) 85% 55%);
+  animation: sel-hue-cycle 3s linear infinite;
 }
 
-/* Keys are highlighted by the `.key-aura` glow layer below instead of the
-   box-shadow ring; encoders keep the ring (no aura layer). */
-.keyboard-layout .key.selected {
+/* Dual-role caps are selected one half at a time: drop the whole-cap ring so
+   only the active tap/hold hit area (below) carries the animated ring. */
+.keyboard-layout .key.selected:has(.key-hit) {
   box-shadow: none;
+  border-color: transparent;
+  animation: none;
 }
 
-/* daisyUI `aura` glow behind the selected cap. `.aura` itself sets
-   position:relative/inline-block — override to absolute so it takes the key's
-   exact `shapeStyle` geometry. currentColor drives the conic-gradient hue. */
-.keyboard-layout .key-aura {
-  position: absolute;
-  color: var(--color-primary);
-  border-radius: 4px;
-  pointer-events: none;
-}
-
+/* Secondary rect of an ISO-Enter cap inherits the parent's animated --sel-hue. */
 .keyboard-layout .key.selected .key-part2 {
-  border-color: var(--color-brand-primary);
+  border-color: hsl(var(--sel-hue) 85% 55%);
+  box-shadow: 0 0 0 2px hsl(var(--sel-hue) 85% 55%);
+}
+
+/* Users who prefer reduced motion get a static ring instead of the hue cycle. */
+@media (prefers-reduced-motion: reduce) {
+  .keyboard-layout .key.selected,
+  .keyboard-layout .encoder.selected,
+  .keyboard-layout .key-hit.active {
+    animation: none;
+    --sel-hue: 320;
+  }
 }
 
 /* Secondary rectangle of ISO-Enter-style keys; same face as the parent key. */
@@ -467,7 +489,8 @@ body {
 }
 
 .keyboard-layout .key-hit.active {
-  box-shadow: inset 0 0 0 2px var(--color-brand-primary);
+  box-shadow: inset 0 0 0 2px hsl(var(--sel-hue) 85% 55%);
+  animation: sel-hue-cycle 3s linear infinite;
 }
 
 /* Floating key-info card (KeyInfoCard) shown after a 0.5s hover on the

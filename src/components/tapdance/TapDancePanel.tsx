@@ -1,10 +1,13 @@
-import { useState, type SVGProps } from "react";
+import { useEffect, useRef, useState, type SVGProps } from "react";
+import { flushSync } from "react-dom";
 import { type MessageKey, useI18n } from "../../contexts/i18n.tsx";
 import { KeycapFace } from "../keymap/KeycapFace.tsx";
 import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
 import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
+import { RenumberPicker } from "../common/RenumberPicker.tsx";
+import { startViewTransition } from "../common/viewTransition.ts";
 
 const PREVIEW_STATES: { labelKey: MessageKey; field: keyof TapDanceEntry }[] = [
   { labelKey: "tapDanceOnTap", field: "onTap" },
@@ -25,10 +28,12 @@ interface PreviewCardProps {
   onDelete?: () => void;
   /** Moves this entry to a different (free) slot number, from the edit-face TD picker. */
   onMove?: (toIdx: number) => void;
-  /** Renders already flipped to the editor face, for a freshly added (still-unused) entry. */
-  startInEditMode?: boolean;
-  /** Called when leaving edit mode via the "done" button, so the parent can drop an unused slot. */
-  onCollapse?: () => void;
+  /** Whether this card is the single one currently flipped to its editor face (parent-owned). */
+  editing?: boolean;
+  /** Enter edit mode — the parent makes this the one editing card, un-flipping any other. */
+  onEdit?: () => void;
+  /** Leave edit mode (the "done" button); the parent also drops the slot if it's still unused. */
+  onCloseEdit?: () => void;
 }
 
 /**
@@ -44,27 +49,26 @@ function TapDancePreviewCard({
   onSave,
   onDelete,
   onMove,
-  startInEditMode,
-  onCollapse,
+  editing,
+  onEdit,
+  onCloseEdit,
 }: PreviewCardProps) {
   const { t } = useI18n();
-  const [flipped, setFlipped] = useState(!!startInEditMode);
+  const flipped = !!editing;
   const editable = !!onSave;
 
-  const closeEdit = () => {
-    setFlipped(false);
-    onCollapse?.();
-  };
-
   return (
-    <div className="group/card relative my-2 w-80" style={{ perspective: "1200px" }}>
+    <div
+      className="group/card relative my-2 w-80"
+      style={{ perspective: "1200px", viewTransitionName: `tdcard-${index}` }}
+    >
       {editable && !flipped && (
         <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:-translate-y-2.5 group-hover/card:scale-[1.6] group-hover/card:opacity-100">
           <button
             type="button"
             className="btn btn-ghost btn-xs px-2 text-white hover:bg-white/20 hover:text-white"
             title={t("edit")}
-            onClick={() => setFlipped(true)}
+            onClick={() => onEdit?.()}
           >
             <PencilIcon className="h-3.5 w-3.5" />
           </button>
@@ -120,43 +124,15 @@ function TapDancePreviewCard({
           >
             <div className="card-body gap-1.5 px-4 pt-4 pb-2">
               <div className="mb-1 flex items-center justify-between">
-                <div className="dropdown">
-                  <div
-                    tabIndex={0}
-                    role="button"
-                    className="flex cursor-pointer items-center gap-0.5 text-lg font-bold tracking-tight text-neutral-900 hover:text-primary"
-                    title={t("tapDanceRenumber")}
-                  >
-                    TD-{index}
-                    <ChevronDownIcon className="h-4 w-4 opacity-60" />
-                  </div>
-                  <div
-                    tabIndex={0}
-                    className="dropdown-content z-20 mt-1 grid max-h-72 w-72 grid-cols-5 gap-1.5 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
-                  >
-                    {Array.from({ length: tapDanceCount }).map((_, n) => {
-                      const current = n === index;
-                      const occupied = !current && usedIndices.has(n);
-                      return (
-                        <button
-                          key={n}
-                          type="button"
-                          disabled={occupied}
-                          onClick={(e) => {
-                            e.currentTarget.blur();
-                            if (!current) onMove?.(n);
-                          }}
-                          className={`btn btn-sm ${
-                            current ? "btn-primary" : occupied ? "btn-ghost opacity-30" : "btn-ghost"
-                          }`}
-                        >
-                          {n}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <button type="button" className="btn btn-ghost btn-sm text-neutral-500" onClick={closeEdit}>
+                <RenumberPicker
+                  index={index}
+                  count={tapDanceCount}
+                  usedIndices={usedIndices}
+                  prefix="TD"
+                  title={t("tapDanceRenumber")}
+                  onMove={(toIdx) => onMove?.(toIdx)}
+                />
+                <button type="button" className="btn btn-ghost btn-sm text-neutral-500" onClick={() => onCloseEdit?.()}>
                   {t("done")}
                 </button>
               </div>
@@ -201,14 +177,6 @@ function TapDancePreviewCard({
   );
 }
 
-function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
 function PencilIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
@@ -237,8 +205,29 @@ const isUsed = (e: TapDanceEntry) =>
 export function TapDancePanel({ keyboard, onChange }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
-  /** Index of a freshly added, still-unused slot being edited; shown even though it's not "used" yet. */
-  const [addingIndex, setAddingIndex] = useState<number | null>(null);
+  /**
+   * The single slot currently flipped to its editor face. Parent-owned so only one card edits at a
+   * time, and it doubles as the "freshly added, still-unused slot" marker (shown even when empty).
+   */
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  /**
+   * When set, overrides the natural (ascending) card order so a just-renumbered card stays put for
+   * a beat before it animates to its sorted position. Cleared inside a View Transition.
+   */
+  const [pendingOrder, setPendingOrder] = useState<number[] | null>(null);
+  const reorderTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (reorderTimer.current) clearTimeout(reorderTimer.current);
+  }, []);
+
+  const cancelPendingReorder = () => {
+    if (reorderTimer.current) {
+      clearTimeout(reorderTimer.current);
+      reorderTimer.current = null;
+    }
+    setPendingOrder(null);
+  };
 
   if (keyboard.tapDanceCount === 0) {
     return <p className="text-brand-on-surface-variant">{t("tapDanceNone")}</p>;
@@ -259,10 +248,24 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
   const clearAt = (idx: number) =>
     void updateAt(idx, { onTap: "KC_NO", onHold: "KC_NO", onDoubleTap: "KC_NO", onTapHold: "KC_NO", tappingTerm: 200 });
 
+  const usedIndices = new Set(
+    keyboard.tapDanceEntries.flatMap((e, i) => (isUsed(e) ? [i] : [])),
+  );
+
+  /** Cards to show, in the order to show them — `pendingOrder` while a renumber is settling. */
+  const sortedVisible = keyboard.tapDanceEntries
+    .map((_, i) => i)
+    .filter((i) => isUsed(keyboard.tapDanceEntries[i]) || i === editingIndex);
+  const displayOrder = pendingOrder
+    ? pendingOrder.filter((i) => sortedVisible.includes(i))
+    : sortedVisible;
+
   /** Move an entry to a different (free) slot number: write it to the new slot, clear the old one. */
   const moveTo = async (fromIdx: number, toIdx: number) => {
     if (fromIdx === toIdx) return;
     const src = keyboard.tapDanceEntries[fromIdx];
+    // Hold the current visual order, with the moved card renamed in place, until the timer fires.
+    const heldOrder = displayOrder.map((i) => (i === fromIdx ? toIdx : i));
     try {
       await keyboard.setTapDance(toIdx, { ...src });
       if (isUsed(src)) {
@@ -274,7 +277,13 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
           tappingTerm: 200,
         });
       }
-      setAddingIndex(toIdx);
+      if (reorderTimer.current) clearTimeout(reorderTimer.current);
+      setEditingIndex(toIdx);
+      setPendingOrder(heldOrder);
+      reorderTimer.current = window.setTimeout(() => {
+        reorderTimer.current = null;
+        startViewTransition(() => flushSync(() => setPendingOrder(null)));
+      }, 500);
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err));
     } finally {
@@ -282,22 +291,15 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
     }
   };
 
-  const usedIndices = new Set(
-    keyboard.tapDanceEntries.flatMap((e, i) => (isUsed(e) ? [i] : [])),
-  );
-
   const handleAdd = () => {
     const freeIdx = keyboard.tapDanceEntries.findIndex((e) => !isUsed(e));
     if (freeIdx === -1) {
       showToast(t("tapDanceFull"));
       return;
     }
-    setAddingIndex(freeIdx);
+    cancelPendingReorder();
+    setEditingIndex(freeIdx);
   };
-
-  const visibleIndices = keyboard.tapDanceEntries
-    .map((_, i) => i)
-    .filter((i) => isUsed(keyboard.tapDanceEntries[i]) || i === addingIndex);
 
   return (
     <div className="flex flex-col gap-4">
@@ -312,10 +314,10 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
         </button>
       </div>
       <div className="flex flex-wrap gap-4">
-        {visibleIndices.length === 0 ? (
+        {displayOrder.length === 0 ? (
           <p className="text-sm text-brand-on-surface-variant">{t("tapDanceEmpty")}</p>
         ) : (
-          visibleIndices.map((i) => (
+          displayOrder.map((i) => (
             <TapDancePreviewCard
               key={i}
               index={i}
@@ -325,8 +327,9 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
               onSave={(patch) => void updateAt(i, patch)}
               onDelete={() => clearAt(i)}
               onMove={(toIdx) => void moveTo(i, toIdx)}
-              startInEditMode={i === addingIndex}
-              onCollapse={i === addingIndex ? () => setAddingIndex(null) : undefined}
+              editing={i === editingIndex}
+              onEdit={() => setEditingIndex(i)}
+              onCloseEdit={() => setEditingIndex(null)}
             />
           ))
         )}

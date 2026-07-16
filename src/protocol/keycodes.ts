@@ -1459,10 +1459,10 @@ export type HoldInfo =
   | { type: "layer"; layer: number };
 
 /**
- * Structured view of a dual-role key's hold action, for the hold editor: either
- * the modifier set + side of a Mod-Tap, or the target layer of a Layer-Tap.
- * Returns null for non-dual-role keys. Companion to {@link dualRole}, which
- * labels the hold half rather than decomposing it.
+ * Structured view of a dual-role key's hold action, for the dual-role editor:
+ * either the modifier set + side of a Mod-Tap, or the target layer of a
+ * Layer-Tap. Returns null for non-dual-role keys. Companion to {@link dualRole},
+ * which labels the hold half rather than decomposing it.
  */
 export function holdInfo(qmkId: string): HoldInfo | null {
   const composite = /^([A-Za-z0-9_]+)\((.+)\)$/.exec(qmkId);
@@ -1507,10 +1507,15 @@ export function withTap(qmkId: string, newTap: string): string {
   return serialize(deserialize(expr));
 }
 
+/** Builds a Layer-Tap qmk_id from a layer number + tap key. */
+export function buildLayerTap(layer: number, tap: string): string {
+  return serialize(deserialize(`LT(${layer},${tap})`));
+}
+
 /**
  * Builds a Mod-Tap qmk_id from a modifier selection + tap key. With no modifier
  * selected the hold is meaningless, so it collapses to the plain tap key —
- * that's how the hold editor "removes" the hold role from a cap.
+ * that's how the dual-role editor "removes" the hold role from a cap.
  */
 export function buildModTap(
   mods: { ctrl: boolean; shift: boolean; alt: boolean; gui: boolean; side: "L" | "R" },
@@ -1528,9 +1533,37 @@ export function buildModTap(
   return serialize(deserialize(`MT(${names.join("|")},${tap})`));
 }
 
-/** Builds a Layer-Tap qmk_id from a layer number + tap key. */
-export function buildLayerTap(layer: number, tap: string): string {
-  return serialize(deserialize(`LT(${layer},${tap})`));
+/** Basic modifier keycode → its Mod-Tap MOD_ constant (both spellings mapped). */
+const HOLD_MOD_FROM_BASIC: Record<string, string> = {
+  KC_LCTRL: "MOD_LCTL", KC_LCTL: "MOD_LCTL",
+  KC_LSHIFT: "MOD_LSFT", KC_LSFT: "MOD_LSFT",
+  KC_LALT: "MOD_LALT",
+  KC_LGUI: "MOD_LGUI",
+  KC_RCTRL: "MOD_RCTL", KC_RCTL: "MOD_RCTL",
+  KC_RSHIFT: "MOD_RSFT", KC_RSFT: "MOD_RSFT",
+  KC_RALT: "MOD_RALT",
+  KC_RGUI: "MOD_RGUI",
+};
+
+/**
+ * Recombines a keycode picked from the general picker into the *hold* action of
+ * a cap, keeping the existing tap key. The pick is interpreted as a hold:
+ * a momentary layer `MO(n)` becomes a Layer-Tap, a plain modifier (`KC_LCTRL`…)
+ * becomes a Mod-Tap. Anything that can't act as a hold falls back to replacing
+ * the whole cap with the pick. `current` may be plain (adds a hold to it) or
+ * already dual-role (its tap is preserved).
+ */
+export function withHold(current: string, pickedHold: string): string {
+  const tap = dualRole(current)?.tap ?? current;
+  const mo = /^MO\((\d+)\)$/.exec(pickedHold);
+  if (mo) {
+    return buildLayerTap(Number.parseInt(mo[1], 10), tap);
+  }
+  const mod = HOLD_MOD_FROM_BASIC[pickedHold];
+  if (mod) {
+    return serialize(deserialize(`MT(${mod},${tap})`));
+  }
+  return pickedHold;
 }
 
 /** Human-readable label for a qmk_id (or raw hex fallback identifier). */

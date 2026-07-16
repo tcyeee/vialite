@@ -13,7 +13,7 @@ import { EVENT_CODE_TO_QMK } from "../keymap/keyEventMap.ts";
 import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "../keymap/QuickConfig104.tsx";
 
 /** Maps KEYCODE_CATEGORIES names (defined in keycodes.ts) to translation keys. */
-const CATEGORY_KEYS: Record<string, MessageKey> = {
+export const CATEGORY_KEYS: Record<string, MessageKey> = {
   Basic: "categoryBasic",
   Numpad: "categoryNumpad",
   Navigation: "categoryNavigation",

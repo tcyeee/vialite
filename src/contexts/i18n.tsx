@@ -295,6 +295,7 @@ const MESSAGES = {
   quickConfigTitle: { en: "Quick Config", zh: "快捷配置" },
   quickConfigHint: { en: "Select a key above, then click a key below to assign it.", zh: "先在上方选中一个键位,再点击下方键盘为其赋值。" },
   quickConfigNoSelection: { en: "No key selected", zh: "未选中键位" },
+  selectKeyFirst: { en: "Please select a key first", zh: "请先选择一个按键" },
   advancedPicker: { en: "Advanced…", zh: "高级…" },
 
   // KeycodePicker
@@ -363,19 +364,19 @@ const MESSAGES = {
   keyInfoTap: { en: "Tap", zh: "点击" },
   keyInfoHold: { en: "Hold", zh: "长按" },
 
-  // Hold editor (dual-role hold sub-part)
-  holdEditorTitle: { en: "Configure hold action", zh: "配置长按动作" },
-  holdEditorTapKeeps: { en: "Tap stays: {key}", zh: "点击保持:{key}" },
+  // Dual-role hold editor (shown when a cap's hold band is selected)
+  holdEditorTitle: { en: "Hold action", zh: "长按动作" },
+  holdEditorTapKeeps: { en: "Tap stays: {key}", zh: "点按保持:{key}" },
+  holdEditorModeNone: { en: "None", zh: "无" },
   holdEditorModifiers: { en: "Modifiers", zh: "修饰键" },
   holdEditorSide: { en: "Side", zh: "左右" },
   holdEditorSideLeft: { en: "Left", zh: "左" },
   holdEditorSideRight: { en: "Right", zh: "右" },
   holdEditorLayer: { en: "Layer", zh: "层" },
   holdEditorNoModsHint: {
-    en: "No modifier selected — the hold role is removed and the cap becomes a plain key.",
-    zh: "未选择修饰键——将移除长按功能,按键变为普通按键。",
+    en: "No modifier selected — clearing all removes the hold and the cap becomes a plain key.",
+    zh: "未选择修饰键——全部取消将移除长按,按键变为普通键。",
   },
-  holdEditorApply: { en: "Apply", zh: "应用" },
 } as const satisfies Record<string, Record<Lang, string>>;
 
 export type MessageKey = keyof typeof MESSAGES;

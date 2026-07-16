@@ -140,11 +140,6 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
             const capClass = (isSelected ? "key selected" : "key") + posClass;
             return (
               <Fragment key={`${key.row},${key.col}@${key.x},${key.y}`}>
-                {/* Selected-key glow: a same-geometry daisyUI `aura` layer laid
-                    behind the cap so only its blurred halo leaks out around the
-                    edges. Emitted before the button so the button paints on top,
-                    covering the aura's solid gradient body. */}
-                {isSelected && <span className="key-aura aura aura-dual" style={style} />}
                 {dualRole(qmkId) ? (
                   // Dual-role tap/hold cap: two independently-clickable hit areas
                   // (top = tap, bottom band = hold) over the shared cap face. A
