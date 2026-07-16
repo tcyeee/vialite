@@ -3,7 +3,7 @@
 // counter counts down to 0 and drives the progress bar.
 
 import { useEffect, useRef, useState } from "react";
-import { useI18n } from "../../i18n.tsx";
+import { useI18n } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 
 const UNIT = 27; // half of KeyboardLayout's UNIT: a small reference rendering

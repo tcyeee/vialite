@@ -13,11 +13,11 @@ import { QmkSettingsPanel } from "./components/qmk/QmkSettingsPanel.tsx";
 import { Sidebar } from "./components/shell/Sidebar.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
-import { useI18n, type MessageKey } from "./i18n.tsx";
+import { useI18n, type MessageKey } from "./contexts/i18n.tsx";
 import { Keyboard } from "./protocol/keyboard.ts";
 import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
-import { useToast } from "./toast.tsx";
+import { useToast } from "./contexts/toast.tsx";
 
 type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "advanced" | "io";
 

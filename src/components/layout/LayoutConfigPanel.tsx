@@ -1,4 +1,4 @@
-import { useI18n } from "../../i18n.tsx";
+import { useI18n } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { LayoutOptions } from "./LayoutOptions.tsx";
 

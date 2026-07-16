@@ -6,7 +6,7 @@ import {
   type ReactNode,
   type SVGProps,
 } from "react";
-import { useI18n, type MessageKey } from "../../i18n.tsx";
+import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 
 type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "advanced" | "io";
 

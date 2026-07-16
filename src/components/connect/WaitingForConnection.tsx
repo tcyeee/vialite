@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useState, type ReactNode, type SVGProps } from "react";
-import { useI18n } from "../../i18n.tsx";
-import { useTheme } from "../../theme.tsx";
+import { useI18n } from "../../contexts/i18n.tsx";
+import { useTheme } from "../../contexts/theme.tsx";
 import type { ConnectionStatus } from "./DeviceConnect.tsx";
 
 interface Props {

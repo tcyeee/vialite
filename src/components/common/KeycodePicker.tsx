@@ -8,7 +8,7 @@ import {
   serialize,
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
-import { useI18n, type MessageKey } from "../../i18n.tsx";
+import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import { EVENT_CODE_TO_QMK } from "../keymap/keyEventMap.ts";
 
 /** Maps KEYCODE_CATEGORIES names (defined in keycodes.ts) to translation keys. */

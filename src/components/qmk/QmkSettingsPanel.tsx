@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SVGProps } from "react";
-import { useI18n, type MessageKey, type Translate } from "../../i18n.tsx";
+import { useI18n, type MessageKey, type Translate } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { ComboSettings } from "./ComboSettings.tsx";
 import { GraveEscapeSettings } from "./GraveEscapeSettings.tsx";

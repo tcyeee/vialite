@@ -6,7 +6,7 @@
 // nothing else in Vialite needs the unlocked state, so we re-lock on exit.
 
 import { useEffect, useState } from "react";
-import { useI18n } from "../../i18n.tsx";
+import { useI18n } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { UnlockDialog } from "../common/UnlockDialog.tsx";
 

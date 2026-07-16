@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useI18n } from "../../i18n.tsx";
+import { useI18n } from "../../contexts/i18n.tsx";
 import { VIAL_PROTOCOL_ADVANCED_MACROS } from "../../protocol/constants.ts";
 import type { Keyboard, MacroAction } from "../../protocol/keyboard.ts";
 import { serializeMacro, serializeMacros } from "../../protocol/macro.ts";
-import { useToast } from "../../toast.tsx";
+import { useToast } from "../../contexts/toast.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
 import { KeycodePicker } from "../common/KeycodePicker.tsx";
 import { UnlockDialog } from "../common/UnlockDialog.tsx";

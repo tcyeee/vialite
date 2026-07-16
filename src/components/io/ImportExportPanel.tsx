@@ -1,5 +1,5 @@
 import { useRef, type SVGProps } from "react";
-import { useI18n } from "../../i18n.tsx";
+import { useI18n } from "../../contexts/i18n.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 
 interface Props {
