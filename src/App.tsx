@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AdvancedPanel } from "./components/AdvancedPanel.tsx";
+import { ComboPanel } from "./components/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/DeviceConnect.tsx";
 import { KeyboardLayout } from "./components/KeyboardLayout.tsx";
 import { KeycodePicker } from "./components/KeycodePicker.tsx";
 import { LayerTabs } from "./components/LayerTabs.tsx";
+import { MacroPanel } from "./components/MacroPanel.tsx";
 import { MatrixTester } from "./components/MatrixTester.tsx";
+import { Navbar } from "./components/Navbar.tsx";
+import { QmkSettingsPanel } from "./components/QmkSettingsPanel.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
+import { TapDancePanel } from "./components/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/WaitingForConnection.tsx";
 import { useI18n } from "./i18n.tsx";
 import { Keyboard } from "./protocol/keyboard.ts";
 import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
+import { useToast } from "./toast.tsx";
+
+type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "advanced";
 
 type Selected =
   | { kind: "key"; row: number; col: number }
@@ -22,6 +29,7 @@ let autoConnectStarted = false;
 
 function App() {
   const { t } = useI18n();
+  const { showToast } = useToast();
   // Starts "reconnecting" (not "idle") so the very first render — before the
   // auto-connect effect below has had a chance to check for an
   // already-authorized device — doesn't flash the full WaitingForConnection
@@ -31,13 +39,12 @@ function App() {
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
   const [productName, setProductName] = useState<string | undefined>();
   const [layer, setLayer] = useState(0);
-  const [mode, setMode] = useState<"keymap" | "matrix" | "advanced">("keymap");
+  const [mode, setMode] = useState<PageMode>("keymap");
   const [selected, setSelected] = useState<Selected | null>(null);
   // Keyboard mutates its internal keymap in place; bumping this forces a
   // re-render so KeyboardLayout picks up the new label after a remap.
   const [, forceUpdate] = useState(0);
   const [importing, setImporting] = useState(false);
-  const [ioMessage, setIoMessage] = useState<string | null>(null);
   const transportRef = useRef<HidTransport | null>(null);
   // Guards handleConnect and the auto-connect effect against running
   // concurrently — e.g. a manual click landing in the async gap between the
@@ -66,6 +73,7 @@ function App() {
         setSelected(null);
         setStatus("idle");
         setError(t("keyboardDisconnected"));
+        showToast(t("keyboardDisconnected"), "warning");
       };
       const kb = new Keyboard(transport);
       await kb.reload();
@@ -76,8 +84,9 @@ function App() {
       setMode("keymap");
       setError(null);
       setStatus("connected");
+      showToast(t("deviceConnected", { name: transport.productName }), "success");
     },
-    [teardown, t],
+    [teardown, t, showToast],
   );
 
   const handleConnect = useCallback(async () => {
@@ -103,7 +112,8 @@ function App() {
     await teardown();
     setError(null);
     setStatus("idle");
-  }, [teardown]);
+    showToast(t("deviceDisconnected"), "info");
+  }, [teardown, t, showToast]);
 
   // Reconnect to an already-authorized keyboard on page load, so returning
   // users don't have to go through the device chooser every time. Status
@@ -148,13 +158,12 @@ function App() {
         } else {
           await keyboard.setEncoder(layer, selected.index, selected.direction, qmkId);
         }
-        setError(null);
       } catch (err) {
-        setError(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
+        showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
       }
       forceUpdate((r) => r + 1);
     },
-    [keyboard, selected, layer, t],
+    [keyboard, selected, layer, t, showToast],
   );
 
   const handleExport = useCallback(() => {
@@ -176,7 +185,6 @@ function App() {
       if (!keyboard) {
         return;
       }
-      setIoMessage(null);
       try {
         const parsed = parseVil(await file.text());
         if (parsed.uid !== keyboard.uid && !window.confirm(t("importUidMismatch"))) {
@@ -191,15 +199,15 @@ function App() {
         if (parsed.skippedFeatures.length > 0) {
           notes.push(t("importSkippedFeatures", { list: parsed.skippedFeatures.join(", ") }));
         }
-        setIoMessage(notes.join(" "));
+        showToast(notes.join(" "), "success");
       } catch (err) {
-        setIoMessage(t("importFailed", { error: err instanceof Error ? err.message : String(err) }));
+        showToast(t("importFailed", { error: err instanceof Error ? err.message : String(err) }));
       } finally {
         setImporting(false);
         forceUpdate((r) => r + 1);
       }
     },
-    [keyboard, t],
+    [keyboard, t, showToast],
   );
 
   if (status === "reconnecting") {
@@ -215,50 +223,75 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-white/60 backdrop-blur-md p-4 dark:bg-black/30 md:p-6">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 md:flex-row md:items-start md:gap-6">
-        <Sidebar
-          error={error}
-          productName={productName}
-          onDisconnect={handleDisconnect}
-          mode={mode}
-          matrixTesterSupported={!!keyboard?.supportsMatrixTester}
-          onNavigate={(next) => {
-            setMode(next);
-            setSelected(null);
-          }}
-        />
-        <main className="min-w-0 flex-1 p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-brand-on-surface">
-              {mode === "matrix" ? t("navMatrixTest") : mode === "advanced" ? t("navAdvanced") : t("keyboardLayoutTitle")}
-            </h1>
-          </div>
-          {keyboard && mode === "keymap" && (
-            <>
-              <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer} />
-              <div className="overflow-x-auto">
-                <KeyboardLayout
-                  keyboard={keyboard}
-                  layer={layer}
-                  onKeySelect={(row, col) => setSelected({ kind: "key", row, col })}
-                  onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
-                />
-              </div>
-            </>
-          )}
-          {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
-          {keyboard && mode === "advanced" && (
-            <AdvancedPanel
-              keyboard={keyboard}
-              importing={importing}
-              ioMessage={ioMessage}
-              onExport={handleExport}
-              onImportFile={handleImportFile}
-              onLayoutOptionsChange={() => forceUpdate((r) => r + 1)}
+    <div className="min-h-screen bg-white dark:bg-black/30 dark:backdrop-blur-md">
+      <Navbar />
+      <div className="p-4 md:p-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+            <Sidebar
+              productName={productName}
+              onDisconnect={handleDisconnect}
+              mode={mode}
+              matrixTesterSupported={!!keyboard?.supportsMatrixTester}
+              macroSupported={!!keyboard && keyboard.macroCount > 0}
+              tapDanceSupported={!!keyboard && keyboard.tapDanceCount > 0}
+              comboSupported={!!keyboard && keyboard.comboCount > 0}
+              onNavigate={(next) => {
+                setMode(next);
+                setSelected(null);
+              }}
             />
-          )}
-        </main>
+            <main className="min-w-0 flex-1 p-6 md:p-8">
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold text-brand-on-surface">
+                  {mode === "matrix"
+                    ? t("navMatrixTest")
+                    : mode === "macro"
+                      ? t("navMacro")
+                      : mode === "tapdance"
+                        ? t("navTapDance")
+                        : mode === "combo"
+                          ? t("navCombo")
+                          : mode === "advanced"
+                            ? t("navAdvanced")
+                            : t("keyboardLayoutTitle")}
+                </h1>
+              </div>
+              {keyboard && mode === "keymap" && (
+                <>
+                  <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer} />
+                  <div className="overflow-x-auto">
+                    <KeyboardLayout
+                      keyboard={keyboard}
+                      layer={layer}
+                      onKeySelect={(row, col) => setSelected({ kind: "key", row, col })}
+                      onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
+                    />
+                  </div>
+                </>
+              )}
+              {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
+              {keyboard && mode === "macro" && (
+                <MacroPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+              )}
+              {keyboard && mode === "tapdance" && (
+                <TapDancePanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+              )}
+              {keyboard && mode === "combo" && (
+                <ComboPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+              )}
+              {keyboard && mode === "advanced" && (
+                <QmkSettingsPanel
+                  keyboard={keyboard}
+                  importing={importing}
+                  onExport={handleExport}
+                  onImportFile={handleImportFile}
+                  onChange={() => forceUpdate((r) => r + 1)}
+                />
+              )}
+            </main>
+          </div>
+        </div>
       </div>
       {selected && mode === "keymap" && <KeycodePicker onPick={handlePick} onClose={() => setSelected(null)} />}
       {importing && <div className="io-busy-overlay" />}

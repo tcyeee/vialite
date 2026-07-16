@@ -8,6 +8,18 @@
   themes: light --default, dark --prefersdark;
 }
 
+/* Tailwind's width/padding utilities (w-full + px-4, etc.) assume border-box
+   sizing — without it, padding adds outside the declared width, so anything
+   sized to 100% (e.g. the Navbar) overflows the viewport by exactly its
+   padding. Preflight normally sets this app-wide, but it's skipped above (see
+   the comment on the imports); box-sizing is scoped here alone since it,
+   unlike Preflight's other resets, doesn't touch native element styling. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* `dark:` utilities key off the manually-toggled `data-theme` attribute
    (set by ThemeProvider in theme.tsx) instead of Tailwind's default
    prefers-color-scheme media query, so the in-app toggle actually wins. */
@@ -66,7 +78,13 @@ body,
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family:
+    "PingFang SC",
+    "Hiragino Sans GB",
+    system-ui,
+    sans-serif;
+  font-size: 15px;
+  color: #262626;
   background: var(--color-brand-background);
 }
 
@@ -150,24 +168,6 @@ body {
   cursor: progress;
 }
 
-.layout-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-  margin-bottom: 1.25rem;
-}
-
-.layout-options label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid var(--color-brand-outline);
-  color: var(--color-brand-on-surface-variant);
-  font-size: 0.85rem;
-}
-
 .keyboard-layout {
   position: relative;
 }
@@ -233,6 +233,7 @@ body {
 .picker-overlay {
   position: fixed;
   inset: 0;
+  z-index: 100;
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;

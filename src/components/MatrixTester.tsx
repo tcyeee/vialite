@@ -128,42 +128,48 @@ export function MatrixTester({ keyboard }: Props) {
   return (
     <div className="matrix-tester">
       <p>{t("matrixInstructions")}</p>
-      <div
-        className="keyboard-layout"
-        style={{ width: Math.max(...rightEdges) * UNIT, height: Math.max(...bottomEdges) * UNIT }}
-      >
-        {keyboard.keys.map((key) => {
-          const pos = `${key.row},${key.col}`;
-          const state = pressed.has(pos) ? " pressed" : tested.has(pos) ? " tested" : "";
-          return (
-            <div
-              key={pos}
-              className={`matrix-key${state}`}
-              title={pos}
-              style={{
-                left: key.x * UNIT,
-                top: key.y * UNIT,
-                width: key.width * UNIT - 4,
-                height: key.height * UNIT - 4,
-              }}
-            />
-          );
-        })}
-        {keyboard.encoders.map((encoder) => (
+      <div className="mockup-window w-fit max-w-full border border-base-300 bg-base-100">
+        <div className="overflow-auto border-t border-base-300 p-4">
           <div
-            key={`encoder-${encoder.index}`}
-            className="encoder"
-            title={`Encoder ${encoder.index}`}
-            style={{
-              left: encoder.x * UNIT,
-              top: encoder.y * UNIT,
-              width: encoder.width * UNIT - 4,
-              height: encoder.height * UNIT - 4,
-            }}
-          />
-        ))}
+            className="keyboard-layout"
+            style={{ width: Math.max(...rightEdges) * UNIT, height: Math.max(...bottomEdges) * UNIT }}
+          >
+            {keyboard.keys.map((key) => {
+              const pos = `${key.row},${key.col}`;
+              const state = pressed.has(pos) ? " pressed" : tested.has(pos) ? " tested" : "";
+              return (
+                <div
+                  key={pos}
+                  className={`matrix-key${state}`}
+                  title={pos}
+                  style={{
+                    left: key.x * UNIT,
+                    top: key.y * UNIT,
+                    width: key.width * UNIT - 4,
+                    height: key.height * UNIT - 4,
+                  }}
+                />
+              );
+            })}
+            {keyboard.encoders.map((encoder) => (
+              <div
+                key={`encoder-${encoder.index}`}
+                className="encoder"
+                title={`Encoder ${encoder.index}`}
+                style={{
+                  left: encoder.x * UNIT,
+                  top: encoder.y * UNIT,
+                  width: encoder.width * UNIT - 4,
+                  height: encoder.height * UNIT - 4,
+                }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
-      <button onClick={() => setTested(new Set())}>{t("reset")}</button>
+      <button className="btn btn-neutral mt-4" onClick={() => setTested(new Set())}>
+        {t("reset")}
+      </button>
     </div>
   );
 }

@@ -15,7 +15,7 @@ export function LayerTabs({ layers, active, onSelect }: Props) {
           key={i}
           type="button"
           role="tab"
-          className={i === active ? "tab tab-active" : "tab"}
+          className={i === active ? "tab tab-active" : "tab bg-transparent"}
           onClick={() => onSelect(i)}
         >
           {t("layerN", { n: i })}

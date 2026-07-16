@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import { I18nProvider } from "./i18n.tsx";
 import { ThemeProvider } from "./theme.tsx";
+import { ToastProvider } from "./toast.tsx";
 import { getSupportStatus } from "./browserSupport.ts";
 import "./index.css";
 
@@ -14,7 +15,9 @@ if (support !== "supported") {
     <StrictMode>
       <ThemeProvider>
         <I18nProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </I18nProvider>
       </ThemeProvider>
     </StrictMode>,

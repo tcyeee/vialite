@@ -7,10 +7,88 @@ import pkg from "xz-decompress";
 import * as C from "./constants.ts";
 import { deserialize as kleDeserialize, type KleData, type KleKeyboard } from "./kleSerial.ts";
 import { deserialize as kcDeserialize, serialize as kcSerialize, setKeycodeVersion } from "./keycodes.ts";
+import { deserializeMacros, serializeMacros, type MacroAction } from "./macro.ts";
 import { HidTransport, ProtocolError } from "./transport.ts";
 import { normalizeVilKeycode, type ParsedVilFile, type VilRestoreReport, type VilSnapshot } from "./vilFile.ts";
 
+export type { MacroAction };
+
+export interface TapDanceEntry {
+  onTap: string;
+  onHold: string;
+  onDoubleTap: string;
+  onTapHold: string;
+  /** Milliseconds. */
+  tappingTerm: number;
+}
+
+export interface ComboEntry {
+  keys: [string, string, string, string];
+  output: string;
+}
+
 const { XzReadableStream } = pkg;
+
+/**
+ * qsid + byte width of the QMK Settings groups vialite has UI for, from
+ * vial-gui's `qmk_settings.json` (src/main/resources/base/qmk_settings.json).
+ * Not device-provided — the schema is a static resource shipped with the
+ * GUI, only the qsid->value mapping is queried from the keyboard. Other
+ * upstream tabs (Auto Shift, ...) have no UI yet and are simply never
+ * queried.
+ */
+export const QMK_SETTINGS_QSID_MAGIC = 21;
+export const QMK_SETTINGS_QSID_GRAVE_ESCAPE = 1;
+export const QMK_SETTINGS_QSID_TAPPING_TERM = 7;
+export const QMK_SETTINGS_QSID_TAP_HOLD_FLAGS = 8;
+export const QMK_SETTINGS_QSID_TAP_CODE_DELAY = 18;
+export const QMK_SETTINGS_QSID_TAP_HOLD_CAPS_DELAY = 19;
+export const QMK_SETTINGS_QSID_TAPPING_TOGGLE = 20;
+export const QMK_SETTINGS_QSID_PERMISSIVE_HOLD = 22;
+export const QMK_SETTINGS_QSID_HOLD_ON_OTHER_KEY_PRESS = 23;
+export const QMK_SETTINGS_QSID_RETRO_TAPPING = 24;
+export const QMK_SETTINGS_QSID_QUICK_TAP_TERM = 25;
+export const QMK_SETTINGS_QSID_CHORDAL_HOLD = 26;
+export const QMK_SETTINGS_QSID_FLOW_TAP = 27;
+export const QMK_SETTINGS_QSID_COMBO_TERM = 2;
+export const QMK_SETTINGS_QSID_ONESHOT_TAP_TOGGLE = 5;
+export const QMK_SETTINGS_QSID_ONESHOT_TIMEOUT = 6;
+export const QMK_SETTINGS_QSID_MOUSEKEY_DELAY = 9;
+export const QMK_SETTINGS_QSID_MOUSEKEY_INTERVAL = 10;
+export const QMK_SETTINGS_QSID_MOUSEKEY_STEP_SIZE = 11;
+export const QMK_SETTINGS_QSID_MOUSEKEY_MAX_SPEED = 12;
+export const QMK_SETTINGS_QSID_MOUSEKEY_TIME_TO_MAX = 13;
+export const QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_DELAY = 14;
+export const QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_INTERVAL = 15;
+export const QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_MAX_SPEED = 16;
+export const QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_TIME_TO_MAX = 17;
+const QMK_SETTINGS_WIDTH: Record<number, number> = {
+  [QMK_SETTINGS_QSID_MAGIC]: 4,
+  [QMK_SETTINGS_QSID_GRAVE_ESCAPE]: 1,
+  [QMK_SETTINGS_QSID_TAPPING_TERM]: 2,
+  [QMK_SETTINGS_QSID_TAP_HOLD_FLAGS]: 1,
+  [QMK_SETTINGS_QSID_TAP_CODE_DELAY]: 2,
+  [QMK_SETTINGS_QSID_TAP_HOLD_CAPS_DELAY]: 2,
+  [QMK_SETTINGS_QSID_TAPPING_TOGGLE]: 1,
+  [QMK_SETTINGS_QSID_PERMISSIVE_HOLD]: 1,
+  [QMK_SETTINGS_QSID_HOLD_ON_OTHER_KEY_PRESS]: 1,
+  [QMK_SETTINGS_QSID_RETRO_TAPPING]: 1,
+  [QMK_SETTINGS_QSID_QUICK_TAP_TERM]: 2,
+  [QMK_SETTINGS_QSID_CHORDAL_HOLD]: 1,
+  [QMK_SETTINGS_QSID_FLOW_TAP]: 2,
+  [QMK_SETTINGS_QSID_COMBO_TERM]: 2,
+  [QMK_SETTINGS_QSID_ONESHOT_TAP_TOGGLE]: 1,
+  [QMK_SETTINGS_QSID_ONESHOT_TIMEOUT]: 2,
+  [QMK_SETTINGS_QSID_MOUSEKEY_DELAY]: 2,
+  [QMK_SETTINGS_QSID_MOUSEKEY_INTERVAL]: 2,
+  [QMK_SETTINGS_QSID_MOUSEKEY_STEP_SIZE]: 2,
+  [QMK_SETTINGS_QSID_MOUSEKEY_MAX_SPEED]: 2,
+  [QMK_SETTINGS_QSID_MOUSEKEY_TIME_TO_MAX]: 2,
+  [QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_DELAY]: 2,
+  [QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_INTERVAL]: 2,
+  [QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_MAX_SPEED]: 2,
+  [QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_TIME_TO_MAX]: 2,
+};
 
 /** Geometry shared by keys and encoders, in KLE units. */
 interface PhysicalShape {
@@ -90,6 +168,21 @@ export function packLayoutOptions(choices: number[], labels: LayoutLabel[]): num
   return value;
 }
 
+function tapDanceEqual(a: TapDanceEntry | undefined, b: TapDanceEntry): boolean {
+  return (
+    !!a &&
+    a.onTap === b.onTap &&
+    a.onHold === b.onHold &&
+    a.onDoubleTap === b.onDoubleTap &&
+    a.onTapHold === b.onTapHold &&
+    a.tappingTerm === b.tappingTerm
+  );
+}
+
+function comboEqual(a: ComboEntry | undefined, b: ComboEntry): boolean {
+  return !!a && a.output === b.output && a.keys.every((k, i) => k === b.keys[i]);
+}
+
 function concatUint8Arrays(chunks: Uint8Array<ArrayBuffer>[]): Uint8Array<ArrayBuffer> {
   const total = chunks.reduce((sum, c) => sum + c.length, 0);
   const out = new Uint8Array(total);
@@ -126,6 +219,35 @@ export class Keyboard {
   /** Packed layout-options value as reported by the device (-1 = none/unknown). */
   layoutOptions = -1;
 
+  tapDanceCount = 0;
+  comboCount = 0;
+  tapDanceEntries: TapDanceEntry[] = [];
+  comboEntries: ComboEntry[] = [];
+
+  macroCount = 0;
+  macroMemory = 0;
+  /** Raw NUL-separated macro buffer, normalized to exactly `macroCount` slots. */
+  private macroBuffer = new Uint8Array();
+
+  /**
+   * Raw bitfield values for known QMK Settings qsids (see QMK_SETTINGS_WIDTH),
+   * keyed by qsid. A qsid is absent when the device doesn't expose it (older
+   * vial-qmk build, or that qmk_settings.json group disabled at compile time).
+   */
+  private qmkSettings = new Map<number, number>();
+
+  /**
+   * Snapshot of `layoutOptions`/`qmkSettings` as first read after connecting,
+   * used by `resetLayoutOptions`/`resetQmkSettings`. There's no firmware
+   * primitive to reset a single qsid (or layout options) to its factory
+   * default — `CMD_VIAL_QMK_SETTINGS_RESET` resets *all* qsids at once with
+   * no way to scope it — so "reset" here means "revert to how it was when
+   * this keyboard connected", not "restore factory defaults".
+   */
+  private layoutOptionsBaseline = -1;
+  private qmkSettingsBaseline = new Map<number, number>();
+  private settingsBaselineCaptured = false;
+
   /** `${layer},${row},${col}` -> qmk_id string */
   private layout = new Map<string, string>();
   /** `${layer},${index},${direction}` -> qmk_id string (direction: 0 = CCW, 1 = CW) */
@@ -140,6 +262,20 @@ export class Keyboard {
     await this.reloadLayers();
     await this.reloadKeymap();
     await this.reloadLayoutOptions();
+    await this.reloadDynamic();
+    await this.reloadMacros();
+    await this.reloadQmkSettings();
+
+    if (!this.settingsBaselineCaptured) {
+      this.layoutOptionsBaseline = this.layoutOptions;
+      this.qmkSettingsBaseline = new Map(this.qmkSettings);
+      this.settingsBaselineCaptured = true;
+    }
+  }
+
+  /** Parsed per-slot macro action lists, decoded from the raw device buffer. */
+  get macros(): MacroAction[][] {
+    return deserializeMacros(this.macroBuffer, this.macroCount, this.vialProtocol);
   }
 
   getKey(layer: number, row: number, col: number): string {
@@ -181,6 +317,73 @@ export class Keyboard {
     this.encoderLayout.set(key, qmkId);
   }
 
+  async setTapDance(idx: number, entry: TapDanceEntry): Promise<void> {
+    if (tapDanceEqual(this.tapDanceEntries[idx], entry)) {
+      return;
+    }
+    const cmd = new Uint8Array(14);
+    const view = new DataView(cmd.buffer);
+    cmd[0] = C.CMD_VIA_VIAL_PREFIX;
+    cmd[1] = C.CMD_VIAL_DYNAMIC_ENTRY_OP;
+    cmd[2] = C.DYNAMIC_VIAL_TAP_DANCE_SET;
+    cmd[3] = idx;
+    // Dynamic-entry payloads are little-endian (struct.pack("<HHHHH", ...) upstream),
+    // unlike the big-endian CMD_VIA_SET_KEYCODE/CMD_VIAL_SET_ENCODER keycode fields above.
+    view.setUint16(4, kcDeserialize(entry.onTap), true);
+    view.setUint16(6, kcDeserialize(entry.onHold), true);
+    view.setUint16(8, kcDeserialize(entry.onDoubleTap), true);
+    view.setUint16(10, kcDeserialize(entry.onTapHold), true);
+    view.setUint16(12, entry.tappingTerm, true);
+    await this.transport.send(cmd, 20);
+    this.tapDanceEntries[idx] = entry;
+  }
+
+  async setCombo(idx: number, entry: ComboEntry): Promise<void> {
+    if (comboEqual(this.comboEntries[idx], entry)) {
+      return;
+    }
+    const cmd = new Uint8Array(14);
+    const view = new DataView(cmd.buffer);
+    cmd[0] = C.CMD_VIA_VIAL_PREFIX;
+    cmd[1] = C.CMD_VIAL_DYNAMIC_ENTRY_OP;
+    cmd[2] = C.DYNAMIC_VIAL_COMBO_SET;
+    cmd[3] = idx;
+    view.setUint16(4, kcDeserialize(entry.keys[0]), true);
+    view.setUint16(6, kcDeserialize(entry.keys[1]), true);
+    view.setUint16(8, kcDeserialize(entry.keys[2]), true);
+    view.setUint16(10, kcDeserialize(entry.keys[3]), true);
+    view.setUint16(12, kcDeserialize(entry.output), true);
+    await this.transport.send(cmd, 20);
+    this.comboEntries[idx] = entry;
+  }
+
+  /**
+   * Writes the full macro buffer (all slots at once, mirrors vial-gui's
+   * MacroRecorder.on_save -> set_macro). Callers are responsible for
+   * unlocking the keyboard first (see UnlockDialog) — the firmware ignores
+   * writes to the macro buffer while locked.
+   */
+  async saveMacros(macros: MacroAction[][]): Promise<void> {
+    if (macros.length !== this.macroCount) {
+      throw new ProtocolError(`expected ${this.macroCount} macros, got ${macros.length}`);
+    }
+    const data = serializeMacros(macros, this.vialProtocol);
+    if (data.length > this.macroMemory) {
+      throw new ProtocolError(`macro data too big: got ${data.length} bytes, max ${this.macroMemory}`);
+    }
+    for (let offset = 0; offset < data.length; offset += C.BUFFER_FETCH_CHUNK) {
+      const chunk = data.subarray(offset, Math.min(offset + C.BUFFER_FETCH_CHUNK, data.length));
+      const cmd = new Uint8Array(4 + chunk.length);
+      const view = new DataView(cmd.buffer);
+      cmd[0] = C.CMD_VIA_MACRO_SET_BUFFER;
+      view.setUint16(1, offset, false);
+      cmd[3] = chunk.length;
+      cmd.set(chunk, 4);
+      await this.transport.send(cmd, 20);
+    }
+    this.macroBuffer = data;
+  }
+
   /** Per-label layout choices decoded from the device's packed options value. */
   get layoutChoices(): number[] {
     if (!this.layoutLabels || this.layoutOptions < 0) {
@@ -194,6 +397,14 @@ export class Keyboard {
       return;
     }
     await this.writeLayoutOptions(packLayoutOptions(choices, this.layoutLabels));
+  }
+
+  /** Reverts layout options to how they were when this keyboard connected (see `layoutOptionsBaseline`). */
+  async resetLayoutOptions(): Promise<void> {
+    if (this.layoutOptionsBaseline === -1) {
+      return;
+    }
+    await this.writeLayoutOptions(this.layoutOptionsBaseline);
   }
 
   private async writeLayoutOptions(options: number): Promise<void> {
@@ -378,6 +589,212 @@ export class Keyboard {
       20,
     );
     this.layoutOptions = new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(2, false);
+  }
+
+  /** Tap dance / combo counts + entries (vial-gui's protocol/dynamic.py + tap_dance.py/combo.py). */
+  private async reloadDynamic(): Promise<void> {
+    if (this.vialProtocol < C.VIAL_PROTOCOL_DYNAMIC) {
+      this.tapDanceCount = 0;
+      this.comboCount = 0;
+      this.tapDanceEntries = [];
+      this.comboEntries = [];
+      return;
+    }
+    const data = await this.transport.send(
+      new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_DYNAMIC_ENTRY_OP, C.DYNAMIC_VIAL_GET_NUMBER_OF_ENTRIES]),
+      20,
+    );
+    this.tapDanceCount = data[0];
+    this.comboCount = data[1];
+
+    this.tapDanceEntries = [];
+    for (let i = 0; i < this.tapDanceCount; i++) {
+      const [onTap, onHold, onDoubleTap, onTapHold, tappingTerm] = await this.fetchDynamicEntry(
+        C.DYNAMIC_VIAL_TAP_DANCE_GET,
+        i,
+        5,
+      );
+      this.tapDanceEntries.push({
+        onTap: kcSerialize(onTap),
+        onHold: kcSerialize(onHold),
+        onDoubleTap: kcSerialize(onDoubleTap),
+        onTapHold: kcSerialize(onTapHold),
+        tappingTerm,
+      });
+    }
+
+    this.comboEntries = [];
+    for (let i = 0; i < this.comboCount; i++) {
+      const [k1, k2, k3, k4, out] = await this.fetchDynamicEntry(C.DYNAMIC_VIAL_COMBO_GET, i, 5);
+      this.comboEntries.push({
+        keys: [kcSerialize(k1), kcSerialize(k2), kcSerialize(k3), kcSerialize(k4)],
+        output: kcSerialize(out),
+      });
+    }
+  }
+
+  /** Fetches one CMD_VIAL_DYNAMIC_ENTRY_OP entry as `fields` little-endian uint16s (mirrors _retrieve_dynamic_entries). */
+  private async fetchDynamicEntry(subcmd: number, idx: number, fields: number): Promise<number[]> {
+    const data = await this.transport.send(
+      new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_DYNAMIC_ENTRY_OP, subcmd, idx]),
+      20,
+    );
+    if (data[0] !== 0) {
+      throw new ProtocolError(`failed retrieving dynamic entry (cmd=${subcmd}, idx=${idx})`);
+    }
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    const out: number[] = [];
+    for (let f = 0; f < fields; f++) {
+      out.push(view.getUint16(1 + f * 2, true));
+    }
+    return out;
+  }
+
+  /** Macro count/memory size + the raw macro buffer (vial-gui's protocol/macro.py reload_macros). */
+  private async reloadMacros(): Promise<void> {
+    const countData = await this.transport.send(new Uint8Array([C.CMD_VIA_MACRO_GET_COUNT]), 20);
+    this.macroCount = countData[1];
+
+    const sizeData = await this.transport.send(new Uint8Array([C.CMD_VIA_MACRO_GET_BUFFER_SIZE]), 20);
+    this.macroMemory = new DataView(sizeData.buffer, sizeData.byteOffset, sizeData.byteLength).getUint16(1, false);
+
+    if (this.macroMemory === 0 || this.macroCount === 0) {
+      this.macroBuffer = new Uint8Array();
+      return;
+    }
+
+    const raw = new Uint8Array(this.macroMemory);
+    for (let offset = 0; offset < this.macroMemory; offset += C.BUFFER_FETCH_CHUNK) {
+      const sz = Math.min(C.BUFFER_FETCH_CHUNK, this.macroMemory - offset);
+      const cmd = new Uint8Array(4);
+      const view = new DataView(cmd.buffer);
+      cmd[0] = C.CMD_VIA_MACRO_GET_BUFFER;
+      view.setUint16(1, offset, false);
+      cmd[3] = sz;
+      const data = await this.transport.send(cmd, 20);
+      raw.set(data.slice(4, 4 + sz), offset);
+    }
+
+    // Normalize to exactly macroCount NUL-separated slots, same as vial-gui's
+    // reload_macros_late split/pad/truncate/rejoin.
+    this.macroBuffer = serializeMacros(deserializeMacros(raw, this.macroCount, this.vialProtocol), this.vialProtocol);
+  }
+
+  /**
+   * Fetches every known QMK Settings qsid (see QMK_SETTINGS_WIDTH), ported
+   * from vial-gui's `reload_settings` in keyboard_comm.py +
+   * editor/qmk_settings.py. Groups with no vialite UI yet are simply not in
+   * that table, so they're never queried.
+   *
+   * The QUERY is paginated: each round trip returns up to 16 little-endian
+   * uint16 qsids starting at `cur`, terminated by 0xffff.
+   */
+  private async reloadQmkSettings(): Promise<void> {
+    this.qmkSettings.clear();
+    if (this.vialProtocol < C.VIAL_PROTOCOL_QMK_SETTINGS) {
+      return;
+    }
+
+    const supported = new Set<number>();
+    let cur = 0;
+    while (cur !== 0xffff) {
+      const cmd = new Uint8Array(4);
+      const view = new DataView(cmd.buffer);
+      cmd[0] = C.CMD_VIA_VIAL_PREFIX;
+      cmd[1] = C.CMD_VIAL_QMK_SETTINGS_QUERY;
+      view.setUint16(2, cur, true);
+      const data = await this.transport.send(cmd, 20);
+      const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      for (let i = 0; i + 1 < data.length; i += 2) {
+        const qsid = dv.getUint16(i, true);
+        cur = Math.max(cur, qsid);
+        if (qsid !== 0xffff) {
+          supported.add(qsid);
+        }
+      }
+    }
+
+    for (const [qsidStr, width] of Object.entries(QMK_SETTINGS_WIDTH)) {
+      const qsid = Number(qsidStr);
+      if (!supported.has(qsid)) {
+        continue;
+      }
+      const cmd = new Uint8Array(4);
+      const view = new DataView(cmd.buffer);
+      cmd[0] = C.CMD_VIA_VIAL_PREFIX;
+      cmd[1] = C.CMD_VIAL_QMK_SETTINGS_GET;
+      view.setUint16(2, qsid, true);
+      const data = await this.transport.send(cmd, 20);
+      if (data[0] === 0) {
+        let value = 0;
+        for (let b = 0; b < width; b++) {
+          value |= data[1 + b] << (8 * b);
+        }
+        this.qmkSettings.set(qsid, value >>> 0);
+      }
+    }
+  }
+
+  /** Whether the connected keyboard exposes the given QMK Settings qsid at all. */
+  supportsQmkSetting(qsid: number): boolean {
+    return this.qmkSettings.has(qsid);
+  }
+
+  getQmkSettingBit(qsid: number, bit: number): boolean {
+    const value = this.qmkSettings.get(qsid);
+    return value !== undefined && (value & (1 << bit)) !== 0;
+  }
+
+  async setQmkSettingBit(qsid: number, bit: number, value: boolean): Promise<void> {
+    const current = this.qmkSettings.get(qsid);
+    if (current === undefined) {
+      return;
+    }
+    const next = value ? current | (1 << bit) : current & ~(1 << bit);
+    await this.writeQmkSetting(qsid, next);
+  }
+
+  /** Raw (non-bitfield) value of an integer qsid, e.g. Tapping Term. */
+  getQmkSettingValue(qsid: number): number | undefined {
+    return this.qmkSettings.get(qsid);
+  }
+
+  async setQmkSettingValue(qsid: number, value: number): Promise<void> {
+    if (!this.qmkSettings.has(qsid)) {
+      return;
+    }
+    await this.writeQmkSetting(qsid, value);
+  }
+
+  /**
+   * Reverts every known qsid to its connect-time baseline. Not a firmware
+   * factory-reset — see `qmkSettingsBaseline` doc comment.
+   */
+  async resetQmkSettings(): Promise<void> {
+    for (const [qsid, baseline] of this.qmkSettingsBaseline) {
+      await this.writeQmkSetting(qsid, baseline);
+    }
+  }
+
+  private async writeQmkSetting(qsid: number, next: number): Promise<void> {
+    const current = this.qmkSettings.get(qsid);
+    if (current === undefined || current === next) {
+      return;
+    }
+    const width = QMK_SETTINGS_WIDTH[qsid];
+    const cmd = new Uint8Array(4 + width);
+    const view = new DataView(cmd.buffer);
+    cmd[0] = C.CMD_VIA_VIAL_PREFIX;
+    cmd[1] = C.CMD_VIAL_QMK_SETTINGS_SET;
+    view.setUint16(2, qsid, true);
+    for (let b = 0; b < width; b++) {
+      cmd[4 + b] = (next >>> (8 * b)) & 0xff;
+    }
+    const data = await this.transport.send(cmd, 20);
+    if (data[0] !== 0) {
+      throw new ProtocolError(`failed to write QMK setting (qsid=${qsid})`);
+    }
+    this.qmkSettings.set(qsid, next >>> 0);
   }
 
   /** Highest encoder index + 1, matching vial-gui's encoder_count. */

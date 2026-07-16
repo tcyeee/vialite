@@ -1,0 +1,85 @@
+import type { SVGProps } from "react";
+import {
+  QMK_SETTINGS_QSID_MOUSEKEY_DELAY,
+  QMK_SETTINGS_QSID_MOUSEKEY_INTERVAL,
+  QMK_SETTINGS_QSID_MOUSEKEY_MAX_SPEED,
+  QMK_SETTINGS_QSID_MOUSEKEY_STEP_SIZE,
+  QMK_SETTINGS_QSID_MOUSEKEY_TIME_TO_MAX,
+  QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_DELAY,
+  QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_INTERVAL,
+  QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_MAX_SPEED,
+  QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_TIME_TO_MAX,
+  type Keyboard,
+} from "../protocol/keyboard.ts";
+import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
+
+interface Props {
+  keyboard: Keyboard;
+  /** Called after a setting was written to the device, so the parent re-renders. */
+  onChange: () => void;
+}
+
+/** vial-gui's qmk_settings.json "Mouse keys" tab (qsid 9-17, all plain integers). */
+const FIELDS: QmkSettingField[] = [
+  { type: "integer", qsid: QMK_SETTINGS_QSID_MOUSEKEY_DELAY, min: 0, max: 10000, labelKey: "mouseKeyDelay" },
+  { type: "integer", qsid: QMK_SETTINGS_QSID_MOUSEKEY_INTERVAL, min: 0, max: 10000, labelKey: "mouseKeyInterval" },
+  { type: "integer", qsid: QMK_SETTINGS_QSID_MOUSEKEY_STEP_SIZE, min: 0, max: 1000, labelKey: "mouseKeyStepSize" },
+  { type: "integer", qsid: QMK_SETTINGS_QSID_MOUSEKEY_MAX_SPEED, min: 0, max: 1000, labelKey: "mouseKeyMaxSpeed" },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_MOUSEKEY_TIME_TO_MAX,
+    min: 0,
+    max: 1000,
+    labelKey: "mouseKeyTimeToMax",
+  },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_DELAY,
+    min: 0,
+    max: 10000,
+    labelKey: "mouseKeyWheelDelay",
+  },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_INTERVAL,
+    min: 0,
+    max: 10000,
+    labelKey: "mouseKeyWheelInterval",
+  },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_MAX_SPEED,
+    min: 0,
+    max: 1000,
+    labelKey: "mouseKeyWheelMaxSpeed",
+  },
+  {
+    type: "integer",
+    qsid: QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_TIME_TO_MAX,
+    min: 0,
+    max: 1000,
+    labelKey: "mouseKeyWheelTimeToMax",
+  },
+];
+
+/** Mouse Keys QMK-Settings fields; hidden entirely when the device exposes none of the qsids above. */
+export function MouseKeySettings({ keyboard, onChange }: Props) {
+  return (
+    <QmkSettingsSection
+      keyboard={keyboard}
+      titleKey="mouseKeySettingsTitle"
+      fields={FIELDS}
+      icon={<MouseKeyIcon className="h-4.5 w-4.5" />}
+      onChange={onChange}
+    />
+  );
+}
+
+function MouseKeyIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
+      <rect x="7.5" y="3.5" width="9" height="17" rx="4.5" />
+      <path strokeLinecap="round" d="M12 3.5v6" />
+    </svg>
+  );
+}
