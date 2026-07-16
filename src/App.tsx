@@ -5,6 +5,7 @@ import { KeyboardLayout } from "./components/keymap/KeyboardLayout.tsx";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
 import { KeycodePicker } from "./components/common/KeycodePicker.tsx";
 import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
+import { QuickConfig104 } from "./components/keymap/QuickConfig104.tsx";
 import { LayoutConfigPanel } from "./components/layout/LayoutConfigPanel.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
@@ -44,6 +45,7 @@ function App() {
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("keymap");
   const [selected, setSelected] = useState<Selected | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
   const [qmkPendingCount, setQmkPendingCount] = useState(0);
   const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
@@ -198,12 +200,14 @@ function App() {
     })();
   }, [attachTransport, teardown]);
 
-  const handlePick = useCallback(
+  // Assigns a keycode to the currently-selected key/encoder. Unlike the old
+  // popup flow, the selection is kept so the user can keep re-assigning the
+  // same key from the quick-config board below.
+  const handleAssign = useCallback(
     async (qmkId: string) => {
       if (!keyboard || !selected) {
         return;
       }
-      setSelected(null);
       try {
         if (selected.kind === "key") {
           await keyboard.setKey(layer, selected.row, selected.col, qmkId);
@@ -216,6 +220,15 @@ function App() {
       forceUpdate((r) => r + 1);
     },
     [keyboard, selected, layer, t, showToast],
+  );
+
+  // Advanced picker (modal) — assigns then closes.
+  const handlePick = useCallback(
+    async (qmkId: string) => {
+      setPickerOpen(false);
+      await handleAssign(qmkId);
+    },
+    [handleAssign],
   );
 
   const handleExport = useCallback(() => {
@@ -317,16 +330,47 @@ function App() {
                 </h1>
               </div>
               {keyboard && mode === "keymap" && (
-                <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer}>
-                  <div className="overflow-x-auto">
-                    <KeyboardLayout
-                      keyboard={keyboard}
-                      layer={layer}
-                      onKeySelect={(row, col) => setSelected({ kind: "key", row, col })}
-                      onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
-                    />
-                  </div>
-                </LayerTabs>
+                <>
+                  <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer}>
+                    <div className="overflow-x-auto">
+                      <KeyboardLayout
+                        keyboard={keyboard}
+                        layer={layer}
+                        selected={selected}
+                        onKeySelect={(row, col) =>
+                          setSelected((prev) =>
+                            prev?.kind === "key" && prev.row === row && prev.col === col
+                              ? null
+                              : { kind: "key", row, col },
+                          )
+                        }
+                        onEncoderSelect={(index, direction) =>
+                          setSelected({ kind: "encoder", index, direction })
+                        }
+                      />
+                    </div>
+                  </LayerTabs>
+                  <section className="mt-6">
+                    <div className="mb-2 flex items-center gap-3">
+                      <h2 className="text-lg font-semibold text-brand-on-surface">
+                        {t("quickConfigTitle")}
+                      </h2>
+                      <button
+                        className="btn btn-sm btn-outline"
+                        disabled={!selected}
+                        onClick={() => setPickerOpen(true)}
+                      >
+                        {t("advancedPicker")}
+                      </button>
+                    </div>
+                    <p className="mb-3 text-sm opacity-70">
+                      {selected ? t("quickConfigHint") : t("quickConfigNoSelection")}
+                    </p>
+                    <div className="overflow-x-auto">
+                      <QuickConfig104 onPick={handleAssign} disabled={!selected} />
+                    </div>
+                  </section>
+                </>
               )}
               {keyboard && mode === "layout" && (
                 <LayoutConfigPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
@@ -359,7 +403,9 @@ function App() {
           </div>
         </div>
       </div>
-      {selected && mode === "keymap" && <KeycodePicker onPick={handlePick} onClose={() => setSelected(null)} />}
+      {pickerOpen && selected && mode === "keymap" && (
+        <KeycodePicker onPick={handlePick} onClose={() => setPickerOpen(false)} />
+      )}
       {importing && <div className="io-busy-overlay" />}
     </div>
   );

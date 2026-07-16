@@ -39,13 +39,7 @@ export function WaitingForConnection({ status, error, onConnect }: Props) {
   const [modelFailed, setModelFailed] = useState(false);
 
   return (
-    <div className="relative box-border flex h-screen flex-col items-center justify-center overflow-hidden bg-brand-background p-4">
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-20 -left-20 h-[400px] w-[400px] rounded-full bg-brand-primary-container/40 blur-3xl" />
-        <div className="absolute -right-10 bottom-0 h-[300px] w-[300px] rounded-full bg-brand-secondary-container/40 blur-3xl" />
-        <div className="absolute top-1/2 left-1/3 h-[250px] w-[250px] rounded-full bg-brand-tertiary-container/20 blur-3xl" />
-      </div>
-
+    <div className="relative box-border flex h-screen flex-col items-center justify-center overflow-hidden bg-white p-4">
       <img className="fixed top-6 left-6 h-12 w-auto md:h-16" src="/logo-full.svg" alt="Vialite" />
 
       <div className="fixed top-4 right-4 flex items-center gap-2">
@@ -69,14 +63,14 @@ export function WaitingForConnection({ status, error, onConnect }: Props) {
         </button>
       </div>
 
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border-2 border-brand-surface-container-highest bg-white/60 p-8 text-center shadow-sm backdrop-blur-md md:p-16 dark:bg-black/30">
-        <div className="relative mx-auto mb-6 h-40 w-full max-w-xs md:h-56">
+      <div className="relative w-full max-w-3xl p-6 text-center md:px-16 md:py-8">
+        <div className="relative mx-auto mb-2 h-[20.3rem] w-full max-w-[40.5rem] md:h-[28.1rem]">
           <div className="animate-kawaii-pulse absolute inset-x-0 top-1/2 -z-10 h-2/3 -translate-y-1/2 rounded-full bg-brand-secondary-container/30 blur-2xl" />
           <div
             className="absolute inset-0 flex items-center justify-center transition-opacity duration-300"
             style={{ opacity: modelReady && !modelFailed ? 0 : 1 }}
           >
-            <KeyboardIcon className="h-28 w-28 text-brand-primary md:h-40 md:w-40" />
+            <KeyboardIcon className="h-36 w-36 text-brand-primary md:h-52 md:w-52" />
           </div>
           {!modelFailed && (
             <div className="absolute inset-0">
@@ -91,12 +85,11 @@ export function WaitingForConnection({ status, error, onConnect }: Props) {
 
         <div className="mx-auto max-w-lg space-y-4">
           <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">{t("waitingTitle")}</h1>
-          <p className="text-lg font-medium text-brand-on-surface-variant">{t("waitingSubtitle")}</p>
 
           <div className="pt-4">
             <button
               type="button"
-              className="kawaii-btn mx-auto flex items-center gap-3 rounded-2xl border-2 border-brand-secondary bg-brand-secondary-container px-8 py-4 text-xl font-bold text-brand-on-secondary-container disabled:cursor-progress disabled:opacity-70"
+              className="mx-auto flex items-center gap-3 rounded-2xl bg-black px-8 py-4 text-xl font-bold text-white shadow-none transition hover:bg-neutral-800 disabled:cursor-progress disabled:opacity-70"
               onClick={onConnect}
               disabled={connecting}
             >
@@ -111,32 +104,10 @@ export function WaitingForConnection({ status, error, onConnect }: Props) {
 
           {error && <p className="error text-sm font-medium">{error}</p>}
         </div>
-
-        <div className="mt-12 flex justify-center gap-1 opacity-20 select-none">
-          {KEYCAPS.map(({ colorClasses, wide }, i) => (
-            <div
-              key={i}
-              className={`h-12 ${wide ? "w-24" : "w-12"} rounded-md border-b-4 ${colorClasses}`}
-            />
-          ))}
-        </div>
       </div>
     </div>
   );
 }
-
-// Tailwind's compiler needs each utility class spelled out literally to find
-// it — no template-interpolated class names — so each entry is a complete,
-// static class string rather than a color name to build one from.
-const KEYCAPS: { colorClasses: string; wide?: boolean }[] = [
-  { colorClasses: "border-brand-primary/30 bg-brand-primary-container" },
-  { colorClasses: "border-brand-secondary/30 bg-brand-secondary-container" },
-  { colorClasses: "border-brand-tertiary/30 bg-brand-tertiary-container" },
-  { colorClasses: "border-brand-primary/30 bg-brand-primary-container" },
-  { colorClasses: "border-brand-outline/30 bg-brand-surface-container-highest", wide: true },
-  { colorClasses: "border-brand-secondary/30 bg-brand-secondary-container" },
-  { colorClasses: "border-brand-primary/30 bg-brand-primary-container" },
-];
 
 function KeyboardIcon(props: SVGProps<SVGSVGElement>) {
   return (

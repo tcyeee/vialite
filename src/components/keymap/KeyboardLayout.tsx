@@ -7,9 +7,14 @@ const UNIT = 54;
 /** Gap between keycaps, in px (subtracted from each key's rendered size). */
 const GAP = 4;
 
+type Selected =
+  | { kind: "key"; row: number; col: number }
+  | { kind: "encoder"; index: number; direction: 0 | 1 };
+
 interface Props {
   keyboard: Keyboard;
   layer: number;
+  selected?: Selected | null;
   onKeySelect: (row: number, col: number) => void;
   onEncoderSelect: (index: number, direction: 0 | 1) => void;
 }
@@ -35,7 +40,7 @@ function shapeStyle(
   return style;
 }
 
-export function KeyboardLayout({ keyboard, layer, onKeySelect, onEncoderSelect }: Props) {
+export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncoderSelect }: Props) {
   const placed = useMemo(
     () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
     // Keyboard mutates in place; layoutOptions is the only geometry input that
@@ -52,10 +57,12 @@ export function KeyboardLayout({ keyboard, layer, onKeySelect, onEncoderSelect }
         .filter(({ key }) => !key.decal)
         .map(({ key, shiftX, shiftY }) => {
           const qmkId = keyboard.getKey(layer, key.row, key.col);
+          const isSelected =
+            selected?.kind === "key" && selected.row === key.row && selected.col === key.col;
           return (
             <button
               key={`${key.row},${key.col}@${key.x},${key.y}`}
-              className="key"
+              className={isSelected ? "key selected" : "key"}
               title={qmkId}
               onClick={() => onKeySelect(key.row, key.col)}
               style={shapeStyle(key, shiftX, shiftY)}
@@ -77,10 +84,14 @@ export function KeyboardLayout({ keyboard, layer, onKeySelect, onEncoderSelect }
         })}
       {placed.encoders.map(({ encoder, shiftX, shiftY }) => {
         const qmkId = keyboard.getEncoder(layer, encoder.index, encoder.direction);
+        const isSelected =
+          selected?.kind === "encoder" &&
+          selected.index === encoder.index &&
+          selected.direction === encoder.direction;
         return (
           <button
             key={`e${encoder.index},${encoder.direction}@${encoder.x},${encoder.y}`}
-            className="encoder"
+            className={isSelected ? "encoder selected" : "encoder"}
             title={`Encoder ${encoder.index} ${encoder.direction === 1 ? "CW" : "CCW"}: ${qmkId}`}
             onClick={() => onEncoderSelect(encoder.index, encoder.direction)}
             style={shapeStyle(encoder, shiftX, shiftY)}

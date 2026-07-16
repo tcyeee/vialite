@@ -237,6 +237,12 @@ const MESSAGES = {
   // LayerTabs
   layerN: { en: "Layer {n}", zh: "层 {n}" },
 
+  // Quick config
+  quickConfigTitle: { en: "Quick Config", zh: "快捷配置" },
+  quickConfigHint: { en: "Select a key above, then click a key below to assign it.", zh: "先在上方选中一个键位,再点击下方键盘为其赋值。" },
+  quickConfigNoSelection: { en: "No key selected", zh: "未选中键位" },
+  advancedPicker: { en: "Advanced…", zh: "高级…" },
+
   // KeycodePicker
   searchPlaceholder: { en: "Search keycodes…", zh: "搜索键码…" },
   assignByKeypress: { en: "Assign by keypress", zh: "按键直接赋值" },

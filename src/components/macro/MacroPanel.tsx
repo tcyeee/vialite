@@ -7,6 +7,7 @@ import { useToast } from "../../contexts/toast.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
 import { KeycodePicker } from "../common/KeycodePicker.tsx";
 import { UnlockDialog } from "../common/UnlockDialog.tsx";
+import { MacroKeycap3D } from "./MacroKeycap3D.tsx";
 
 interface Props {
   keyboard: Keyboard;
@@ -288,7 +289,7 @@ export function MacroPanel({ keyboard, onChange }: Props) {
             {t("macroMemoryUsed", { used: memoryUsed, total: keyboard.macroMemory })}
           </span>
           <span
-            className="tooltip tooltip-right before:max-w-xs before:whitespace-normal before:content-[attr(data-tip)]"
+            className="tooltip tooltip-top before:max-w-xs before:whitespace-normal before:content-[attr(data-tip)]"
             data-tip={t("macroMemoryHelp")}
           >
             <span className="flex size-4 cursor-help items-center justify-center rounded-full bg-brand-on-surface-variant/20 text-[10px] font-bold text-brand-on-surface-variant">
@@ -298,6 +299,7 @@ export function MacroPanel({ keyboard, onChange }: Props) {
         </div>
         <p className="max-w-md text-xs text-brand-on-surface-variant">{t("macroHint", { n: active })}</p>
       </div>
+      <MacroKeycap3D label={`M${active}`} />
       <div className="tabs tabs-lift">
         {edited.map((macro, i) => (
           <Fragment key={i}>

@@ -67,6 +67,16 @@ body,
   height: 100%;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   margin: 0;
   font-family:
@@ -205,6 +215,17 @@ body {
 
 .keyboard-layout .key:hover {
   background: light-dark(#e2e2e2, #4a4a4a);
+}
+
+.keyboard-layout .key.selected,
+.keyboard-layout .encoder.selected {
+  border-color: var(--color-brand-primary);
+  box-shadow: 0 0 0 2px var(--color-brand-primary);
+  background: light-dark(#ffd1dc, #5a3b44);
+}
+
+.keyboard-layout .key.selected .key-part2 {
+  border-color: var(--color-brand-primary);
 }
 
 /* Secondary rectangle of ISO-Enter-style keys; same face as the parent key. */
