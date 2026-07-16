@@ -278,25 +278,34 @@ export function MacroPanel({ keyboard, onChange }: Props) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 mb-2">
         <div className="flex items-center gap-3">
+          <span className="text-sm font-medium">{t("macroMemoryTitle")}</span>
           <progress
-            className={overBudget ? "progress progress-error w-40" : "progress w-40"}
+            className={overBudget ? "progress progress-error h-3 w-80" : "progress h-3 w-80"}
             value={Math.min(memoryUsed, keyboard.macroMemory)}
             max={Math.max(keyboard.macroMemory, 1)}
           />
           <span className={overBudget ? "text-xs text-error" : "text-xs text-brand-on-surface-variant"}>
             {t("macroMemoryUsed", { used: memoryUsed, total: keyboard.macroMemory })}
           </span>
+          <span
+            className="tooltip tooltip-right before:max-w-xs before:whitespace-normal before:content-[attr(data-tip)]"
+            data-tip={t("macroMemoryHelp")}
+          >
+            <span className="flex size-4 cursor-help items-center justify-center rounded-full bg-brand-on-surface-variant/20 text-[10px] font-bold text-brand-on-surface-variant">
+              ?
+            </span>
+          </span>
         </div>
         <p className="max-w-md text-xs text-brand-on-surface-variant">{t("macroHint", { n: active })}</p>
       </div>
       <div className="tabs tabs-lift">
-        {edited.map((_, i) => (
+        {edited.map((macro, i) => (
           <Fragment key={i}>
             <input
               type="radio"
               name="macro_tabs"
               className="tab"
-              aria-label={`M${i}${slotChanged && i === active ? "*" : ""}`}
+              aria-label={`${macro.length > 0 ? "● " : ""}M${i}${slotChanged && i === active ? "*" : ""}`}
               checked={i === active}
               onChange={() => setActive(i)}
             />

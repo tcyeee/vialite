@@ -115,6 +115,17 @@ const MESSAGES = {
   themeTitle: { en: "Appearance", zh: "外观" },
   themeLight: { en: "Light", zh: "浅色" },
   themeDark: { en: "Dark", zh: "深色" },
+  siteGeneralTitle: { en: "General", zh: "通用" },
+  siteKeyboardTitle: { en: "Keyboard", zh: "键盘" },
+  languageDesc: { en: "Interface language", zh: "界面语言" },
+  themeDesc: { en: "Light or dark theme", zh: "浅色或深色主题" },
+  keyDisplayTitle: { en: "Key display style", zh: "按键显示类型" },
+  keyDisplayDesc: {
+    en: "How OS-specific modifier keys are labelled",
+    zh: "系统相关修饰键的显示方式",
+  },
+  keyDisplayMacos: { en: "macOS", zh: "macOS" },
+  keyDisplayWindows: { en: "Windows", zh: "Windows" },
   exportLayoutDesc: { en: "Save the current keymap to a .vil file", zh: "将当前配置保存为 .vil 文件" },
   importLayoutDesc: { en: "Load a keymap from a .vil file", zh: "从 .vil 文件加载配置" },
 
@@ -126,6 +137,7 @@ const MESSAGES = {
   navTapDance: { en: "Tap Dance", zh: "点击舞步" },
   navCombo: { en: "Combo", zh: "组合键" },
   navAdvanced: { en: "QMK Settings", zh: "QMK 设置" },
+  navSiteSettings: { en: "Website Settings", zh: "网站设置" },
   navImportExport: { en: "Import / Export", zh: "导入导出" },
   comingSoon: { en: "Coming soon", zh: "即将推出" },
   resizeSidebar: { en: "Resize sidebar", zh: "拖动调整侧边栏宽度" },
@@ -157,7 +169,12 @@ const MESSAGES = {
   macroActionTap: { en: "Tap", zh: "点按" },
   macroActionDown: { en: "Down", zh: "按下" },
   macroActionUp: { en: "Up", zh: "松开" },
+  macroMemoryTitle: { en: "Usage", zh: "使用量" },
   macroMemoryUsed: { en: "Memory used: {used}/{total} bytes", zh: "已用内存:{used}/{total} 字节" },
+  macroMemoryHelp: {
+    en: "All macros share one block of on-keyboard memory. This bar shows how much of it your current macros use — saving is blocked once it's full.",
+    zh: "所有宏共用键盘上的一块存储空间。这个进度条表示当前所有宏占用了多少;一旦占满就无法再保存。",
+  },
   macroSaving: { en: "Saving…", zh: "保存中…" },
 
   // TapDancePanel

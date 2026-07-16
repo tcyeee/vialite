@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 
-type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "advanced" | "io";
+type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "advanced" | "site" | "io";
 
 const SIDEBAR_WIDTH_KEY = "vialite-sidebar-width";
 const DEFAULT_SIDEBAR_WIDTH = 256;
@@ -81,7 +81,7 @@ function useScrollSpy(sectionIds: string[], active: boolean): string | null {
   return activeId;
 }
 
-type NavKind = "home" | "layoutConfig" | "matrixTest" | "macro" | "tapDance" | "combo" | "advanced" | "importExport";
+type NavKind = "home" | "layoutConfig" | "matrixTest" | "macro" | "tapDance" | "combo" | "advanced" | "site" | "importExport";
 
 const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; Icon: (props: SVGProps<SVGSVGElement>) => ReactNode }[] = [
   { kind: "home", mode: "keymap", labelKey: "navHome", Icon: HomeIcon },
@@ -92,6 +92,7 @@ const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; Icon: (p
   { kind: "layoutConfig", mode: "layout", labelKey: "navLayoutConfig", Icon: LayoutConfigIcon },
   { kind: "importExport", mode: "io", labelKey: "navImportExport", Icon: ImportExportIcon },
   { kind: "advanced", mode: "advanced", labelKey: "navAdvanced", Icon: AdvancedIcon },
+  { kind: "site", mode: "site", labelKey: "navSiteSettings", Icon: SiteSettingsIcon },
 ];
 
 export function Sidebar({
@@ -306,6 +307,15 @@ function AdvancedIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         d="M19.4 13.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19.5a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H4.5a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H10a1.65 1.65 0 0 0 1-1.51V4.5a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V10a1.65 1.65 0 0 0 1.51 1h.09a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"
       />
+    </svg>
+  );
+}
+
+function SiteSettingsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" d="M3.5 12h17M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
     </svg>
   );
 }

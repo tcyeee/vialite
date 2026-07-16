@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import { I18nProvider } from "./contexts/i18n.tsx";
+import { KeyDisplayProvider } from "./contexts/keyDisplay.tsx";
 import { ThemeProvider } from "./contexts/theme.tsx";
 import { ToastProvider } from "./contexts/toast.tsx";
 import { getSupportStatus } from "./browserSupport.ts";
@@ -15,9 +16,11 @@ if (support !== "supported") {
     <StrictMode>
       <ThemeProvider>
         <I18nProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
+          <KeyDisplayProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </KeyDisplayProvider>
         </I18nProvider>
       </ThemeProvider>
     </StrictMode>,

@@ -11,6 +11,7 @@ import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { Navbar } from "./components/shell/Navbar.tsx";
 import { QmkSettingsPanel } from "./components/qmk/QmkSettingsPanel.tsx";
 import { Sidebar } from "./components/shell/Sidebar.tsx";
+import { SiteSettingsPanel } from "./components/site/SiteSettingsPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
 import { useI18n, type MessageKey } from "./contexts/i18n.tsx";
@@ -19,7 +20,7 @@ import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./contexts/toast.tsx";
 
-type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "advanced" | "io";
+type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "advanced" | "site" | "io";
 
 type Selected =
   | { kind: "key"; row: number; col: number }
@@ -308,14 +309,15 @@ function App() {
                             ? t("navCombo")
                             : mode === "advanced"
                               ? t("navAdvanced")
-                              : mode === "io"
-                                ? t("navImportExport")
-                                : t("keyboardLayoutTitle")}
+                              : mode === "site"
+                                ? t("navSiteSettings")
+                                : mode === "io"
+                                  ? t("navImportExport")
+                                  : t("keyboardLayoutTitle")}
                 </h1>
               </div>
               {keyboard && mode === "keymap" && (
-                <>
-                  <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer} />
+                <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer}>
                   <div className="overflow-x-auto">
                     <KeyboardLayout
                       keyboard={keyboard}
@@ -324,7 +326,7 @@ function App() {
                       onEncoderSelect={(index, direction) => setSelected({ kind: "encoder", index, direction })}
                     />
                   </div>
-                </>
+                </LayerTabs>
               )}
               {keyboard && mode === "layout" && (
                 <LayoutConfigPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
@@ -349,6 +351,7 @@ function App() {
                   onLeaveResolved={handleQmkLeaveResolved}
                 />
               )}
+              {mode === "site" && <SiteSettingsPanel />}
               {keyboard && mode === "io" && (
                 <ImportExportPanel importing={importing} onExport={handleExport} onImportFile={handleImportFile} />
               )}
