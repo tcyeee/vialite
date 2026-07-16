@@ -1,6 +1,6 @@
 import { useState, type SVGProps } from "react";
 import { type MessageKey, useI18n } from "../../contexts/i18n.tsx";
-import { label as kcLabel } from "../../protocol/keycodes.ts";
+import { KeycapFace } from "../keymap/KeycapFace.tsx";
 import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
 import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
@@ -16,9 +16,15 @@ const PREVIEW_STATES: { labelKey: MessageKey; field: keyof TapDanceEntry }[] = [
 interface PreviewCardProps {
   index: number;
   entry: TapDanceEntry;
+  /** Total number of tap dance slots on the device, for the renumber picker. */
+  tapDanceCount: number;
+  /** Slot indices already occupied by another entry — greyed out in the renumber picker. */
+  usedIndices: Set<number>;
   /** Present only for already-configured entries — enables the hover toolbar + flip-to-edit. */
   onSave?: (patch: Partial<TapDanceEntry>) => void;
   onDelete?: () => void;
+  /** Moves this entry to a different (free) slot number, from the edit-face TD picker. */
+  onMove?: (toIdx: number) => void;
   /** Renders already flipped to the editor face, for a freshly added (still-unused) entry. */
   startInEditMode?: boolean;
   /** Called when leaving edit mode via the "done" button, so the parent can drop an unused slot. */
@@ -30,7 +36,17 @@ interface PreviewCardProps {
  * Edit/Delete toolbar; Edit flips the card (CSS 3D transform) to reveal an inline editor on
  * the back face, so editing happens in place instead of in a separate form.
  */
-function TapDancePreviewCard({ index, entry, onSave, onDelete, startInEditMode, onCollapse }: PreviewCardProps) {
+function TapDancePreviewCard({
+  index,
+  entry,
+  tapDanceCount,
+  usedIndices,
+  onSave,
+  onDelete,
+  onMove,
+  startInEditMode,
+  onCollapse,
+}: PreviewCardProps) {
   const { t } = useI18n();
   const [flipped, setFlipped] = useState(!!startInEditMode);
   const editable = !!onSave;
@@ -67,32 +83,32 @@ function TapDancePreviewCard({ index, entry, onSave, onDelete, startInEditMode, 
         </div>
       )}
       <div
-        className="grid transition-transform duration-500"
+        className="grid h-[16.5rem] transition-transform duration-500"
         style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : undefined }}
       >
         <div
           style={{ backfaceVisibility: "hidden", gridArea: "1 / 1" }}
-          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#ffffff08_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff08_35%,transparent_36%)] bg-brand-primary bg-size-[4.95em_4.95em] text-brand-background"
+          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#ffffff08_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff08_35%,transparent_36%)] bg-[#73575E] bg-size-[4.95em_4.95em] text-brand-background"
         >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden select-none">
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
               TAP DANCE
             </span>
           </div>
-          <div className="card-body relative">
-            <div className="mb-6 font-mono text-4xl font-bold tracking-tight">TD-{index}</div>
-            <div className="mb-4 text-lg tracking-widest opacity-40">
-              {t("tapDanceTermMs", { ms: entry.tappingTerm })}
-            </div>
+          <div className="card-body relative flex flex-col pb-3">
+            <div className="mb-4 font-mono text-4xl font-bold tracking-tight">TD-{index}</div>
             <div className="grid grid-cols-2 gap-y-3">
               {PREVIEW_STATES.map(({ labelKey, field }) => (
                 <div key={field}>
                   <div className="text-xs opacity-20 uppercase">{t(labelKey)}</div>
-                  <div className="whitespace-pre-line">
-                    {kcLabel(entry[field] as string)}
+                  <div className="text-xl font-bold">
+                    <KeycapFace qmkId={entry[field] as string} className="whitespace-pre-line" />
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="mt-auto pt-3 text-center text-xs tracking-widest opacity-40">
+              {t("tapDanceTermMs", { ms: entry.tappingTerm })}
             </div>
           </div>
         </div>
@@ -100,11 +116,46 @@ function TapDancePreviewCard({ index, entry, onSave, onDelete, startInEditMode, 
         {editable && (
           <div
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", gridArea: "1 / 1" }}
-            className="card border-2 border-dashed border-brand-outline/50 bg-white"
+            className="card overflow-hidden border-2 border-dashed border-brand-outline/50 bg-white"
           >
-            <div className="card-body gap-1.5 p-4">
+            <div className="card-body gap-1.5 px-4 pt-4 pb-2">
               <div className="mb-1 flex items-center justify-between">
-                <span className="text-lg font-bold tracking-tight text-neutral-900">TD-{index}</span>
+                <div className="dropdown">
+                  <div
+                    tabIndex={0}
+                    role="button"
+                    className="flex cursor-pointer items-center gap-0.5 text-lg font-bold tracking-tight text-neutral-900 hover:text-primary"
+                    title={t("tapDanceRenumber")}
+                  >
+                    TD-{index}
+                    <ChevronDownIcon className="h-4 w-4 opacity-60" />
+                  </div>
+                  <div
+                    tabIndex={0}
+                    className="dropdown-content z-20 mt-1 grid max-h-72 w-72 grid-cols-5 gap-1.5 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
+                  >
+                    {Array.from({ length: tapDanceCount }).map((_, n) => {
+                      const current = n === index;
+                      const occupied = !current && usedIndices.has(n);
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          disabled={occupied}
+                          onClick={(e) => {
+                            e.currentTarget.blur();
+                            if (!current) onMove?.(n);
+                          }}
+                          className={`btn btn-sm ${
+                            current ? "btn-primary" : occupied ? "btn-ghost opacity-30" : "btn-ghost"
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <button type="button" className="btn btn-ghost btn-sm text-neutral-500" onClick={closeEdit}>
                   {t("done")}
                 </button>
@@ -147,6 +198,14 @@ function TapDancePreviewCard({ index, entry, onSave, onDelete, startInEditMode, 
         )}
       </div>
     </div>
+  );
+}
+
+function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+    </svg>
   );
 }
 
@@ -200,6 +259,33 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
   const clearAt = (idx: number) =>
     void updateAt(idx, { onTap: "KC_NO", onHold: "KC_NO", onDoubleTap: "KC_NO", onTapHold: "KC_NO", tappingTerm: 200 });
 
+  /** Move an entry to a different (free) slot number: write it to the new slot, clear the old one. */
+  const moveTo = async (fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    const src = keyboard.tapDanceEntries[fromIdx];
+    try {
+      await keyboard.setTapDance(toIdx, { ...src });
+      if (isUsed(src)) {
+        await keyboard.setTapDance(fromIdx, {
+          onTap: "KC_NO",
+          onHold: "KC_NO",
+          onDoubleTap: "KC_NO",
+          onTapHold: "KC_NO",
+          tappingTerm: 200,
+        });
+      }
+      setAddingIndex(toIdx);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : String(err));
+    } finally {
+      onChange();
+    }
+  };
+
+  const usedIndices = new Set(
+    keyboard.tapDanceEntries.flatMap((e, i) => (isUsed(e) ? [i] : [])),
+  );
+
   const handleAdd = () => {
     const freeIdx = keyboard.tapDanceEntries.findIndex((e) => !isUsed(e));
     if (freeIdx === -1) {
@@ -234,8 +320,11 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
               key={i}
               index={i}
               entry={keyboard.tapDanceEntries[i]}
+              tapDanceCount={keyboard.tapDanceCount}
+              usedIndices={usedIndices}
               onSave={(patch) => void updateAt(i, patch)}
               onDelete={() => clearAt(i)}
+              onMove={(toIdx) => void moveTo(i, toIdx)}
               startInEditMode={i === addingIndex}
               onCollapse={i === addingIndex ? () => setAddingIndex(null) : undefined}
             />

@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@iconify-json/mdi": "^1.2.3",
+    "@iconify/react": "^6.0.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "three": "^0.185.1",

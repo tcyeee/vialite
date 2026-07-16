@@ -1414,6 +1414,125 @@ export function isBasicQmkId(qmkId: string): boolean {
   }
 }
 
+/**
+ * Splits a dual-role tap/hold keycode into its two independent actions, or
+ * returns null for everything else. `tap` is the qmk_id fired on a normal press
+ * (the inner key, e.g. `KC_A`); `hold` is a short label for what a press-and-hold
+ * triggers (e.g. `LCtl`, `L2`). Covers Mod-Tap (`LCTL_T(KC_A)`) and Layer-Tap
+ * (`LT2(KC_A)` serialized, or the canonical `LT(2,KC_A)`).
+ *
+ * Plain modifier-combos like `LSFT(KC_1)` are deliberately NOT dual-role — they
+ * fire both roles together rather than distinguishing tap from hold — so they,
+ * like every basic keycode, return null.
+ */
+export function dualRole(qmkId: string): { tap: string; hold: string } | null {
+  const composite = /^([A-Za-z0-9_]+)\((.+)\)$/.exec(qmkId);
+  if (!composite) {
+    return null;
+  }
+  const [, fn, arg] = composite;
+  // Layer-Tap, canonical two-arg form LT(<layer>,kc).
+  if (fn === "LT") {
+    const comma = arg.indexOf(",");
+    if (comma < 0) {
+      return null;
+    }
+    return { tap: arg.slice(comma + 1).trim(), hold: `L${arg.slice(0, comma).trim()}` };
+  }
+  // Layer-Tap, serialized one-arg form LT<n>(kc).
+  const ltN = /^LT(\d+)$/.exec(fn);
+  if (ltN) {
+    return { tap: arg, hold: `L${ltN[1]}` };
+  }
+  // Mod-Tap <mods>_T(kc): the display template's first line is the modifier
+  // label plus a "_T" suffix (e.g. "LCtl_T"), which we strip for the hold band.
+  if (fn.endsWith("_T")) {
+    const tmpl = displayByQmkId.get(`${fn}(kc)`);
+    const hold = (tmpl ? tmpl.label.split("\n")[0] : fn).replace(/_T$/, "");
+    return { tap: arg, hold };
+  }
+  return null;
+}
+
+export type HoldInfo =
+  | { type: "mod"; ctrl: boolean; shift: boolean; alt: boolean; gui: boolean; side: "L" | "R" }
+  | { type: "layer"; layer: number };
+
+/**
+ * Structured view of a dual-role key's hold action, for the hold editor: either
+ * the modifier set + side of a Mod-Tap, or the target layer of a Layer-Tap.
+ * Returns null for non-dual-role keys. Companion to {@link dualRole}, which
+ * labels the hold half rather than decomposing it.
+ */
+export function holdInfo(qmkId: string): HoldInfo | null {
+  const composite = /^([A-Za-z0-9_]+)\((.+)\)$/.exec(qmkId);
+  if (!composite || !dualRole(qmkId)) {
+    return null;
+  }
+  const [, fn, arg] = composite;
+  if (fn === "LT") {
+    return { type: "layer", layer: Number.parseInt(arg.slice(0, arg.indexOf(",")).trim(), 10) };
+  }
+  const ltN = /^LT(\d+)$/.exec(fn);
+  if (ltN) {
+    return { type: "layer", layer: Number.parseInt(ltN[1], 10) };
+  }
+  // Mod-Tap: the modifier mask sits in bits 8-12 of the keycode — the low nibble
+  // is Ctrl/Shift/Alt/GUI and bit 4 flags the right-hand side. The QK_MOD_TAP
+  // base bits fall outside the 0x1f mask, so this is version-independent.
+  const mask = (deserialize(qmkId) >> 8) & 0x1f;
+  return {
+    type: "mod",
+    ctrl: (mask & 0x01) !== 0,
+    shift: (mask & 0x02) !== 0,
+    alt: (mask & 0x04) !== 0,
+    gui: (mask & 0x08) !== 0,
+    side: (mask & 0x10) !== 0 ? "R" : "L",
+  };
+}
+
+/**
+ * Returns qmkId with its tap (inner) key swapped for newTap while keeping the
+ * hold role — used when the user edits only the tap half of a dual-role cap.
+ * newTap must be a basic (8-bit) keycode; a non-basic inner throws so the caller
+ * can surface it.
+ */
+export function withTap(qmkId: string, newTap: string): string {
+  const composite = /^([A-Za-z0-9_]+)\((.+)\)$/.exec(qmkId);
+  if (!composite) {
+    return qmkId;
+  }
+  const [, fn, arg] = composite;
+  const expr = fn === "LT" ? `LT(${arg.slice(0, arg.indexOf(",")).trim()},${newTap})` : `${fn}(${newTap})`;
+  return serialize(deserialize(expr));
+}
+
+/**
+ * Builds a Mod-Tap qmk_id from a modifier selection + tap key. With no modifier
+ * selected the hold is meaningless, so it collapses to the plain tap key —
+ * that's how the hold editor "removes" the hold role from a cap.
+ */
+export function buildModTap(
+  mods: { ctrl: boolean; shift: boolean; alt: boolean; gui: boolean; side: "L" | "R" },
+  tap: string,
+): string {
+  const p = mods.side === "R" ? "MOD_R" : "MOD_L";
+  const names: string[] = [];
+  if (mods.ctrl) names.push(`${p}CTL`);
+  if (mods.shift) names.push(`${p}SFT`);
+  if (mods.alt) names.push(`${p}ALT`);
+  if (mods.gui) names.push(`${p}GUI`);
+  if (names.length === 0) {
+    return tap;
+  }
+  return serialize(deserialize(`MT(${names.join("|")},${tap})`));
+}
+
+/** Builds a Layer-Tap qmk_id from a layer number + tap key. */
+export function buildLayerTap(layer: number, tap: string): string {
+  return serialize(deserialize(`LT(${layer},${tap})`));
+}
+
 /** Human-readable label for a qmk_id (or raw hex fallback identifier). */
 export function label(qmkId: string): string {
   const def = displayByQmkId.get(qmkId);

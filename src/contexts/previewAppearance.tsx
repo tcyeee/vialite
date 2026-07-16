@@ -16,10 +16,17 @@ import {
   DEFAULT_CASE_COLOR,
   DEFAULT_CASE_RADIUS,
   DEFAULT_CASE_THICKNESS,
+  DEFAULT_FONT_COLOR,
+  DEFAULT_FONT_POSITION,
+  DEFAULT_FONT_SIZE,
   DEFAULT_KEY_SPACING,
   DEFAULT_KEYCAP_WIDTH,
   DEFAULT_PLATE_COLOR,
+  FONT_POSITIONS,
+  FONT_SIZES,
   SPACING_LEVELS,
+  type FontPosition,
+  type FontSize,
   type PreviewSize,
   type SpacingLevel,
 } from "../components/keymap/KeyboardLayoutPreview.tsx";
@@ -31,8 +38,36 @@ const CASE_RADIUS_KEY = "vialite-color-case-radius";
 const CASE_THICKNESS_KEY = "vialite-color-case-thickness";
 const CASE_COLOR_KEY = "vialite-color-case-color";
 const PLATE_COLOR_KEY = "vialite-color-plate-color";
+const KEYCAP_BORDER_KEY = "vialite-color-keycap-border";
+const FONT_SIZE_KEY = "vialite-color-font-size";
+const FONT_COLOR_KEY = "vialite-color-font-color";
+const FONT_POSITION_KEY = "vialite-color-font-position";
 
 const SIZES: PreviewSize[] = ["s", "m", "l", "xl"];
+
+function readStoredFontSize(): FontSize {
+  try {
+    const raw = window.localStorage.getItem(FONT_SIZE_KEY);
+    if (raw && (FONT_SIZES as string[]).includes(raw)) {
+      return raw as FontSize;
+    }
+  } catch {
+    // Fall through to default.
+  }
+  return DEFAULT_FONT_SIZE;
+}
+
+function readStoredFontPosition(): FontPosition {
+  try {
+    const raw = window.localStorage.getItem(FONT_POSITION_KEY);
+    if (raw && (FONT_POSITIONS as string[]).includes(raw)) {
+      return raw as FontPosition;
+    }
+  } catch {
+    // Fall through to default.
+  }
+  return DEFAULT_FONT_POSITION;
+}
 
 function readStoredLevel(key: string, fallback: SpacingLevel): SpacingLevel {
   try {
@@ -71,6 +106,17 @@ function readStoredNumber(key: string, fallback: number): number {
   return fallback;
 }
 
+function readStoredBoolean(key: string, fallback: boolean): boolean {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw === "true") return true;
+    if (raw === "false") return false;
+  } catch {
+    // Fall through to default.
+  }
+  return fallback;
+}
+
 function readStoredString(key: string, fallback: string): string {
   try {
     return window.localStorage.getItem(key) ?? fallback;
@@ -95,6 +141,10 @@ interface PreviewAppearanceValue {
   caseThickness: number;
   caseColor: string;
   plateColor: string;
+  keycapBorder: boolean;
+  fontSize: FontSize;
+  fontColor: string;
+  fontPosition: FontPosition;
   setSize: (value: PreviewSize) => void;
   setSpacing: (value: SpacingLevel) => void;
   setKeycapWidth: (value: SpacingLevel) => void;
@@ -102,6 +152,10 @@ interface PreviewAppearanceValue {
   setCaseThickness: (value: number) => void;
   setCaseColor: (value: string) => void;
   setPlateColor: (value: string) => void;
+  setKeycapBorder: (value: boolean) => void;
+  setFontSize: (value: FontSize) => void;
+  setFontColor: (value: string) => void;
+  setFontPosition: (value: FontPosition) => void;
 }
 
 const PreviewAppearanceContext = createContext<PreviewAppearanceValue | null>(null);
@@ -126,6 +180,15 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
   const [plateColor, setPlateColorState] = useState(() =>
     readStoredString(PLATE_COLOR_KEY, DEFAULT_PLATE_COLOR),
   );
+  const [keycapBorder, setKeycapBorderState] = useState(() =>
+    readStoredBoolean(KEYCAP_BORDER_KEY, false),
+  );
+  const [fontSize, setFontSizeState] = useState<FontSize>(readStoredFontSize);
+  const [fontColor, setFontColorState] = useState(() =>
+    readStoredString(FONT_COLOR_KEY, DEFAULT_FONT_COLOR),
+  );
+  const [fontPosition, setFontPositionState] =
+    useState<FontPosition>(readStoredFontPosition);
 
   const setSize = useCallback((value: PreviewSize) => {
     setSizeState(value);
@@ -155,6 +218,22 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
     setPlateColorState(value);
     store(PLATE_COLOR_KEY, value);
   }, []);
+  const setKeycapBorder = useCallback((value: boolean) => {
+    setKeycapBorderState(value);
+    store(KEYCAP_BORDER_KEY, String(value));
+  }, []);
+  const setFontSize = useCallback((value: FontSize) => {
+    setFontSizeState(value);
+    store(FONT_SIZE_KEY, value);
+  }, []);
+  const setFontColor = useCallback((value: string) => {
+    setFontColorState(value);
+    store(FONT_COLOR_KEY, value);
+  }, []);
+  const setFontPosition = useCallback((value: FontPosition) => {
+    setFontPositionState(value);
+    store(FONT_POSITION_KEY, value);
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -165,6 +244,10 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       caseThickness,
       caseColor,
       plateColor,
+      keycapBorder,
+      fontSize,
+      fontColor,
+      fontPosition,
       setSize,
       setSpacing,
       setKeycapWidth,
@@ -172,6 +255,10 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setCaseThickness,
       setCaseColor,
       setPlateColor,
+      setKeycapBorder,
+      setFontSize,
+      setFontColor,
+      setFontPosition,
     }),
     [
       size,
@@ -181,6 +268,10 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       caseThickness,
       caseColor,
       plateColor,
+      keycapBorder,
+      fontSize,
+      fontColor,
+      fontPosition,
       setSize,
       setSpacing,
       setKeycapWidth,
@@ -188,6 +279,10 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setCaseThickness,
       setCaseColor,
       setPlateColor,
+      setKeycapBorder,
+      setFontSize,
+      setFontColor,
+      setFontPosition,
     ],
   );
 

@@ -9,11 +9,13 @@ import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
   KeyboardLayoutPreview,
   SPACING_LEVELS,
+  type FontPosition,
   type PreviewSize,
 } from "../keymap/KeyboardLayoutPreview.tsx";
 
 const CASE_RECENT_KEY = "vialite-color-case-recent";
 const PLATE_RECENT_KEY = "vialite-color-plate-recent";
+const FONT_RECENT_KEY = "vialite-color-font-recent";
 const MAX_RECENT_COLORS = 3;
 const SIZES: PreviewSize[] = ["s", "m", "l", "xl"];
 const LEVEL_LABELS = { s: "S", m: "M", l: "L", xl: "XL" } as const;
@@ -75,6 +77,10 @@ export function KeyboardColorPanel({
     caseThickness,
     caseColor,
     plateColor,
+    keycapBorder,
+    fontSize,
+    fontColor,
+    fontPosition,
     setSize,
     setSpacing,
     setKeycapWidth,
@@ -82,6 +88,10 @@ export function KeyboardColorPanel({
     setCaseThickness,
     setCaseColor,
     setPlateColor,
+    setKeycapBorder,
+    setFontSize,
+    setFontColor,
+    setFontPosition,
   } = usePreviewAppearance();
   const [caseRecent, setCaseRecent] = useState<string[]>(() =>
     readStoredColors(CASE_RECENT_KEY),
@@ -89,8 +99,12 @@ export function KeyboardColorPanel({
   const [plateRecent, setPlateRecent] = useState<string[]>(() =>
     readStoredColors(PLATE_RECENT_KEY),
   );
+  const [fontRecent, setFontRecent] = useState<string[]>(() =>
+    readStoredColors(FONT_RECENT_KEY),
+  );
 
   const sizeIndex = SIZES.indexOf(size);
+  const fontSizeIndex = SIZES.indexOf(fontSize);
   const spacingIndex = SPACING_LEVELS.indexOf(spacing);
   const keycapWidthIndex = SPACING_LEVELS.indexOf(keycapWidth);
   const caseRadiusIndex = SPACING_LEVELS.indexOf(caseRadius);
@@ -100,6 +114,10 @@ export function KeyboardColorPanel({
 
   const onSizeChange = (index: number) => {
     setSize(SIZES[Math.min(SIZES.length - 1, Math.max(0, index))]);
+  };
+
+  const onFontSizeChange = (index: number) => {
+    setFontSize(SIZES[Math.min(SIZES.length - 1, Math.max(0, index))]);
   };
 
   const onSpacingChange = (index: number) => {
@@ -124,6 +142,10 @@ export function KeyboardColorPanel({
 
   const onPlateColorChange = (value: string) => {
     setPlateColor(value);
+  };
+
+  const onFontColorChange = (value: string) => {
+    setFontColor(value);
   };
 
   // Commit the picked color to the per-field recent list (most recent first,
@@ -151,52 +173,33 @@ export function KeyboardColorPanel({
     });
   };
 
+  const rememberFontColor = (value: string) => {
+    setFontRecent((prev) => {
+      const next = [
+        value,
+        ...prev.filter((c) => c.toLowerCase() !== value.toLowerCase()),
+      ].slice(0, MAX_RECENT_COLORS);
+      store(FONT_RECENT_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs text-brand-on-surface-variant/70">
         {t("colorDisplayNote")}
       </p>
       <div className="overflow-x-auto p-4">
-        <KeyboardLayoutPreview
-          keyboard={keyboard}
-          size={size}
-          spacing={spacing}
-          keycapWidth={keycapWidth}
-          caseRadius={caseRadius}
-          caseThickness={caseThickness}
-          caseColor={caseColor}
-          plateColor={plateColor}
-        />
+        {/* Reads every appearance value from the shared context, so it stays in
+            sync with the controls below and identical to previews elsewhere. */}
+        <KeyboardLayoutPreview keyboard={keyboard} />
       </div>
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
-          {t("colorAppearanceTitle")}
+          {t("colorSizeSectionTitle")}
         </h2>
         <ul className="list rounded-box border border-brand-outline/30">
-          <SettingsRow
-            icon={<KeyboardIcon className="h-5 w-5" />}
-            label={t("keyDisplayTitle")}
-            description={t("keyDisplayDesc")}
-            control={
-              <div className="join">
-                <button
-                  type="button"
-                  className={"btn btn-sm join-item" + (keyDisplay === "macos" ? " btn-primary" : " btn-outline")}
-                  onClick={() => setKeyDisplay("macos")}
-                >
-                  {t("keyDisplayMacos")}
-                </button>
-                <button
-                  type="button"
-                  className={"btn btn-sm join-item" + (keyDisplay === "windows" ? " btn-primary" : " btn-outline")}
-                  onClick={() => setKeyDisplay("windows")}
-                >
-                  {t("keyDisplayWindows")}
-                </button>
-              </div>
-            }
-          />
           <SettingsRow
             icon={<SizeIcon className="h-5 w-5" />}
             label={t("displaySizeTitle")}
@@ -218,6 +221,113 @@ export function KeyboardColorPanel({
               </div>
             }
           />
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+          {t("colorFontSectionTitle")}
+        </h2>
+        <ul className="list rounded-box border border-brand-outline/30">
+          <SettingsRow
+            icon={<KeyboardIcon className="h-5 w-5" />}
+            label={t("keyDisplayTitle")}
+            control={
+              <div className="join">
+                <button
+                  type="button"
+                  className={"btn btn-sm join-item" + (keyDisplay === "macos" ? " btn-primary" : " btn-outline")}
+                  onClick={() => setKeyDisplay("macos")}
+                >
+                  {t("keyDisplayMacos")}
+                </button>
+                <button
+                  type="button"
+                  className={"btn btn-sm join-item" + (keyDisplay === "windows" ? " btn-primary" : " btn-outline")}
+                  onClick={() => setKeyDisplay("windows")}
+                >
+                  {t("keyDisplayWindows")}
+                </button>
+              </div>
+            }
+          />
+          <SettingsRow
+            icon={<FontSizeIcon className="h-5 w-5" />}
+            label={t("fontSizeTitle")}
+            control={
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={SIZES.length - 1}
+                  step={1}
+                  value={fontSizeIndex}
+                  onChange={(e) => onFontSizeChange(Number(e.target.value))}
+                  className="range range-primary range-xs w-40"
+                  aria-label={t("fontSizeTitle")}
+                />
+                <span className="w-10 shrink-0 text-right text-sm tabular-nums text-brand-on-surface-variant">
+                  {LEVEL_LABELS[fontSize]}
+                </span>
+              </div>
+            }
+          />
+          <SettingsRow
+            icon={<FontColorIcon className="h-5 w-5" />}
+            label={t("fontColorTitle")}
+            control={
+              <div className="flex items-center gap-2">
+                <RecentColorSwatches
+                  colors={fontRecent}
+                  onPick={onFontColorChange}
+                  label={t("fontColorTitle")}
+                />
+                <input
+                  type="color"
+                  value={fontColor}
+                  onChange={(e) => onFontColorChange(e.target.value)}
+                  onBlur={(e) => rememberFontColor(e.target.value)}
+                  className="mr-2 h-8 w-14 cursor-pointer rounded border border-brand-outline/40 bg-transparent"
+                  aria-label={t("fontColorTitle")}
+                />
+              </div>
+            }
+          />
+          <SettingsRow
+            icon={<FontPositionIcon className="h-5 w-5" />}
+            label={t("fontPositionTitle")}
+            control={
+              <div className="join">
+                {(
+                  [
+                    ["top-left", t("fontPositionTopLeft")],
+                    ["center", t("fontPositionCenter")],
+                    ["center-bottom", t("fontPositionCenterBottom")],
+                  ] as [FontPosition, string][]
+                ).map(([value, text]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={
+                      "btn btn-sm join-item" +
+                      (fontPosition === value ? " btn-primary" : " btn-outline")
+                    }
+                    onClick={() => setFontPosition(value)}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+            }
+          />
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+          {t("colorKeycapSectionTitle")}
+        </h2>
+        <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
             icon={<SpacingIcon className="h-5 w-5" />}
             label={t("keySpacingTitle")}
@@ -260,6 +370,27 @@ export function KeyboardColorPanel({
               </div>
             }
           />
+          <SettingsRow
+            icon={<KeycapIcon className="h-5 w-5" />}
+            label={t("keycapBorderTitle")}
+            control={
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={keycapBorder}
+                onChange={(e) => setKeycapBorder(e.target.checked)}
+                aria-label={t("keycapBorderTitle")}
+              />
+            }
+          />
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+          {t("colorCaseSectionTitle")}
+        </h2>
+        <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
             icon={<RadiusIcon className="h-5 w-5" />}
             label={t("caseRadiusTitle")}
@@ -419,6 +550,58 @@ function SizeIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinejoin="round"
         d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
       />
+    </svg>
+  );
+}
+
+function FontSizeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      {...props}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 17l4-11 4 11M4 13.5h6M14 17l3-8 3 8M14.8 14.5h4.4"
+      />
+    </svg>
+  );
+}
+
+function FontColorIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      {...props}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M5 14l4-9 4 9M6 11h6"
+      />
+      <path strokeLinecap="round" d="M4 20h16" strokeWidth="3" />
+    </svg>
+  );
+}
+
+function FontPositionIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      {...props}
+    >
+      <rect x="3.5" y="4" width="17" height="16" rx="2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h5M7 11h3" />
     </svg>
   );
 }

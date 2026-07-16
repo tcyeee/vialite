@@ -244,18 +244,42 @@ body {
   align-items: center;
   justify-content: center;
   white-space: pre-line;
-  font-size: 0.75rem;
+  font-size: calc(0.75rem * var(--key-font-scale, 1));
   text-align: center;
   padding: 0;
   color: inherit;
   background: light-dark(#f2f2f2, #3a3a3a);
-  border: 1px solid light-dark(#b0b0b0, #666);
+  border: none;
   border-radius: 4px;
   cursor: pointer;
 }
 
+/* Label position (字体位置) within the cap face. `center` is the default flex
+   alignment above; these modifiers shift the label to the top-left corner or the
+   bottom-center. Padding insets the label off the cap edge in the off-center
+   cases; part2 (ISO-Enter) rects are absolutely positioned so stay unaffected. */
+.keyboard-layout .key.key-pos-top-left {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 3px 4px;
+}
+
+.keyboard-layout .key.key-pos-center-bottom {
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
+}
+
 .keyboard-layout .key:hover {
   background: light-dark(#e2e2e2, #4a4a4a);
+}
+
+/* Keycap border (键帽边框) is an opt-in appearance toggle (default off): the
+   `keyboard-layout-bordered` modifier restores the thin outline on the key face
+   and its ISO-Enter secondary rect. */
+.keyboard-layout-bordered .key,
+.keyboard-layout-bordered .key-part2 {
+  border: 1px solid light-dark(#b0b0b0, #666);
 }
 
 .keyboard-layout .key.selected,
@@ -263,6 +287,22 @@ body {
   border-color: var(--color-brand-primary);
   box-shadow: 0 0 0 2px var(--color-brand-primary);
   background: light-dark(#ffd1dc, #5a3b44);
+}
+
+/* Keys are highlighted by the `.key-aura` glow layer below instead of the
+   box-shadow ring; encoders keep the ring (no aura layer). */
+.keyboard-layout .key.selected {
+  box-shadow: none;
+}
+
+/* daisyUI `aura` glow behind the selected cap. `.aura` itself sets
+   position:relative/inline-block — override to absolute so it takes the key's
+   exact `shapeStyle` geometry. currentColor drives the conic-gradient hue. */
+.keyboard-layout .key-aura {
+  position: absolute;
+  color: var(--color-primary);
+  border-radius: 4px;
+  pointer-events: none;
 }
 
 .keyboard-layout .key.selected .key-part2 {
@@ -279,6 +319,216 @@ body {
 
 .keyboard-layout .key-label {
   position: relative;
+  font-weight: 600;
+  padding: 3px;
+  /* On-cap text never wraps: it stays on one line and, when it can't fit the
+     cap width, is clipped with an ellipsis (…) rather than spilling or wrapping.
+     `nowrap` also collapses the labels' embedded newlines to spaces so multi-word
+     caps (e.g. "Caps Word") flow onto that single line. `min-width:0` lets it
+     shrink below its content size inside the flex cap so the ellipsis engages. */
+  display: block;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Material Design Icon on a keycap (letters, modifiers, nav/whitespace keys),
+   sized relative to the surrounding text so it matches wherever KeycapFace is
+   used off the board (tap-dance / combo / key slots). */
+.key-icon {
+  width: 1.25em;
+  height: 1.25em;
+  color: inherit;
+}
+
+/* On the boards the icon is sized in rem (independent of cap font-size) and
+   tracks the 字体大小 display-size scale. */
+.keyboard-layout .key-icon {
+  width: calc(1.5rem * var(--key-font-scale, 1));
+  height: calc(1.5rem * var(--key-font-scale, 1));
+}
+
+/* Symbol icons (⌘ ⇧ ⌥ ⌃ ↵ ⌫ ⎵ arrows…) read larger than the text labels and the
+   letter icons; scale them down 20% to keep all three keycap face types matched. */
+.key-icon-symbol {
+  transform: scale(0.8);
+}
+
+/* Left/right modifier face: the side badge sits inline before the glyph/text. */
+.key-face-badged {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+/* Hand-drawn L/R side badge: white letter on a black circle, sized a notch below
+   the cap font (em tracks the cap font-size, so it follows the 字体大小 scale). */
+.key-side-badge {
+  width: 0.8em;
+  height: 0.8em;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.key-side-badge circle {
+  fill: #000000;
+}
+
+.key-side-badge text {
+  fill: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Dual-role tap/hold cap (Mod-Tap, Layer-Tap): the tap action on top, the hold
+   action in a shaded band below. Off the board (tap-dance / combo / key slots)
+   it renders as a compact centered stack; the board overrides below make it
+   fill the cap so the hold band spans the full width along the bottom edge. */
+.key-dual {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.key-dual-hold {
+  font-size: 0.8em;
+  font-weight: 600;
+  line-height: 1.1;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.16));
+}
+
+/* On the board the split fills the whole cap: tap half flexes to take the space
+   above, the hold band stretches full-width and hugs the bottom (its rounded
+   corners follow the cap's own 4px radius). */
+.keyboard-layout .key-dual {
+  position: absolute;
+  inset: 0;
+  gap: 0;
+}
+
+.keyboard-layout .key-dual-tap {
+  flex: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+
+.keyboard-layout .key-dual-hold {
+  /* Hold band takes 2/5 (40%) of the cap height; the tap half flexes into the
+     rest. Labels here are always short (a modifier name or "L"+digit), so plain
+     nowrap + clip is enough — no ellipsis machinery needed. */
+  flex: 0 0 40%;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 2px;
+  border-radius: 0 0 4px 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Independently-clickable hit areas over a dual-role cap: transparent buttons
+   layered above the cap face (which paints through them). The tap area covers
+   the top 3/5, the hold area the bottom 2/5 — matching the face's 40% band —
+   and the selected half draws an inset ring to show which is being configured. */
+.keyboard-layout .key-hit {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.keyboard-layout .key-hit-tap {
+  top: 0;
+  height: 60%;
+  border-radius: 4px 4px 0 0;
+}
+
+.keyboard-layout .key-hit-hold {
+  bottom: 0;
+  height: 40%;
+  border-radius: 0 0 4px 4px;
+}
+
+.keyboard-layout .key-hit.active {
+  box-shadow: inset 0 0 0 2px var(--color-brand-primary);
+}
+
+/* Floating key-info card (KeyInfoCard) shown after a 0.5s hover on the
+   interactive board. Fixed-positioned by the caller and anchored above the cap;
+   never intercepts the pointer so it can't flicker the underlying hover. */
+.key-info-card {
+  z-index: 50;
+  pointer-events: none;
+  max-width: 18rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  background: light-dark(#ffffff, #2a2a2a);
+  color: light-dark(#1a1a1a, #ededed);
+  border: 1px solid light-dark(#e0e0e0, #4a4a4a);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 25%);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.key-info-title {
+  font-weight: 700;
+  font-size: 0.8125rem;
+  margin-bottom: 0.25rem;
+}
+
+.key-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.key-info-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.375rem;
+}
+
+/* 点击 / 长按 role chip on a dual-role card row. */
+.key-info-role {
+  flex-shrink: 0;
+  padding: 0 0.3rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: light-dark(#efe6e9, #4a3b40);
+  color: light-dark(#78555e, #e6ccd4);
+}
+
+.key-info-name {
+  font-weight: 600;
+}
+
+.key-info-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: light-dark(#666, #aaa);
+}
+
+.key-info-hex {
+  opacity: 0.8;
 }
 
 .keyboard-layout .encoder {

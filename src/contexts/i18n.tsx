@@ -117,7 +117,7 @@ const MESSAGES = {
   siteGeneralTitle: { en: "General", zh: "通用" },
   languageDesc: { en: "Interface language", zh: "界面语言" },
   themeDesc: { en: "Light or dark theme", zh: "浅色或深色主题" },
-  keyDisplayTitle: { en: "Key display style", zh: "按键显示类型" },
+  keyDisplayTitle: { en: "Modifier key style", zh: "修饰键类型" },
   keyDisplayDesc: {
     en: "How OS-specific modifier keys are labelled",
     zh: "系统相关修饰键的显示方式",
@@ -134,15 +134,30 @@ const MESSAGES = {
   },
   colorLayoutTitle: { en: "Layout options", zh: "布局选项" },
   colorAppearanceTitle: { en: "Appearance", zh: "外观" },
+  colorSizeSectionTitle: { en: "Display size", zh: "显示尺寸" },
+  colorFontSectionTitle: { en: "Keyboard font", zh: "键盘字体" },
+  colorKeycapSectionTitle: { en: "Keycap", zh: "键帽" },
+  colorCaseSectionTitle: { en: "Case & plate", zh: "键盘外壳与定位板" },
   displaySizeTitle: { en: "Display size", zh: "显示尺寸" },
   displaySizeSmaller: { en: "Smaller", zh: "缩小" },
   displaySizeLarger: { en: "Larger", zh: "放大" },
-  keySpacingTitle: { en: "Key spacing", zh: "按键间距" },
+  keySpacingTitle: { en: "Keycap spacing", zh: "键帽间距" },
   keycapWidthTitle: { en: "Keycap width", zh: "键帽宽度" },
   caseRadiusTitle: { en: "Case corner radius", zh: "外壳圆角" },
   caseThicknessTitle: { en: "Case thickness", zh: "外壳厚度" },
   caseColorTitle: { en: "Case color", zh: "外壳颜色" },
   plateColorTitle: { en: "Plate color", zh: "定位板颜色" },
+  keycapBorderTitle: { en: "Keycap border", zh: "键帽边框" },
+  keycapBorderDesc: {
+    en: "Draw a thin outline around each keycap",
+    zh: "在每个键帽周围绘制细边框",
+  },
+  fontSizeTitle: { en: "Font size", zh: "字体大小" },
+  fontColorTitle: { en: "Font color", zh: "字体颜色" },
+  fontPositionTitle: { en: "Font position", zh: "字体位置" },
+  fontPositionTopLeft: { en: "Top left", zh: "左上角" },
+  fontPositionCenter: { en: "Center", zh: "居中" },
+  fontPositionCenterBottom: { en: "Center bottom", zh: "居中靠下" },
   exportLayoutDesc: { en: "Save the current keymap to a .vil file", zh: "将当前配置保存为 .vil 文件" },
   importLayoutDesc: { en: "Load a keymap from a .vil file", zh: "从 .vil 文件加载配置" },
 
@@ -152,7 +167,7 @@ const MESSAGES = {
   navMacro: { en: "Macro", zh: "宏配置" },
   navTapDance: { en: "Tap Dance", zh: "点击舞步" },
   navCombo: { en: "Combo", zh: "组合键" },
-  navKeyboardColor: { en: "Keyboard Color", zh: "键盘配色" },
+  navKeyboardColor: { en: "Personalization", zh: "个性化" },
   navAdvanced: { en: "QMK Settings", zh: "QMK 设置" },
   navSiteSettings: { en: "Website Settings", zh: "网站设置" },
   navImportExport: { en: "Import / Export", zh: "导入导出" },
@@ -222,6 +237,7 @@ const MESSAGES = {
     zh: "确定要删除这个点击舞步吗?这会清空它的所有动作。",
   },
   tapDanceAdd: { en: "Add tap dance", zh: "添加点击舞步" },
+  tapDanceRenumber: { en: "Change slot number", zh: "更换槽位编号" },
   tapDanceEmpty: { en: "No tap dances configured yet.", zh: "还没有配置任何点击舞步。" },
   tapDanceFull: {
     en: "All tap dance slots are in use.",
@@ -250,6 +266,7 @@ const MESSAGES = {
     zh: "确定删除这个组合键吗?",
   },
   comboAdd: { en: "Add combo", zh: "添加组合键" },
+  comboRenumber: { en: "Change slot number", zh: "更换槽位编号" },
   comboEmpty: { en: "No combos configured yet.", zh: "还没有配置任何组合键。" },
   comboFull: {
     en: "All combo slots are already in use.",
@@ -340,6 +357,25 @@ const MESSAGES = {
     en: "Press and hold the highlighted keys until the progress bar fills up:",
     zh: "按住高亮显示的按键,直到进度条充满:",
   },
+
+  // Key info hover card
+  keyInfoCode: { en: "Code", zh: "编码" },
+  keyInfoTap: { en: "Tap", zh: "点击" },
+  keyInfoHold: { en: "Hold", zh: "长按" },
+
+  // Hold editor (dual-role hold sub-part)
+  holdEditorTitle: { en: "Configure hold action", zh: "配置长按动作" },
+  holdEditorTapKeeps: { en: "Tap stays: {key}", zh: "点击保持:{key}" },
+  holdEditorModifiers: { en: "Modifiers", zh: "修饰键" },
+  holdEditorSide: { en: "Side", zh: "左右" },
+  holdEditorSideLeft: { en: "Left", zh: "左" },
+  holdEditorSideRight: { en: "Right", zh: "右" },
+  holdEditorLayer: { en: "Layer", zh: "层" },
+  holdEditorNoModsHint: {
+    en: "No modifier selected — the hold role is removed and the cap becomes a plain key.",
+    zh: "未选择修饰键——将移除长按功能,按键变为普通按键。",
+  },
+  holdEditorApply: { en: "Apply", zh: "应用" },
 } as const satisfies Record<string, Record<Lang, string>>;
 
 export type MessageKey = keyof typeof MESSAGES;

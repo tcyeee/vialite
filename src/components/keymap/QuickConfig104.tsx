@@ -1,5 +1,5 @@
 import { type CSSProperties } from "react";
-import { label as kcLabel } from "../../protocol/keycodes.ts";
+import { KeycapFace } from "./KeycapFace.tsx";
 
 const UNIT = 42;
 const GAP = 4;
@@ -174,7 +174,7 @@ export function QuickConfig104({ onPick, disabled }: Props) {
             onClick={() => onPick(k.id)}
             style={style}
           >
-            <span className="key-label">{kcLabel(k.id)}</span>
+            <KeycapFace qmkId={k.id} />
           </button>
         );
       })}

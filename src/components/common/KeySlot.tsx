@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { label as kcLabel } from "../../protocol/keycodes.ts";
+import { KeycapFace } from "../keymap/KeycapFace.tsx";
 import { KeycodePicker } from "./KeycodePicker.tsx";
 
 interface Props {
@@ -20,7 +20,7 @@ export function KeySlot({ qmkId, onChange, className }: Props) {
         title={qmkId}
         onClick={() => setPicking(true)}
       >
-        {kcLabel(qmkId)}
+        <KeycapFace qmkId={qmkId} className="whitespace-pre-line" />
       </button>
       {picking && (
         <KeycodePicker
