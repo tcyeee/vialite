@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { VIAL_PROTOCOL_ADVANCED_MACROS } from "../../protocol/constants.ts";
 import type { Keyboard, MacroAction } from "../../protocol/keyboard.ts";
@@ -275,60 +275,62 @@ export function MacroPanel({ keyboard, onChange }: Props) {
         </div>
         <p className="max-w-md text-xs text-brand-on-surface-variant">{t("macroHint", { n: active })}</p>
       </div>
-
-
-{/* Tab 案例 */}
-<div className="tabs tabs-lift">
-  <input type="radio" name="my_tabs_3" className="tab" aria-label="Tab 1" />
-  <div className="tab-content bg-base-100 border-base-300 p-6">Tab content 1</div>
-
-  <input type="radio" name="my_tabs_3" className="tab" aria-label="Tab 2" defaultChecked />
-  <div className="tab-content bg-base-100 border-base-300 p-6">Tab content 2</div>
-
-  <input type="radio" name="my_tabs_3" className="tab" aria-label="Tab 3" />
-  <div className="tab-content bg-base-100 border-base-300 p-6">Tab content 3</div>
-</div>
-
-
-      <div className="tabs tabs-box w-fit">
+      <div className="tabs tabs-lift">
         {edited.map((_, i) => (
-          <button key={i} type="button" className={i === active ? "tab tab-active" : "tab"} onClick={() => setActive(i)}>
-            M{i}
-            {slotChanged && i === active ? "*" : ""}
-          </button>
-        ))}
-      </div>
+          <Fragment key={i}>
+            <input
+              type="radio"
+              name="macro_tabs"
+              className="tab"
+              aria-label={`M${i}${slotChanged && i === active ? "*" : ""}`}
+              checked={i === active}
+              onChange={() => setActive(i)}
+            />
+            <div className="tab-content bg-base-100 border-base-300 p-6">
+              {i === active && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-2">
+                    {actions.length === 0 && (
+                      <p className="text-xs text-brand-on-surface-variant">{t("macroEmpty")}</p>
+                    )}
+                    {actions.map((action, idx) => (
+                      <MacroActionRow
+                        key={idx}
+                        action={action}
+                        onChange={(next) => updateAction(idx, next)}
+                        onRemove={() => removeAction(idx)}
+                        onMoveUp={() => moveAction(idx, -1)}
+                        onMoveDown={() => moveAction(idx, 1)}
+                      />
+                    ))}
+                  </div>
 
-      <div className="flex flex-col gap-2">
-        {actions.length === 0 && <p className="text-xs text-brand-on-surface-variant">{t("macroEmpty")}</p>}
-        {actions.map((action, i) => (
-          <MacroActionRow
-            key={i}
-            action={action}
-            onChange={(next) => updateAction(i, next)}
-            onRemove={() => removeAction(i)}
-            onMoveUp={() => moveAction(i, -1)}
-            onMoveDown={() => moveAction(i, 1)}
-          />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => addAction({ kind: "text", text: "" })}
+                    >
+                      {t("macroAddText")}
+                    </button>
+                    <AddActionButton kind="tap" label={t("macroAddTap")} onAdd={addAction} />
+                    <AddActionButton kind="down" label={t("macroAddDown")} onAdd={addAction} />
+                    <AddActionButton kind="up" label={t("macroAddUp")} onAdd={addAction} />
+                    {supportsDelay && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => addAction({ kind: "delay", ms: 0 })}
+                      >
+                        {t("macroAddDelay")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Fragment>
         ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn btn-sm btn-outline" onClick={() => addAction({ kind: "text", text: "" })}>
-          {t("macroAddText")}
-        </button>
-        <AddActionButton kind="tap" label={t("macroAddTap")} onAdd={addAction} />
-        <AddActionButton kind="down" label={t("macroAddDown")} onAdd={addAction} />
-        <AddActionButton kind="up" label={t("macroAddUp")} onAdd={addAction} />
-        {supportsDelay && (
-          <button
-            type="button"
-            className="btn btn-sm btn-outline"
-            onClick={() => addAction({ kind: "delay", ms: 0 })}
-          >
-            {t("macroAddDelay")}
-          </button>
-        )}
       </div>
 
       <div className="flex gap-2">
