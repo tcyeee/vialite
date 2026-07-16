@@ -35,14 +35,15 @@ const FIELDS: QmkSettingField[] = [
     max: 10000,
     labelKey: "tapHoldTappingTerm",
     unitKey: "unitMs",
+    helpKey: "tapHoldTappingTermHelp",
   },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 0, labelKey: "tapHoldPermissiveHold" },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 1, labelKey: "tapHoldIgnoreModTapInterrupt" },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 2, labelKey: "tapHoldTappingForceHold" },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 3, labelKey: "tapHoldRetroTapping" },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_PERMISSIVE_HOLD, bit: 0, labelKey: "tapHoldPermissiveHold" },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_HOLD_ON_OTHER_KEY_PRESS, bit: 0, labelKey: "tapHoldHoldOnOtherKeyPress" },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_RETRO_TAPPING, bit: 0, labelKey: "tapHoldRetroTapping" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 0, labelKey: "tapHoldPermissiveHold", helpKey: "tapHoldPermissiveHoldHelp" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 1, labelKey: "tapHoldIgnoreModTapInterrupt", helpKey: "tapHoldIgnoreModTapInterruptHelp" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 2, labelKey: "tapHoldTappingForceHold", helpKey: "tapHoldTappingForceHoldHelp" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_TAP_HOLD_FLAGS, bit: 3, labelKey: "tapHoldRetroTapping", helpKey: "tapHoldRetroTappingHelp" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_PERMISSIVE_HOLD, bit: 0, labelKey: "tapHoldPermissiveHold", helpKey: "tapHoldPermissiveHoldHelp" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_HOLD_ON_OTHER_KEY_PRESS, bit: 0, labelKey: "tapHoldHoldOnOtherKeyPress", helpKey: "tapHoldHoldOnOtherKeyPressHelp" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_RETRO_TAPPING, bit: 0, labelKey: "tapHoldRetroTapping", helpKey: "tapHoldRetroTappingHelp" },
   {
     type: "integer",
     qsid: QMK_SETTINGS_QSID_QUICK_TAP_TERM,
@@ -50,6 +51,7 @@ const FIELDS: QmkSettingField[] = [
     max: 10000,
     labelKey: "tapHoldQuickTapTerm",
     unitKey: "unitMs",
+    helpKey: "tapHoldQuickTapTermHelp",
   },
   {
     type: "integer",
@@ -58,6 +60,7 @@ const FIELDS: QmkSettingField[] = [
     max: 1000,
     labelKey: "tapHoldTapCodeDelay",
     unitKey: "unitMs",
+    helpKey: "tapHoldTapCodeDelayHelp",
   },
   {
     type: "integer",
@@ -66,6 +69,7 @@ const FIELDS: QmkSettingField[] = [
     max: 1000,
     labelKey: "tapHoldTapHoldCapsDelay",
     unitKey: "unitMs",
+    helpKey: "tapHoldTapHoldCapsDelayHelp",
   },
   {
     type: "integer",
@@ -74,8 +78,9 @@ const FIELDS: QmkSettingField[] = [
     max: 100,
     labelKey: "tapHoldTappingToggle",
     unitKey: "unitTaps",
+    helpKey: "tapHoldTappingToggleHelp",
   },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_CHORDAL_HOLD, bit: 0, labelKey: "tapHoldChordalHold" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_CHORDAL_HOLD, bit: 0, labelKey: "tapHoldChordalHold", helpKey: "tapHoldChordalHoldHelp" },
   {
     type: "integer",
     qsid: QMK_SETTINGS_QSID_FLOW_TAP,
@@ -83,6 +88,7 @@ const FIELDS: QmkSettingField[] = [
     max: 10000,
     labelKey: "tapHoldFlowTap",
     unitKey: "unitMs",
+    helpKey: "tapHoldFlowTapHelp",
   },
 ];
 

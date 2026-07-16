@@ -80,6 +80,8 @@ export interface PreviewAppearance {
   plateColor?: string;
   /** Whether each keycap draws a thin outline (键帽边框). Default off. */
   keycapBorder?: boolean;
+  /** Whether to draw the highlight/shadow 3D shading (立体感). Default on. */
+  depth?: boolean;
   /** Keycap label font size level (字体大小). */
   fontSize?: FontSize;
   /** Keycap label text/icon color (字体颜色). */
@@ -189,6 +191,7 @@ export function KeyboardLayoutPreview({
     caseColor,
     plateColor,
     keycapBorder,
+    depth,
     fontSize,
     fontColor,
     fontPosition,
@@ -208,7 +211,7 @@ export function KeyboardLayoutPreview({
 
   return (
     <div
-      className="keyboard-case"
+      className={"keyboard-case" + (showCase && depth ? " keyboard-case-shaded" : "")}
       style={{
         padding: caseThickness,
         background: showCase ? caseColor : "transparent",
@@ -217,7 +220,11 @@ export function KeyboardLayoutPreview({
       }}
     >
       <div
-        className={"keyboard-layout" + (keycapBorder ? " keyboard-layout-bordered" : "")}
+        className={
+          "keyboard-layout" +
+          (depth ? " keyboard-layout-shaded" : "") +
+          (keycapBorder ? " keyboard-layout-bordered" : "")
+        }
         style={{
           width: placed.width * PITCH + inset,
           height: placed.height * PITCH + inset,

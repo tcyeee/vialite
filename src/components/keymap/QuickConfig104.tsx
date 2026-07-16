@@ -156,33 +156,39 @@ export function QuickConfig104({ onPick, disabled, scale = 1, className }: Props
   const unit = UNIT * scale;
   return (
     <div
-      className={`keyboard-layout${className ? ` ${className}` : ""}`}
+      className="quick-config-104-case w-fit rounded-xl border border-base-300 bg-base-200 p-3 shadow-sm"
       style={{
-        width: BOARD_WIDTH * unit,
-        height: BOARD_HEIGHT * unit,
         opacity: disabled ? 0.5 : 1,
         pointerEvents: disabled ? "none" : undefined,
       }}
     >
-      {KEYS_104.map((k) => {
-        const style: CSSProperties = {
-          left: k.x * unit,
-          top: k.y * unit,
-          width: (k.w ?? 1) * unit - GAP,
-          height: (k.h ?? 1) * unit - GAP,
-        };
-        return (
-          <button
-            key={k.id}
-            className="key"
-            title={k.id}
-            onClick={() => onPick(k.id)}
-            style={style}
-          >
-            <KeycapFace qmkId={k.id} />
-          </button>
-        );
-      })}
+      <div
+        className={`keyboard-layout${className ? ` ${className}` : ""}`}
+        style={{
+          width: BOARD_WIDTH * unit,
+          height: BOARD_HEIGHT * unit,
+        }}
+      >
+        {KEYS_104.map((k) => {
+          const style: CSSProperties = {
+            left: k.x * unit,
+            top: k.y * unit,
+            width: (k.w ?? 1) * unit - GAP,
+            height: (k.h ?? 1) * unit - GAP,
+          };
+          return (
+            <button
+              key={k.id}
+              className="key"
+              title={k.id}
+              onClick={() => onPick(k.id)}
+              style={style}
+            >
+              <KeycapFace qmkId={k.id} />
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

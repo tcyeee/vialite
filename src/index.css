@@ -181,6 +181,27 @@ body {
   }
 }
 
+@keyframes page-transition {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: page-transition 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
+  }
+}
+
 @keyframes nav-label-appear {
   from {
     opacity: 0;
@@ -199,6 +220,85 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .nav-label-appear {
+    animation: none;
+  }
+}
+
+/* Combo Keys tab: each keycode fades up as its card expands (staggered inline). */
+@keyframes combo-item-appear {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.combo-item {
+  animation: combo-item-appear 0.3s ease-out both;
+}
+
+/* Square, semi-transparent number cards (Macros / Tap Dance / Layers), each
+   flipping in around its vertical axis as the parent card expands. */
+@keyframes combo-flip {
+  from {
+    opacity: 0;
+    transform: rotateY(-90deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(0deg);
+  }
+}
+
+.combo-num-grid {
+  perspective: 800px;
+}
+
+/* The "常用" corner badge on the MO card must pop in/out instantly, never
+   cross-fade with the card's View Transition when it expands/collapses. */
+::view-transition-group(mo-common-badge),
+::view-transition-old(mo-common-badge),
+::view-transition-new(mo-common-badge) {
+  animation: none !important;
+}
+
+.combo-num-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  backface-visibility: hidden;
+  animation: combo-flip 0.4s ease-out both;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.combo-num-card:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.combo-num-card:active {
+  transform: scale(0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combo-item,
+  .combo-num-card {
     animation: none;
   }
 }
@@ -238,6 +338,19 @@ body {
   border-radius: 10px;
 }
 
+/* 外壳同样做出立体感，光源设为左上方偏暖的自然光（太阳/窗光）：上缘/左缘受
+   光做暖色高光(255,250,240)，下缘/右缘背光做偏冷的阴影(40,45,60)——阴影被天
+   空的散射蓝光补光，故略带冷色，与纯黑相比更接近真实。外投影顺光源方向落向
+   右下(2px,4px)，并叠一层更大更淡的环境影(4px,10px)形成半影，让整块键盘自然
+   "浮起"。仅在外壳可见（caseThickness > 0）时附上，透明外壳不画阴影。 */
+.keyboard-case-shaded {
+  box-shadow:
+    inset 2px 2px 1px light-dark(rgba(255, 250, 240, 0.6), rgba(255, 250, 240, 0.15)),
+    inset -2px -2px 2px light-dark(rgba(40, 45, 60, 0.22), rgba(0, 0, 0, 0.5)),
+    2px 4px 6px light-dark(rgba(30, 35, 50, 0.16), rgba(0, 0, 0, 0.42)),
+    4px 10px 20px light-dark(rgba(30, 35, 50, 0.16), rgba(0, 0, 0, 0.5));
+}
+
 .keyboard-layout .key {
   position: absolute;
   display: flex;
@@ -272,6 +385,55 @@ body {
 
 .keyboard-layout .key:hover {
   background: light-dark(#e2e2e2, #4a4a4a);
+}
+
+/* 快捷配置 104 键盘：为每个键帽做出立体感，与配色预览同一套左上暖光模型
+   —— 左上角暖色高光、右下角偏冷阴影、边缘 1px 软化，外加顺光落向右下的投影
+   让键帽从底板上"浮起"。仅作用于 104 取键面板，不影响上方真实键位布局。 */
+.quick-config-104-case .key {
+  box-shadow:
+    inset 1.5px 1.5px 1px light-dark(rgba(255, 250, 240, 0.85), rgba(255, 250, 240, 0.18)),
+    inset -1.5px -1.5px 1px light-dark(rgba(40, 45, 60, 0.18), rgba(0, 0, 0, 0.45)),
+    1px 2px 3px light-dark(rgba(30, 35, 50, 0.18), rgba(0, 0, 0, 0.5));
+}
+
+.quick-config-104-case .key:hover {
+  box-shadow:
+    inset 1.5px 1.5px 1px light-dark(rgba(255, 250, 240, 0.9), rgba(255, 250, 240, 0.22)),
+    inset -1.5px -1.5px 1px light-dark(rgba(40, 45, 60, 0.2), rgba(0, 0, 0, 0.5)),
+    1px 3px 5px light-dark(rgba(30, 35, 50, 0.22), rgba(0, 0, 0, 0.55));
+}
+
+/* 按下时下沉：高光/阴影反向并去掉投影，模拟键帽被按下的触感（冷暖也随之反向）。 */
+.quick-config-104-case .key:active {
+  box-shadow:
+    inset 1.5px 1.5px 1px light-dark(rgba(40, 45, 60, 0.18), rgba(0, 0, 0, 0.45)),
+    inset -1.5px -1.5px 1px light-dark(rgba(255, 250, 240, 0.7), rgba(255, 250, 240, 0.12));
+  transform: translateY(1px);
+}
+
+/* 底板（定位板）向内凹陷：外壳内边缘的立体感。左上暖光下，被抬高的外壳内壁
+   在上/左侧投下偏冷的阴影(30,35,50)、下/右侧受暖光(255,250,240)，故底板做上
+   左暗、下右亮的 inset —— 读作一圈嵌进外壳里的凹槽，与外壳外边缘的高光/阴影
+   (.keyboard-case-shaded)配对，冷暖方向一致。 */
+.keyboard-layout-shaded {
+  box-shadow:
+    inset 2px 2px 4px light-dark(rgba(30, 35, 50, 0.28), rgba(0, 0, 0, 0.55)),
+    inset -2px -2px 3px light-dark(rgba(255, 250, 240, 0.4), rgba(255, 250, 240, 0.08));
+}
+
+/* 键盘配色预览：键帽在左上暖光下做出立体感 —— 左上角暖色高光、右下角偏冷
+   阴影，边缘留 1px 模糊软化硬棱（自然光下的圆角键帽不会有刀切般的锐边），
+   再加一层顺光方向落向右下的投影让键帽从底板上"浮起"。仅作用于只读预览
+   （keyboard-layout-shaded），不影响上方可交互的真实键位布局。ISO-Enter
+   的副矩形与旋钮同样附上，保持整体观感统一。 */
+.keyboard-layout-shaded .key,
+.keyboard-layout-shaded .key-part2,
+.keyboard-layout-shaded .encoder {
+  box-shadow:
+    inset 1.5px 1.5px 1px light-dark(rgba(255, 250, 240, 0.85), rgba(255, 250, 240, 0.16)),
+    inset -1.5px -1.5px 1px light-dark(rgba(40, 45, 60, 0.16), rgba(0, 0, 0, 0.42)),
+    1px 2px 3px light-dark(rgba(30, 35, 50, 0.2), rgba(0, 0, 0, 0.5));
 }
 
 /* Keycap border (键帽边框) is an opt-in appearance toggle (default off): the
@@ -402,12 +564,16 @@ body {
   opacity: 0.75;
 }
 
+/* The circle is the badge's "ink": it inherits the cap `color` (which the board
+   sets to the chosen 字体颜色 on `.keyboard-layout`), so the L/R badge tracks the
+   font color like the labels and icons do. The letter is knocked out in the
+   keycap face color so it stays legible whatever the font color is. */
 .key-side-badge circle {
-  fill: #000000;
+  fill: currentColor;
 }
 
 .key-side-badge text {
-  fill: #ffffff;
+  fill: light-dark(#f2f2f2, #3a3a3a);
   font-size: 12px;
   font-weight: 700;
 }

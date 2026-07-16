@@ -30,6 +30,7 @@ export const CATEGORY_KEYS: Record<string, MessageKey> = {
   Lighting: "categoryLighting",
   "Fn/Media/Mouse": "categoryFnMediaMouse",
   Custom: "categoryCustom",
+  "Keyboard Function": "categoryKeyboardFunction",
   "Tap Dance": "categoryTapDance",
   "Macros/Tap Dance": "categoryMacrosTapDance",
 };

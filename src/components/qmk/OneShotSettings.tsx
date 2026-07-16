@@ -15,6 +15,7 @@ const FIELDS: QmkSettingField[] = [
     max: 50,
     labelKey: "oneShotTapToggle",
     unitKey: "unitTaps",
+    helpKey: "oneShotTapToggleHelp",
   },
   {
     type: "integer",
@@ -23,6 +24,7 @@ const FIELDS: QmkSettingField[] = [
     max: 60000,
     labelKey: "oneShotTimeoutMs",
     unitKey: "unitMs",
+    helpKey: "oneShotTimeoutMsHelp",
   },
 ];
 

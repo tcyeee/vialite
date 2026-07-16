@@ -39,6 +39,7 @@ const CASE_THICKNESS_KEY = "vialite-color-case-thickness";
 const CASE_COLOR_KEY = "vialite-color-case-color";
 const PLATE_COLOR_KEY = "vialite-color-plate-color";
 const KEYCAP_BORDER_KEY = "vialite-color-keycap-border";
+const DEPTH_KEY = "vialite-color-depth";
 const FONT_SIZE_KEY = "vialite-color-font-size";
 const FONT_COLOR_KEY = "vialite-color-font-color";
 const FONT_POSITION_KEY = "vialite-color-font-position";
@@ -142,6 +143,8 @@ interface PreviewAppearanceValue {
   caseColor: string;
   plateColor: string;
   keycapBorder: boolean;
+  /** Draw the highlight/shadow 3D shading on keycaps, case, and plate (立体感). */
+  depth: boolean;
   fontSize: FontSize;
   fontColor: string;
   fontPosition: FontPosition;
@@ -153,6 +156,7 @@ interface PreviewAppearanceValue {
   setCaseColor: (value: string) => void;
   setPlateColor: (value: string) => void;
   setKeycapBorder: (value: boolean) => void;
+  setDepth: (value: boolean) => void;
   setFontSize: (value: FontSize) => void;
   setFontColor: (value: string) => void;
   setFontPosition: (value: FontPosition) => void;
@@ -183,6 +187,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
   const [keycapBorder, setKeycapBorderState] = useState(() =>
     readStoredBoolean(KEYCAP_BORDER_KEY, false),
   );
+  const [depth, setDepthState] = useState(() => readStoredBoolean(DEPTH_KEY, true));
   const [fontSize, setFontSizeState] = useState<FontSize>(readStoredFontSize);
   const [fontColor, setFontColorState] = useState(() =>
     readStoredString(FONT_COLOR_KEY, DEFAULT_FONT_COLOR),
@@ -222,6 +227,10 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
     setKeycapBorderState(value);
     store(KEYCAP_BORDER_KEY, String(value));
   }, []);
+  const setDepth = useCallback((value: boolean) => {
+    setDepthState(value);
+    store(DEPTH_KEY, String(value));
+  }, []);
   const setFontSize = useCallback((value: FontSize) => {
     setFontSizeState(value);
     store(FONT_SIZE_KEY, value);
@@ -245,6 +254,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       caseColor,
       plateColor,
       keycapBorder,
+      depth,
       fontSize,
       fontColor,
       fontPosition,
@@ -256,6 +266,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setCaseColor,
       setPlateColor,
       setKeycapBorder,
+      setDepth,
       setFontSize,
       setFontColor,
       setFontPosition,
@@ -269,6 +280,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       caseColor,
       plateColor,
       keycapBorder,
+      depth,
       fontSize,
       fontColor,
       fontPosition,
@@ -280,6 +292,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setCaseColor,
       setPlateColor,
       setKeycapBorder,
+      setDepth,
       setFontSize,
       setFontColor,
       setFontPosition,

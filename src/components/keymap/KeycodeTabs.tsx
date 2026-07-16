@@ -6,9 +6,14 @@ import {
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
+import type { Keyboard } from "../../protocol/keyboard.ts";
 import { CATEGORY_KEYS, deviceCategories } from "../common/KeycodePicker.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "./QuickConfig104.tsx";
+import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
+import { LayerCategoryCards } from "./LayerCategoryCards.tsx";
+import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
+import { QuantumCards } from "./QuantumCards.tsx";
 
 /** Categories hidden from the inline homepage picker. */
 const HIDDEN_CATEGORIES: ReadonlySet<string> = new Set([
@@ -26,6 +31,44 @@ const MERGE_SOURCES: ReadonlySet<string> = new Set(["Fn keys", "Media", "Mouse"]
 /** Name of the tab that folds the Macros list and the device's Tap Dance slots into one. */
 const MACRO_TD_NAME = "Macros/Tap Dance";
 
+/** Name of the tab that folds Lighting and the device's Custom keycodes into one. */
+const KEYBOARD_FN_NAME = "Keyboard Function";
+
+/**
+ * qmk_id → i18n key describing each Lighting keycode's concrete function, shown
+ * as a HelpIcon tooltip on the key in the "Keyboard Function" tab. Custom
+ * keycodes get their help text from the device-provided `title` instead.
+ */
+const LIGHTING_HELP: Record<string, MessageKey> = {
+  BL_TOGG: "lightBlTogg",
+  BL_STEP: "lightBlStep",
+  BL_BRTG: "lightBlBrtg",
+  BL_ON: "lightBlOn",
+  BL_OFF: "lightBlOff",
+  BL_INC: "lightBlInc",
+  BL_DEC: "lightBlDec",
+  RGB_TOG: "lightRgbTog",
+  RGB_MOD: "lightRgbMod",
+  RGB_RMOD: "lightRgbRmod",
+  RGB_HUI: "lightRgbHui",
+  RGB_HUD: "lightRgbHud",
+  RGB_SAI: "lightRgbSai",
+  RGB_SAD: "lightRgbSad",
+  RGB_VAI: "lightRgbVai",
+  RGB_VAD: "lightRgbVad",
+  RGB_SPI: "lightRgbSpi",
+  RGB_SPD: "lightRgbSpd",
+  RGB_M_P: "lightRgbMP",
+  RGB_M_B: "lightRgbMB",
+  RGB_M_R: "lightRgbMR",
+  RGB_M_SW: "lightRgbMSw",
+  RGB_M_SN: "lightRgbMSn",
+  RGB_M_K: "lightRgbMK",
+  RGB_M_X: "lightRgbMX",
+  RGB_M_G: "lightRgbMG",
+  RGB_M_T: "lightRgbMT",
+};
+
 /** A labelled block of keycodes rendered within a tab. */
 interface KeycodeGroup {
   /** Translation key for the group heading; omit for an unlabelled block. */
@@ -35,6 +78,11 @@ interface KeycodeGroup {
   entries: KeycodeDef[];
   /** Render the entries in a fixed 4-column grid rather than a flowing wrap. */
   grid?: boolean;
+  /**
+   * When present, the card body splits {@link entries} into labelled sections
+   * (used by the Quantum "Other" card to fold One-Shot Mods in as a section).
+   */
+  sections?: { titleKey: MessageKey; helpKey?: MessageKey; entries: KeycodeDef[] }[];
 }
 
 interface VisibleCategory {
@@ -47,6 +95,29 @@ interface VisibleCategory {
 
 const entriesOf = (name: string): KeycodeDef[] =>
   KEYCODE_CATEGORIES.find((c) => c.name === name)?.entries ?? [];
+
+/**
+ * Used/total slot counts and the "编辑" jump target for one Combo Keys card,
+ * keyed off the sub-group's heading (Macros vs Tap Dance).
+ */
+function comboMeta(
+  keyboard: Keyboard,
+  titleKey: MessageKey,
+  onNavigate: (target: ComboEditTarget) => void,
+): { used: number; total: number; onEdit: () => void } {
+  if (titleKey === "groupTapDance") {
+    const used = keyboard.tapDanceEntries.filter(
+      (e) =>
+        e.onTap !== "KC_NO" ||
+        e.onHold !== "KC_NO" ||
+        e.onDoubleTap !== "KC_NO" ||
+        e.onTapHold !== "KC_NO",
+    ).length;
+    return { used, total: keyboard.tapDanceCount, onEdit: () => onNavigate("tapdance") };
+  }
+  const used = keyboard.macros.filter((m) => m.length > 0).length;
+  return { used, total: keyboard.macroCount, onEdit: () => onNavigate("macro") };
+}
 
 /**
  * Split the flat "Layers" list into one labelled block per layer-switch
@@ -88,7 +159,6 @@ function quantumGroups(): KeycodeGroup[] {
   const isMod = (id: string) =>
     !isOSM(id) && !isModTap(id) && !isLayerTap(id) && id.endsWith("(kc)");
   const blocks: [MessageKey, MessageKey, (id: string) => boolean][] = [
-    ["groupQuantumOSM", "groupQuantumOSMHelp", isOSM],
     ["groupQuantumMods", "groupQuantumModsHelp", isMod],
     ["groupQuantumModTap", "groupQuantumModTapHelp", isModTap],
     ["groupQuantumLayerTap", "groupQuantumLayerTapHelp", isLayerTap],
@@ -100,11 +170,23 @@ function quantumGroups(): KeycodeGroup[] {
       entries: src.filter((e) => pred(e.qmkId)),
     }))
     .filter((g) => g.entries.length > 0);
-  const rest = src.filter(
-    (e) => !blocks.some(([, , pred]) => pred(e.qmkId)),
+  // One-Shot Mods and everything that fits no other block are folded into a
+  // single "Other" card, shown as two labelled sections inside that card.
+  const osm = src.filter((e) => isOSM(e.qmkId));
+  const misc = src.filter(
+    (e) => !isOSM(e.qmkId) && !blocks.some(([, , pred]) => pred(e.qmkId)),
   );
-  if (rest.length > 0)
-    groups.push({ titleKey: "groupQuantumOther", helpKey: "groupQuantumOtherHelp", entries: rest });
+  const otherSections = [
+    osm.length > 0 && { titleKey: "groupQuantumOSM" as MessageKey, helpKey: "groupQuantumOSMHelp" as MessageKey, entries: osm },
+    misc.length > 0 && { titleKey: "groupQuantumMisc" as MessageKey, helpKey: "groupQuantumOtherHelp" as MessageKey, entries: misc },
+  ].filter((s): s is { titleKey: MessageKey; helpKey: MessageKey; entries: KeycodeDef[] } => Boolean(s));
+  if (otherSections.length > 0)
+    groups.push({
+      titleKey: "groupQuantumOther",
+      helpKey: "groupQuantumOtherHelp",
+      entries: [...osm, ...misc],
+      sections: otherSections,
+    });
   return groups;
 }
 
@@ -129,7 +211,7 @@ const VISIBLE_CATEGORIES = (() => {
           groups: [
             { titleKey: "groupFnKeys", entries: entriesOf("Fn keys"), grid: true },
             { titleKey: "groupMouse", entries: entriesOf("Mouse") },
-            { titleKey: "groupOther", entries: entriesOf("Media") },
+            { titleKey: "groupMedia", entries: entriesOf("Media") },
           ],
         });
       }
@@ -149,8 +231,15 @@ const VISIBLE_CATEGORIES = (() => {
   return out;
 })();
 
+/** Editor pages the Combo Keys cards can jump to via their hover "编辑" action. */
+export type ComboEditTarget = "macro" | "tapdance" | "combo";
+
 interface Props {
   onPick: (qmkId: string) => void;
+  /** Connected device, for the Combo Keys cards' used/total slot counts. */
+  keyboard: Keyboard;
+  /** Navigate to a dedicated editor page (the cards' "编辑" action). */
+  onNavigate: (target: ComboEditTarget) => void;
 }
 
 /**
@@ -161,7 +250,7 @@ interface Props {
  * templates (Layer-Tap, Mod-Tap, …) set a pending state and wait for the user
  * to click an inner basic key, mirroring KeycodePicker's flow.
  */
-export function KeycodeTabs({ onPick }: Props) {
+export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
   const { t } = useI18n();
   const [active, setActive] = useState(VISIBLE_CATEGORIES[0].name);
   const [pending, setPending] = useState<KeycodeDef | null>(null);
@@ -192,22 +281,46 @@ export function KeycodeTabs({ onPick }: Props) {
   // merge. When the device has no tap-dance slots the Macros tab stays as-is.
   const device = deviceCategories();
   const tapDance = device.find((c) => c.name === "Tap Dance" && c.entries.length > 0);
-  const otherDevice = device.filter((c) => c.name !== "Tap Dance");
-  const base = tapDance
-    ? VISIBLE_CATEGORIES.map((c): VisibleCategory =>
-        c.name === "Macros"
-          ? {
-              name: MACRO_TD_NAME,
-              entries: [],
-              groups: [
-                { titleKey: "groupMacros", entries: c.entries },
-                { titleKey: "groupTapDance", entries: tapDance.entries },
-              ],
-            }
-          : c,
-      )
-    : VISIBLE_CATEGORIES;
-  const allCategories: VisibleCategory[] = [...base, ...otherDevice];
+  const custom = device.find((c) => c.name === "Custom" && c.entries.length > 0);
+  // Custom keycodes are folded into the "Keyboard Function" tab (below), so keep
+  // only any other future device categories to append separately.
+  const otherDevice = device.filter((c) => c.name !== "Tap Dance" && c.name !== "Custom");
+  // Lighting and the device's Custom keycodes share one "Keyboard Function" tab,
+  // shown as two labelled sections (灯光 / 自定义). Custom only exists once a
+  // device exposing it is connected, so its section is dropped when absent.
+  const keyboardFnGroups: KeycodeGroup[] = [
+    { titleKey: "categoryLighting", entries: entriesOf("Lighting") },
+    ...(custom ? [{ titleKey: "categoryCustom" as MessageKey, entries: custom.entries }] : []),
+  ];
+  const base = VISIBLE_CATEGORIES.map((c): VisibleCategory => {
+    // Fold the device's Tap Dance slots into the Macros tab as a sub-group.
+    if (tapDance && c.name === "Macros") {
+      return {
+        name: MACRO_TD_NAME,
+        entries: [],
+        groups: [
+          { titleKey: "groupMacros", entries: c.entries },
+          { titleKey: "groupTapDance", entries: tapDance.entries },
+        ],
+      };
+    }
+    // Rename Lighting to the merged "Keyboard Function" tab and attach the
+    // Lighting + Custom sub-groups.
+    if (c.name === "Lighting") {
+      return { name: KEYBOARD_FN_NAME, entries: [], groups: keyboardFnGroups };
+    }
+    return c;
+  });
+  const ordered: VisibleCategory[] = [...base, ...otherDevice];
+  // Place the Combo Keys (Macros / Tap Dance) tab immediately after the
+  // Function (Fn/Media/Mouse) tab.
+  const macroIdx = ordered.findIndex((c) => c.name === MACRO_TD_NAME || c.name === "Macros");
+  const fnIdx = ordered.findIndex((c) => c.name === MERGED_NAME);
+  if (macroIdx !== -1 && fnIdx !== -1 && macroIdx !== fnIdx + 1) {
+    const [macro] = ordered.splice(macroIdx, 1);
+    ordered.splice(ordered.findIndex((c) => c.name === MERGED_NAME) + 1, 0, macro);
+  }
+  const allCategories: VisibleCategory[] = ordered;
   const activeCat = allCategories.find((c) => c.name === active) ?? allCategories[0];
   const isBasic = activeCat.name === "Basic";
   const entries = isBasic
@@ -226,6 +339,57 @@ export function KeycodeTabs({ onPick }: Props) {
       {entry.label || entry.qmkId}
     </button>
   );
+
+  // Lighting and Custom tabs share a uniform tile: fixed height, a soft
+  // translucent border and fill instead of btn-outline's solid currentColor
+  // border, so the flat list reads as one consistent grid.
+  const tileButton = (entry: KeycodeDef) => (
+    <button
+      key={entry.qmkId}
+      className={`btn btn-sm h-14 min-w-[4.5rem] whitespace-pre-line border border-base-content/15 bg-base-content/[0.04] py-1 font-normal normal-case leading-tight hover:border-base-content/30 hover:bg-base-content/10${
+        entry.masked ? " italic" : ""
+      }`}
+      title={entry.title ?? entry.qmkId}
+      onClick={() => pick(entry)}
+    >
+      {entry.label || entry.qmkId}
+    </button>
+  );
+
+  // Concrete-function help text for a "Keyboard Function" key: the Lighting
+  // description table, or a custom keycode's device-provided title. Returns null
+  // when no meaningful description exists (so no help icon is shown).
+  const helpText = (entry: KeycodeDef): string | null => {
+    const key = LIGHTING_HELP[entry.qmkId];
+    if (key) return t(key);
+    if (entry.title && entry.title !== entry.label) return entry.title;
+    return null;
+  };
+
+  // A tile with a corner HelpIcon describing its concrete function. Falls back
+  // to a plain tile when no description is available. The help badge stops click
+  // propagation so hovering for help never assigns the keycode.
+  const tileWithHelp = (entry: KeycodeDef) => {
+    const help = helpText(entry);
+    if (!help) return tileButton(entry);
+    return (
+      <div key={entry.qmkId} className="relative">
+        {tileButton(entry)}
+        <span
+          className="absolute right-0.5 top-0.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <HelpIcon text={help} />
+        </span>
+      </div>
+    );
+  };
+
+  // The merged "Keyboard Function" tab renders its grouped keys with the uniform
+  // tile look (soft translucent border/fill) plus a per-key help badge.
+  const isTileGroups = activeCat.name === KEYBOARD_FN_NAME;
+  const groupButton = activeCat.name === KEYBOARD_FN_NAME ? tileWithHelp : keyButton;
+  const groupGap = isTileGroups ? "gap-2" : "gap-1";
 
   return (
     <div>
@@ -263,7 +427,63 @@ export function KeycodeTabs({ onPick }: Props) {
           />
         </div>
       )}
-      {activeCat.groups
+      {activeCat.name === MACRO_TD_NAME && activeCat.groups ? (
+        <MacroTapDanceCards
+          groups={[
+            ...activeCat.groups.map((g) => ({
+              titleKey: g.titleKey!,
+              entries: g.entries,
+              ...comboMeta(keyboard, g.titleKey!, onNavigate),
+            })),
+            // Combo is a third, non-expandable info card — combos apply on
+            // creation with no key binding, so it has no keycodes to assign.
+            // Shown only when the device exposes combo slots.
+            ...(keyboard.comboCount > 0
+              ? [
+                  {
+                    titleKey: "groupCombo" as MessageKey,
+                    entries: [],
+                    used: keyboard.comboEntries.filter(
+                      (e) => e.output !== "KC_NO" || e.keys.some((k) => k !== "KC_NO"),
+                    ).length,
+                    total: keyboard.comboCount,
+                    onEdit: () => onNavigate("combo"),
+                    info: true,
+                  },
+                ]
+              : []),
+          ]}
+          onPick={pick}
+        />
+      ) : activeCat.name === "Layers" && activeCat.groups ? (
+        <LayerCategoryCards
+          groups={activeCat.groups.map((g) => ({
+            titleKey: g.titleKey!,
+            helpKey: g.helpKey,
+            entries: g.entries,
+          }))}
+          onPick={pick}
+        />
+      ) : activeCat.name === MERGED_NAME && activeCat.groups ? (
+        <FnMediaMouseCards
+          groups={activeCat.groups.map((g) => ({
+            titleKey: g.titleKey!,
+            helpKey: g.helpKey,
+            entries: g.entries,
+          }))}
+          onPick={pick}
+        />
+      ) : activeCat.name === "Quantum" && activeCat.groups ? (
+        <QuantumCards
+          groups={activeCat.groups.map((g) => ({
+            titleKey: g.titleKey!,
+            helpKey: g.helpKey,
+            entries: g.entries,
+            sections: g.sections,
+          }))}
+          onPick={pick}
+        />
+      ) : activeCat.groups
         ? activeCat.groups.map((group) => (
             <div key={group.titleKey ?? ""} className="mt-3">
               {group.titleKey && (
@@ -273,11 +493,13 @@ export function KeycodeTabs({ onPick }: Props) {
                 </h4>
               )}
               {group.grid ? (
-                <div className="grid w-fit grid-cols-4 gap-1">
-                  {group.entries.map(keyButton)}
+                <div className={`grid w-fit grid-cols-4 ${groupGap}`}>
+                  {group.entries.map(groupButton)}
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-1">{group.entries.map(keyButton)}</div>
+                <div className={`flex flex-wrap ${groupGap}`}>
+                  {group.entries.map(groupButton)}
+                </div>
               )}
             </div>
           ))

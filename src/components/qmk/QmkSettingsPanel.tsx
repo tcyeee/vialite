@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SVGProps } from "react";
 import { useI18n, type MessageKey, type Translate } from "../../contexts/i18n.tsx";
+import { HelpIcon } from "../common/HelpIcon.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { ComboSettings } from "./ComboSettings.tsx";
 import { GraveEscapeSettings } from "./GraveEscapeSettings.tsx";
@@ -33,12 +34,15 @@ export function SettingsRow({
   icon,
   label,
   description,
+  help,
   control,
   disabled = false,
 }: {
   icon: ReactNode;
   label: string;
   description?: string;
+  /** Optional help text; renders a "?" HelpIcon with this tooltip next to the label. */
+  help?: string;
   control: ReactNode;
   /** Grey the row and show a not-allowed cursor when the setting is inert. */
   disabled?: boolean;
@@ -49,7 +53,10 @@ export function SettingsRow({
     >
       <div className="btn btn-circle btn-ghost pointer-events-none text-brand-on-surface">{icon}</div>
       <div className="min-w-0">
-        <div className="text-sm font-medium text-brand-on-surface">{label}</div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-medium text-brand-on-surface">{label}</span>
+          {help && <HelpIcon text={help} />}
+        </div>
         {description && <div className="truncate text-xs opacity-60">{description}</div>}
       </div>
       {control}
@@ -64,8 +71,8 @@ export function SettingsRow({
  * field or small group of fields.
  */
 export type QmkSettingField =
-  | { type: "boolean"; qsid: number; bit: number; labelKey: MessageKey }
-  | { type: "integer"; qsid: number; min: number; max: number; labelKey: MessageKey; unitKey: MessageKey };
+  | { type: "boolean"; qsid: number; bit: number; labelKey: MessageKey; helpKey?: MessageKey }
+  | { type: "integer"; qsid: number; min: number; max: number; labelKey: MessageKey; unitKey: MessageKey; helpKey?: MessageKey };
 
 /**
  * A field the user has edited but not yet confirmed. Edits to `QmkSettingField`s
@@ -244,6 +251,7 @@ export function QmkSettingsSection({
               key={i}
               icon={icon}
               label={t(field.labelKey)}
+              help={field.helpKey ? t(field.helpKey) : undefined}
               control={
                 field.type === "boolean" ? (
                   <input

@@ -296,6 +296,32 @@ function App() {
     [keyboard, selected, layer, t, showToast],
   );
 
+  // Right-click context menu on the layout preview: write KC_NO / KC_TRNS
+  // straight to the clicked cap or encoder, independent of the current selection.
+  const handleContextAssign = useCallback(
+    async (
+      target:
+        | { kind: "key"; row: number; col: number }
+        | { kind: "encoder"; index: number; direction: 0 | 1 },
+      qmkId: string,
+    ) => {
+      if (!keyboard) {
+        return;
+      }
+      try {
+        if (target.kind === "key") {
+          await keyboard.setKey(layer, target.row, target.col, qmkId);
+        } else {
+          await keyboard.setEncoder(layer, target.index, target.direction, qmkId);
+        }
+      } catch (err) {
+        showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
+      }
+      forceUpdate((r) => r + 1);
+    },
+    [keyboard, layer, t, showToast],
+  );
+
   const handleExport = useCallback(() => {
     if (!keyboard) {
       return;
@@ -404,6 +430,7 @@ function App() {
               appear={!inTransition}
             />
             <main className="min-w-0 flex-1 p-6 md:p-8">
+              <div key={mode} className="page-transition">
               <div className="mb-6 flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-brand-on-surface">
                   {mode === "matrix"
@@ -436,7 +463,12 @@ function App() {
                     onSelect={setLayer}
                     isConfigured={(l) => keyboard.isLayerConfigured(l)}
                   >
-                    <div className="overflow-x-auto">
+                    {/* px/py 给外壳的立体投影(.keyboard-case-shaded 向下与左右
+                        的 box-shadow)留出空间:overflow-x-auto 会让 overflow-y
+                        计算为 auto,容器边缘会裁掉溢出的阴影,padding 区域不被裁剪。
+                        等量负外边距(-mx/-mb/-mt)抵消这圈 padding,使键盘的视觉
+                        位置与周围内容保持原有对齐,不因留白而偏移。 */}
+                    <div className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2">
                       <KeyboardLayout
                         keyboard={keyboard}
                         layer={layer}
@@ -462,6 +494,7 @@ function App() {
                         onEncoderSelect={(index, direction) =>
                           setSelected({ kind: "encoder", index, direction })
                         }
+                        onContextAssign={handleContextAssign}
                       />
                     </div>
                   </LayerTabs>
@@ -479,7 +512,7 @@ function App() {
                           {t("quickConfigTitle")}
                         </h2>
                       </div>
-                      <KeycodeTabs onPick={handleAssign} />
+                      <KeycodeTabs onPick={handleAssign} keyboard={keyboard} onNavigate={navigate} />
                     </section>
                   ) : (
                     <section className="mt-6">
@@ -515,6 +548,7 @@ function App() {
               {keyboard && mode === "io" && (
                 <ImportExportPanel importing={importing} onExport={handleExport} onImportFile={handleImportFile} />
               )}
+              </div>
             </main>
           </div>
         </div>

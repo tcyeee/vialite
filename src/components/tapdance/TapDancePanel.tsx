@@ -37,6 +37,8 @@ interface PreviewCardProps {
   onEdit?: () => void;
   /** Leave edit mode (the "done" button); the parent also drops the slot if it's still unused. */
   onCloseEdit?: () => void;
+  /** Discard edits (the "cancel" button) — restores the entry to its value from when editing began. */
+  onCancel?: () => void;
 }
 
 /**
@@ -56,6 +58,7 @@ function TapDancePreviewCard({
   editing,
   onEdit,
   onCloseEdit,
+  onCancel,
 }: PreviewCardProps) {
   const { t } = useI18n();
   const flipped = !!editing;
@@ -140,9 +143,14 @@ function TapDancePreviewCard({
                   title={t("tapDanceRenumber")}
                   onMove={(toIdx) => onMove?.(toIdx)}
                 />
-                <button type="button" className="btn btn-ghost btn-sm text-neutral-500" onClick={() => onCloseEdit?.()}>
-                  {t("done")}
-                </button>
+                <div className="flex items-center gap-1">
+                  <button type="button" className="btn btn-ghost btn-sm text-neutral-400" onClick={() => onCancel?.()}>
+                    {t("cancel")}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm text-neutral-700" onClick={() => onCloseEdit?.()}>
+                    {t("done")}
+                  </button>
+                </div>
               </div>
 
               <label className="fieldset-label text-xs text-neutral-400">{t("tapDanceTappingTerm")}</label>
@@ -226,6 +234,8 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
   /** Slot awaiting delete confirmation, or null when the confirm dialog is closed. */
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
   const reorderTimer = useRef<number | null>(null);
+  /** The entry's value captured when editing began, restored verbatim if the user clicks Cancel. */
+  const editSnapshot = useRef<TapDanceEntry | null>(null);
 
   useEffect(() => () => {
     if (reorderTimer.current) clearTimeout(reorderTimer.current);
@@ -251,14 +261,26 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
   const handleEdit = (i: number) => {
     // Switching to another card settles the previous card's pending re-sort first.
     if (pendingOrder) settlePendingReorder(0);
+    editSnapshot.current = { ...keyboard.tapDanceEntries[i] };
     setEditingIndex(i);
   };
 
   const handleCloseEdit = () => {
+    editSnapshot.current = null;
     setEditingIndex(null);
     // Only now (on "done") does the card animate into its sorted position — after a beat that lets
     // it flip back to its front face first.
     if (pendingOrder) settlePendingReorder(500);
+  };
+
+  /** Discard edits: restore the entry to its pre-edit value, then leave edit mode with no animation. */
+  const handleCancel = () => {
+    const idx = editingIndex;
+    const snap = editSnapshot.current;
+    editSnapshot.current = null;
+    cancelPendingReorder();
+    setEditingIndex(null);
+    if (idx !== null && snap) void updateAt(idx, snap);
   };
 
   if (keyboard.tapDanceCount === 0) {
@@ -330,17 +352,24 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
       return;
     }
     cancelPendingReorder();
+    // Show the freshly added card at the front of the row while it's being edited; the natural
+    // (ascending) order animates back into place only when the user clicks Done or Cancel.
+    const used = keyboard.tapDanceEntries.flatMap((e, i) => (isUsed(e) ? [i] : []));
+    setPendingOrder([freeIdx, ...used]);
+    editSnapshot.current = { ...keyboard.tapDanceEntries[freeIdx] };
     setEditingIndex(freeIdx);
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <progress className="progress h-3 w-80" value={usedCount} max={Math.max(keyboard.tapDanceCount, 1)} />
-        <span className="text-xs text-brand-on-surface-variant">
-          {t("tapDanceUsed", { used: usedCount, total: keyboard.tapDanceCount })}
-        </span>
-        <HelpIcon text={t("tapDanceUsedHelp")} />
+      <div className="flex flex-col items-start gap-3">
+        <div className="flex items-center gap-3">
+          <progress className="progress h-3 w-80" value={usedCount} max={Math.max(keyboard.tapDanceCount, 1)} />
+          <span className="text-xs text-brand-on-surface-variant">
+            {t("tapDanceUsed", { used: usedCount, total: keyboard.tapDanceCount })}
+          </span>
+          <HelpIcon text={t("tapDanceUsedHelp")} />
+        </div>
         <button type="button" className="btn btn-primary btn-sm" onClick={handleAdd}>
           {t("tapDanceAdd")}
         </button>
@@ -363,6 +392,7 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
               editing={i === editingIndex}
               onEdit={() => handleEdit(i)}
               onCloseEdit={handleCloseEdit}
+              onCancel={handleCancel}
             />
           ))
         )}

@@ -1419,13 +1419,17 @@ export function isBasicQmkId(qmkId: string): boolean {
 /**
  * Splits a dual-role tap/hold keycode into its two independent actions, or
  * returns null for everything else. `tap` is the qmk_id fired on a normal press
- * (the inner key, e.g. `KC_A`); `hold` is a short label for what a press-and-hold
- * triggers (e.g. `LCtl`, `L2`). Covers Mod-Tap (`LCTL_T(KC_A)`) and Layer-Tap
- * (`LT2(KC_A)` serialized, or the canonical `LT(2,KC_A)`).
+ * (the inner key, e.g. `KC_A`); `hold` is a short label for the second role
+ * (e.g. `LCtl`, `L2`). Covers Mod-Tap (`LCTL_T(KC_A)`), Layer-Tap
+ * (`LT2(KC_A)` serialized, or the canonical `LT(2,KC_A)`), and masked-modifier
+ * combos (`LSFT(KC_A)`, `C_S(KC_A)`, `HYPR(KC_A)`…).
  *
- * Plain modifier-combos like `LSFT(KC_1)` are deliberately NOT dual-role — they
- * fire both roles together rather than distinguishing tap from hold — so they,
- * like every basic keycode, return null.
+ * A masked modifier fires both roles *together* rather than distinguishing tap
+ * from hold, so it isn't literally a tap/hold key — but we still surface it as
+ * dual-role so the modifier renders in the hold band and can be retargeted via
+ * the shared hold editor. NOTE: that editor rebuilds the hold as a real Mod-Tap
+ * (`MT(...)`), i.e. editing converts the fire-together masked form into an
+ * actual tap/hold — an accepted trade-off for one unified editor.
  */
 export function dualRole(qmkId: string): { tap: string; hold: string } | null {
   const composite = /^([A-Za-z0-9_]+)\((.+)\)$/.exec(qmkId);
@@ -1453,6 +1457,14 @@ export function dualRole(qmkId: string): { tap: string; hold: string } | null {
     const hold = (tmpl ? tmpl.label.split("\n")[0] : fn).replace(/_T$/, "");
     return { tap: arg, hold };
   }
+  // Masked modifier <mods>(kc): every one has a `${fn}(kc)` display template
+  // (the `_T` Mod-Tap variants were already handled above, so a surviving match
+  // is always a masked mod). The template's first line is the modifier label
+  // (e.g. "LSft", "Hyper") — no `_T` suffix to strip — which becomes the hold.
+  const maskTmpl = displayByQmkId.get(`${fn}(kc)`);
+  if (maskTmpl) {
+    return { tap: arg, hold: maskTmpl.label.split("\n")[0] };
+  }
   return null;
 }
 
@@ -1462,7 +1474,8 @@ export type HoldInfo =
 
 /**
  * Structured view of a dual-role key's hold action, for the dual-role editor:
- * either the modifier set + side of a Mod-Tap, or the target layer of a
+ * either the modifier set + side of a Mod-Tap (or masked modifier — both carry
+ * the same mod bits in the keycode's high byte), or the target layer of a
  * Layer-Tap. Returns null for non-dual-role keys. Companion to {@link dualRole},
  * which labels the hold half rather than decomposing it.
  */

@@ -26,6 +26,7 @@ const FIELDS: QmkSettingField[] = [
     max: 10000,
     labelKey: "mouseKeyDelay",
     unitKey: "unitMs",
+    helpKey: "mouseKeyDelayHelp",
   },
   {
     type: "integer",
@@ -34,6 +35,7 @@ const FIELDS: QmkSettingField[] = [
     max: 10000,
     labelKey: "mouseKeyInterval",
     unitKey: "unitMs",
+    helpKey: "mouseKeyIntervalHelp",
   },
   {
     type: "integer",
@@ -42,6 +44,7 @@ const FIELDS: QmkSettingField[] = [
     max: 1000,
     labelKey: "mouseKeyStepSize",
     unitKey: "unitPx",
+    helpKey: "mouseKeyStepSizeHelp",
   },
   {
     type: "integer",
@@ -50,6 +53,7 @@ const FIELDS: QmkSettingField[] = [
     max: 1000,
     labelKey: "mouseKeyMaxSpeed",
     unitKey: "unitPx",
+    helpKey: "mouseKeyMaxSpeedHelp",
   },
   {
     type: "integer",
@@ -58,6 +62,7 @@ const FIELDS: QmkSettingField[] = [
     max: 1000,
     labelKey: "mouseKeyTimeToMax",
     unitKey: "unitMs",
+    helpKey: "mouseKeyTimeToMaxHelp",
   },
   {
     type: "integer",
@@ -66,6 +71,7 @@ const FIELDS: QmkSettingField[] = [
     max: 10000,
     labelKey: "mouseKeyWheelDelay",
     unitKey: "unitMs",
+    helpKey: "mouseKeyWheelDelayHelp",
   },
   {
     type: "integer",
@@ -74,6 +80,7 @@ const FIELDS: QmkSettingField[] = [
     max: 10000,
     labelKey: "mouseKeyWheelInterval",
     unitKey: "unitMs",
+    helpKey: "mouseKeyWheelIntervalHelp",
   },
   {
     type: "integer",
@@ -82,6 +89,7 @@ const FIELDS: QmkSettingField[] = [
     max: 1000,
     labelKey: "mouseKeyWheelMaxSpeed",
     unitKey: "unitSteps",
+    helpKey: "mouseKeyWheelMaxSpeedHelp",
   },
   {
     type: "integer",
@@ -90,6 +98,7 @@ const FIELDS: QmkSettingField[] = [
     max: 1000,
     labelKey: "mouseKeyWheelTimeToMax",
     unitKey: "unitMs",
+    helpKey: "mouseKeyWheelTimeToMaxHelp",
   },
 ];
 

@@ -78,6 +78,7 @@ export function KeyboardColorPanel({
     caseColor,
     plateColor,
     keycapBorder,
+    depth,
     fontSize,
     fontColor,
     fontPosition,
@@ -89,6 +90,7 @@ export function KeyboardColorPanel({
     setCaseColor,
     setPlateColor,
     setKeycapBorder,
+    setDepth,
     setFontSize,
     setFontColor,
     setFontPosition,
@@ -219,6 +221,20 @@ export function KeyboardColorPanel({
                   {LEVEL_LABELS[size]}
                 </span>
               </div>
+            }
+          />
+          <SettingsRow
+            icon={<DepthIcon className="h-5 w-5" />}
+            label={t("depthTitle")}
+            description={t("depthDesc")}
+            control={
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={depth}
+                onChange={(e) => setDepth(e.target.checked)}
+                aria-label={t("depthTitle")}
+              />
             }
           />
         </ul>
@@ -620,6 +636,18 @@ function SpacingIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinejoin="round"
         d="M8 6L4 12l4 6M16 6l4 6-4 6M12 4v16"
       />
+    </svg>
+  );
+}
+
+function DepthIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path
+        strokeLinejoin="round"
+        d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"
+      />
+      <path strokeLinejoin="round" d="M12 3v18M12 12l8-4.5M12 12l-8-4.5" opacity="0.5" />
     </svg>
   );
 }

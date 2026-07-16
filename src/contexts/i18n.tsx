@@ -25,6 +25,8 @@ const MESSAGES = {
     zh: "这份配置属于另一把键盘,确定要继续导入吗?",
   },
   writeKeyFailed: { en: "Failed to write key: {error}", zh: "写入键值失败:{error}" },
+  ctxSetKcNo: { en: "Disable key (no action)", zh: "禁用此键（无功能）" },
+  ctxSetKcTrns: { en: "Use lower layer's key", zh: "沿用下层按键（透传）" },
   keyboardDisconnected: {
     en: "Keyboard disconnected — plug it back in and reconnect.",
     zh: "键盘已断开——重新插入后再连接。",
@@ -147,7 +149,7 @@ const MESSAGES = {
   },
   colorLayoutTitle: { en: "Layout options", zh: "布局选项" },
   colorAppearanceTitle: { en: "Appearance", zh: "外观" },
-  colorSizeSectionTitle: { en: "Display size", zh: "显示尺寸" },
+  colorSizeSectionTitle: { en: "Overall", zh: "整体配置" },
   colorFontSectionTitle: { en: "Keyboard font", zh: "键盘字体" },
   colorKeycapSectionTitle: { en: "Keycap", zh: "键帽" },
   colorCaseSectionTitle: { en: "Case & plate", zh: "键盘外壳与定位板" },
@@ -160,6 +162,11 @@ const MESSAGES = {
   caseThicknessTitle: { en: "Case thickness", zh: "外壳厚度" },
   caseColorTitle: { en: "Case color", zh: "外壳颜色" },
   plateColorTitle: { en: "Plate color", zh: "定位板颜色" },
+  depthTitle: { en: "3D depth", zh: "立体感" },
+  depthDesc: {
+    en: "Show highlights and shadows on the keycaps and case",
+    zh: "为键帽和外壳显示高光与阴影",
+  },
   keycapBorderTitle: { en: "Keycap border", zh: "键帽边框" },
   keycapBorderDesc: {
     en: "Draw a thin outline around each keycap",
@@ -175,7 +182,7 @@ const MESSAGES = {
   importLayoutDesc: { en: "Load a keymap from a .vil file", zh: "从 .vil 文件加载配置" },
 
   // Sidebar
-  navHome: { en: "Home", zh: "主页" },
+  navHome: { en: "Keyboard Layout", zh: "键盘布局" },
   navMatrixTest: { en: "Keyboard Test", zh: "键盘测试" },
   navMacro: { en: "Macro", zh: "宏配置" },
   navTapDance: { en: "Tap Dance", zh: "点击舞步" },
@@ -361,17 +368,63 @@ const MESSAGES = {
   categoryFnMediaMouse: { en: "Function", zh: "功能按键" },
   categoryLighting: { en: "Lighting", zh: "灯光" },
   categoryCustom: { en: "Custom", zh: "自定义" },
+  categoryKeyboardFunction: { en: "Keyboard Function", zh: "键盘功能" },
+
+  // Per-key help for the Lighting keys in the "Keyboard Function" tab.
+  lightBlTogg: { en: "Toggle single-color backlight on/off.", zh: "开关单色背光。" },
+  lightBlStep: { en: "Cycle through backlight brightness levels.", zh: "循环切换背光亮度档位。" },
+  lightBlBrtg: { en: "Toggle the backlight breathing effect.", zh: "开关背光呼吸效果。" },
+  lightBlOn: { en: "Turn the backlight on.", zh: "打开背光。" },
+  lightBlOff: { en: "Turn the backlight off.", zh: "关闭背光。" },
+  lightBlInc: { en: "Increase backlight brightness.", zh: "增加背光亮度。" },
+  lightBlDec: { en: "Decrease backlight brightness.", zh: "降低背光亮度。" },
+  lightRgbTog: { en: "Toggle RGB lighting on/off.", zh: "开关 RGB 灯光。" },
+  lightRgbMod: { en: "Switch to the next RGB effect.", zh: "切换到下一个 RGB 灯效。" },
+  lightRgbRmod: { en: "Switch to the previous RGB effect.", zh: "切换到上一个 RGB 灯效。" },
+  lightRgbHui: { en: "Increase hue (shift color).", zh: "增加色相（改变颜色）。" },
+  lightRgbHud: { en: "Decrease hue (shift color).", zh: "减少色相（改变颜色）。" },
+  lightRgbSai: { en: "Increase color saturation.", zh: "增加饱和度。" },
+  lightRgbSad: { en: "Decrease color saturation.", zh: "降低饱和度。" },
+  lightRgbVai: { en: "Increase RGB brightness.", zh: "增加 RGB 亮度。" },
+  lightRgbVad: { en: "Decrease RGB brightness.", zh: "降低 RGB 亮度。" },
+  lightRgbSpi: { en: "Increase effect animation speed.", zh: "加快灯效动画速度。" },
+  lightRgbSpd: { en: "Decrease effect animation speed.", zh: "减慢灯效动画速度。" },
+  lightRgbMP: { en: "Solid single-color mode (no animation).", zh: "纯色模式（无动画）。" },
+  lightRgbMB: { en: "Breathing effect.", zh: "呼吸灯效。" },
+  lightRgbMR: { en: "Rainbow gradient effect.", zh: "彩虹渐变灯效。" },
+  lightRgbMSw: { en: "Swirl effect.", zh: "漩涡灯效。" },
+  lightRgbMSn: { en: "Snake effect.", zh: "蛇形灯效。" },
+  lightRgbMK: { en: "Knight (scanning) effect.", zh: "骑士扫描灯效。" },
+  lightRgbMX: { en: "Christmas effect.", zh: "圣诞灯效。" },
+  lightRgbMG: { en: "Static gradient effect.", zh: "静态渐变灯效。" },
+  lightRgbMT: { en: "RGB test effect (cycles all LEDs).", zh: "RGB 测试灯效（逐个点亮所有灯）。" },
   categoryTapDance: { en: "Tap Dance", zh: "Tap Dance" },
-  categoryMacrosTapDance: { en: "Macros / Tap Dance", zh: "宏 / Tap Dance" },
+  categoryMacrosTapDance: { en: "Combo Keys", zh: "组合按键" },
 
   // Sub-groups within the "Function" tab
   groupFnKeys: { en: "F13–F24", zh: "F13–F24" },
   groupMouse: { en: "Mouse", zh: "鼠标按键" },
-  groupOther: { en: "Other", zh: "其他按键" },
+  groupMedia: { en: "Media", zh: "媒体按键" },
 
   // Sub-groups within the merged "Macros / Tap Dance" tab
   groupMacros: { en: "Macros", zh: "宏" },
-  groupTapDance: { en: "Tap Dance", zh: "Tap Dance" },
+  groupTapDance: { en: "Tap Dance", zh: "点击舞步" },
+
+  // Combo-keys tab: the two expandable category cards
+  comboCardReveal: { en: "Click to reveal", zh: "点击展开" },
+  comboCardCount: { en: "{n} available", zh: "共 {n} 个" },
+  comboCardUsed: { en: "Total ({used}/{total})", zh: "共计 ({used}/{total}) 个" },
+  comboCardEmpty: { en: "None on this device", zh: "此设备暂无" },
+  comboCardBack: { en: "Back", zh: "返回" },
+  layerCardCommon: { en: "Common", zh: "常用" },
+  comboCardEdit: { en: "Edit", zh: "编辑" },
+  // The third, non-expandable Combo card in the "Macros / Tap Dance" tab.
+  groupCombo: { en: "Combo", zh: "组合键 (Combo)" },
+  comboCardInfoHint: { en: "Applied automatically", zh: "创建后自动生效" },
+  comboAutoApply: {
+    en: "Combos take effect automatically once created — no key binding needed.",
+    zh: "combo 创建完自动生效，无需绑定按键",
+  },
 
   // Sub-groups within the "Layers" tab (one per layer-switch function)
   groupLayerMO: { en: "MO · Momentary", zh: "MO · 临时层" },
@@ -418,6 +471,7 @@ const MESSAGES = {
   groupQuantumModTap: { en: "Mod-Tap", zh: "修饰 / 点触" },
   groupQuantumLayerTap: { en: "Layer-Tap", zh: "层 / 点触" },
   groupQuantumOther: { en: "Other", zh: "其他" },
+  groupQuantumMisc: { en: "Miscellaneous", zh: "其他键码" },
 
   // Hover help for each "Quantum" sub-group
   groupQuantumOSMHelp: {

@@ -8,10 +8,10 @@ interface Props {
 
 /** vial-gui's qmk_settings.json "Grave Escape" tab (qsid 1, one bit per toggle). */
 const FIELDS: QmkSettingField[] = [
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_GRAVE_ESCAPE, bit: 0, labelKey: "graveEscapeAlt" },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_GRAVE_ESCAPE, bit: 1, labelKey: "graveEscapeControl" },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_GRAVE_ESCAPE, bit: 2, labelKey: "graveEscapeGui" },
-  { type: "boolean", qsid: QMK_SETTINGS_QSID_GRAVE_ESCAPE, bit: 3, labelKey: "graveEscapeShift" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_GRAVE_ESCAPE, bit: 0, labelKey: "graveEscapeAlt", helpKey: "graveEscapeAltHelp" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_GRAVE_ESCAPE, bit: 1, labelKey: "graveEscapeControl", helpKey: "graveEscapeControlHelp" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_GRAVE_ESCAPE, bit: 2, labelKey: "graveEscapeGui", helpKey: "graveEscapeGuiHelp" },
+  { type: "boolean", qsid: QMK_SETTINGS_QSID_GRAVE_ESCAPE, bit: 3, labelKey: "graveEscapeShift", helpKey: "graveEscapeShiftHelp" },
 ];
 
 /** Grave Escape QMK-Settings toggles; hidden entirely when the device doesn't expose qsid 1. */

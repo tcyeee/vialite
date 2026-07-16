@@ -6,9 +6,11 @@ import {
   useState,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
+  type SVGProps,
 } from "react";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { dualRole } from "../../protocol/keycodes.ts";
+import { useI18n } from "../../contexts/i18n.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { KeyInfoCard } from "./KeyInfoCard.tsx";
@@ -20,11 +22,35 @@ import {
 } from "./KeyboardLayoutPreview.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
 
+/** Circle-slash: "no key / disabled" for the KC_NO context action. */
+function NoKeyIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path strokeLinecap="round" d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+/** Down triangle (▽): "transparent / pass-through" for the KC_TRNS action. */
+function TransparentIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path strokeLinejoin="round" d="M5 7h14l-7 11z" />
+    </svg>
+  );
+}
+
 /** Which half of a dual-role (tap/hold) cap a click targets. */
 export type KeyPart = "tap" | "hold";
 
 type Selected =
   | { kind: "key"; row: number; col: number; part?: KeyPart }
+  | { kind: "encoder"; index: number; direction: 0 | 1 };
+
+/** What a right-click context menu targets, mirroring the selection shape. */
+type ContextTarget =
+  | { kind: "key"; row: number; col: number }
   | { kind: "encoder"; index: number; direction: 0 | 1 };
 
 interface Props {
@@ -33,9 +59,19 @@ interface Props {
   selected?: Selected | null;
   onKeySelect: (row: number, col: number, part?: KeyPart) => void;
   onEncoderSelect: (index: number, direction: 0 | 1) => void;
+  /** Right-click "设置为 KC_NO / KC_TRNS": writes the keycode to the target. */
+  onContextAssign?: (target: ContextTarget, qmkId: string) => void;
 }
 
-export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncoderSelect }: Props) {
+export function KeyboardLayout({
+  keyboard,
+  layer,
+  selected,
+  onKeySelect,
+  onEncoderSelect,
+  onContextAssign,
+}: Props) {
+  const { t } = useI18n();
   // Physical appearance (size, spacing, case/plate) is shared with the 键盘配色
   // page via context, so tuning it there restyles this interactive board too.
   // Geometry runs through the same helpers as KeyboardLayoutPreview, so the two
@@ -50,6 +86,7 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
     caseColor,
     plateColor,
     keycapBorder,
+    depth,
     fontSize,
     fontColor,
     fontPosition,
@@ -85,6 +122,37 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
   };
   useEffect(() => cancelHover, []);
 
+  // Right-click menu: anchored at the click point, targeting one cap/encoder.
+  // Any outside click, scroll, or Escape dismisses it.
+  const [menu, setMenu] = useState<{ x: number; y: number; target: ContextTarget } | null>(null);
+  const openMenu = (e: ReactMouseEvent, target: ContextTarget) => {
+    if (!onContextAssign) {
+      return;
+    }
+    e.preventDefault();
+    endHover();
+    setMenu({ x: e.clientX, y: e.clientY, target });
+  };
+  useEffect(() => {
+    if (!menu) {
+      return;
+    }
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMenu(null);
+      }
+    };
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menu]);
+
   const placed = useMemo(
     () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
     // Keyboard mutates in place; layoutOptions is the only geometry input that
@@ -94,7 +162,7 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
 
   return (
     <div
-      className="keyboard-case"
+      className={"keyboard-case" + (showCase && depth ? " keyboard-case-shaded" : "")}
       style={{
         padding: caseThickness,
         background: showCase ? caseColor : "transparent",
@@ -103,7 +171,11 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
       }}
     >
       <div
-        className={"keyboard-layout" + (keycapBorder ? " keyboard-layout-bordered" : "")}
+        className={
+          "keyboard-layout" +
+          (depth ? " keyboard-layout-shaded" : "") +
+          (keycapBorder ? " keyboard-layout-bordered" : "")
+        }
         style={{
           width: placed.width * PITCH + inset,
           height: placed.height * PITCH + inset,
@@ -145,7 +217,12 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
                   // (top = tap, bottom band = hold) over the shared cap face. A
                   // <button> can't nest another button, so this cap is a div while
                   // the non-dual caps below stay a single button.
-                  <div className={capClass} style={style} {...hoverProps}>
+                  <div
+                    className={capClass}
+                    style={style}
+                    onContextMenu={(e) => openMenu(e, { kind: "key", row: key.row, col: key.col })}
+                    {...hoverProps}
+                  >
                     {secondRect}
                     <KeycapFace qmkId={qmkId} />
                     <button
@@ -163,6 +240,7 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
                   <button
                     className={capClass}
                     onClick={() => onKeySelect(key.row, key.col)}
+                    onContextMenu={(e) => openMenu(e, { kind: "key", row: key.row, col: key.col })}
                     style={style}
                     {...hoverProps}
                   >
@@ -185,6 +263,13 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
               className={isSelected ? "encoder selected" : "encoder"}
               title={`Encoder ${encoder.index} ${encoder.direction === 1 ? "CW" : "CCW"}`}
               onClick={() => onEncoderSelect(encoder.index, encoder.direction)}
+              onContextMenu={(e) =>
+                openMenu(e, {
+                  kind: "encoder",
+                  index: encoder.index,
+                  direction: encoder.direction,
+                })
+              }
               onMouseEnter={(e) => beginHover(qmkId, e.currentTarget)}
               onMouseLeave={endHover}
               style={shapeStyle(encoder, shiftX, shiftY, PITCH, inset, inset)}
@@ -205,6 +290,34 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
             transform: "translate(-50%, -100%)",
           }}
         />
+      )}
+      {menu && onContextAssign && (
+        <ul
+          className="menu rounded-box bg-base-100 shadow-lg z-50 w-56 p-1"
+          // Fixed at the click point; default menu font size.
+          style={{ position: "fixed", left: menu.x, top: menu.y }}
+          // Keep the originating right-click from immediately re-closing the menu.
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {(["KC_NO", "KC_TRNS"] as const).map((qmkId) => {
+            const Icon = qmkId === "KC_NO" ? NoKeyIcon : TransparentIcon;
+            return (
+              <li key={qmkId}>
+                <button
+                  type="button"
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    onContextAssign(menu.target, qmkId);
+                    setMenu(null);
+                  }}
+                >
+                  <Icon className="h-[1.15em] w-[1.15em] shrink-0" />
+                  {qmkId === "KC_NO" ? t("ctxSetKcNo") : t("ctxSetKcTrns")}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
