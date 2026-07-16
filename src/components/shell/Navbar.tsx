@@ -7,7 +7,7 @@ export function Navbar() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="navbar sticky top-0 z-40 min-h-16 bg-brand-background px-4 md:px-6">
+    <div className="navbar sticky top-0 z-40 min-h-16 bg-brand-background px-6 md:px-10 lg:px-12">
       <div className="navbar-start">
         <img className="h-8 w-auto md:h-9" src="/logo-full.svg" alt="Vialite" />
       </div>

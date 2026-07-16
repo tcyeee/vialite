@@ -1,23 +1,14 @@
-/* Import theme + utilities only, deliberately skipping Preflight (the base
-   layer) — this app predates Tailwind and is full of plain <button>/<h1>
-   elements with their own hand-written CSS; Preflight's reset would strip
-   their native/expected styling app-wide. */
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+/* Full Tailwind import including Preflight (the base layer). daisyUI's
+   component classes (btn, input, tab, ...) assume Preflight's global resets —
+   most importantly `*{ border:0 solid }`, without which daisyUI borders set a
+   width but no style and render invisibly (e.g. tabs-lift). The app's few
+   remaining hand-styled components were migrated onto daisyUI classes so
+   Preflight's button/heading resets no longer strip them; any bespoke CSS below
+   (.keyboard-layout .key, .matrix-key, ...) sets its own chrome explicitly
+   rather than relying on browser defaults. */
+@import "tailwindcss";
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;
-}
-
-/* Tailwind's width/padding utilities (w-full + px-4, etc.) assume border-box
-   sizing — without it, padding adds outside the declared width, so anything
-   sized to 100% (e.g. the Navbar) overflows the viewport by exactly its
-   padding. Preflight normally sets this app-wide, but it's skipped above (see
-   the comment on the imports); box-sizing is scoped here alone since it,
-   unlike Preflight's other resets, doesn't touch native element styling. */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
 }
 
 /* `dark:` utilities key off the manually-toggled `data-theme` attribute
@@ -254,98 +245,6 @@ body {
   opacity: 0.6;
 }
 
-/* daisyUI's .modal-backdrop is a bare <button>, and it relies on Tailwind's
-   Preflight to strip the native button chrome. Preflight is skipped app-wide
-   (see the top-of-file comment), so without this the backdrop keeps its opaque
-   `buttonface` fill + beveled border and paints an opaque grey box over the
-   whole viewport (z-index:-1, stretched) — hiding the .modal's own translucent
-   dim. Scoped here rather than resetting all buttons, to leave native button
-   styling elsewhere untouched. */
-.modal-backdrop {
-  appearance: none;
-  background: transparent;
-  border: none;
-}
-
-.picker-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.picker {
-  background: canvas;
-  color: canvastext;
-  max-width: 90vw;
-  max-height: 80vh;
-  overflow-y: auto;
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-}
-
-.picker-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
-}
-
-.picker-grid button {
-  min-width: 3rem;
-  white-space: pre-line;
-  font-size: 0.75rem;
-}
-
-.picker-grid button.masked {
-  font-style: italic;
-}
-
-.picker-toolbar,
-.picker-anykey {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.picker-toolbar {
-  position: sticky;
-  top: -1rem;
-  background: canvas;
-  padding: 0.5rem 0;
-  z-index: 1;
-}
-
-.picker-toolbar input,
-.picker-anykey input {
-  flex: 1;
-  min-width: 0;
-}
-
-.picker-toolbar .listen-toggle.active {
-  font-weight: bold;
-  outline: 2px solid #d33;
-}
-
-.picker-pending {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  border: 1px dashed #888;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-.picker-error {
-  color: #d33;
-  margin: 0.25rem 0 0.5rem;
-}
-
 .keyboard-layout-3d {
   width: 100%;
   height: min(60vh, 480px);
@@ -379,10 +278,6 @@ body {
 .matrix-key.tested {
   background: #7fb37f;
   border-color: #7fb37f;
-}
-
-.unlock-dialog {
-  max-width: min(90vw, 40rem);
 }
 
 .unlock-reference {

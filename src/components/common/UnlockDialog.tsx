@@ -91,11 +91,11 @@ export function UnlockDialog({ keyboard, onUnlocked, onCancel }: Props) {
   const height = Math.max(...keyboard.keys.map((k) => k.y + k.height), 0) * UNIT;
 
   return (
-    <div className="picker-overlay" onClick={handleCancel}>
-      <div className="picker unlock-dialog" onClick={(e) => e.stopPropagation()}>
-        <h4>{t("unlockTitle")}</h4>
-        <p>{t("unlockWarning")}</p>
-        <p>{t("unlockHold")}</p>
+    <div className="modal modal-open">
+      <div className="modal-box max-w-2xl">
+        <h4 className="mb-2 text-base font-semibold">{t("unlockTitle")}</h4>
+        <p className="mb-1">{t("unlockWarning")}</p>
+        <p className="mb-3">{t("unlockHold")}</p>
         <div className="unlock-reference" style={{ width, height }}>
           {keyboard.keys.map((key) => (
             <div
@@ -113,9 +113,12 @@ export function UnlockDialog({ keyboard, onUnlocked, onCancel }: Props) {
         <div className="unlock-progress">
           <div className="unlock-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>
-        {error && <p className="error">{error}</p>}
-        <button onClick={handleCancel}>{t("cancel")}</button>
+        {error && <p className="error mb-2">{error}</p>}
+        <button className="btn btn-sm" onClick={handleCancel}>
+          {t("cancel")}
+        </button>
       </div>
+      <div className="modal-backdrop" onClick={handleCancel} />
     </div>
   );
 }

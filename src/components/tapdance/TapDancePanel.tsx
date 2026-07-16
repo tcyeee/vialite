@@ -42,7 +42,7 @@ function TapDancePreviewCard({ index, entry, onSave, onDelete, startInEditMode, 
   return (
     <div className="group/card relative my-2 w-80" style={{ perspective: "1200px" }}>
       {editable && !flipped && (
-        <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:scale-[1.6] group-hover/card:opacity-100">
+        <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:-translate-y-2.5 group-hover/card:scale-[1.6] group-hover/card:opacity-100">
           <button
             type="button"
             className="btn btn-ghost btn-xs px-2 text-white hover:bg-white/20 hover:text-white"

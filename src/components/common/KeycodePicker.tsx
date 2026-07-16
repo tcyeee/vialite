@@ -128,18 +128,19 @@ export function KeycodePicker({ onPick, onClose }: Props) {
   }, [q]);
 
   return createPortal(
-    <div className="picker-overlay" onClick={onClose}>
-      <div className="picker" onClick={(e) => e.stopPropagation()}>
-        <div className="picker-toolbar">
+    <div className="modal modal-open">
+      <div className="modal-box max-w-3xl">
+        <div className="sticky top-0 z-10 -mx-6 -mt-6 flex gap-2 bg-base-100 px-6 pt-6 pb-2">
           <input
             type="search"
+            className="input input-sm flex-1"
             placeholder={t("searchPlaceholder")}
             value={query}
             autoFocus
             onChange={(e) => setQuery(e.target.value)}
           />
           <button
-            className={listening ? "listen-toggle active" : "listen-toggle"}
+            className={`btn btn-sm ${listening ? "btn-error" : "btn-ghost"}`}
             title={t("listenTooltip")}
             onClick={() => {
               setListening((v) => !v);
@@ -148,10 +149,14 @@ export function KeycodePicker({ onPick, onClose }: Props) {
           >
             {listening ? t("listening") : t("assignByKeypress")}
           </button>
+          <button className="btn btn-sm btn-circle btn-ghost" aria-label={t("cancel")} onClick={onClose}>
+            ✕
+          </button>
         </div>
-        <div className="picker-anykey">
+        <div className="join mb-2 flex w-full">
           <input
             type="text"
+            className="input input-sm join-item flex-1"
             placeholder={t("anyKeyPlaceholder")}
             value={anyValue}
             onChange={(e) => {
@@ -164,24 +169,40 @@ export function KeycodePicker({ onPick, onClose }: Props) {
               }
             }}
           />
-          <button onClick={submitAny}>{t("set")}</button>
+          <button className="btn btn-sm btn-primary join-item" onClick={submitAny}>
+            {t("set")}
+          </button>
         </div>
-        {anyError && <p className="picker-error">{anyError}</p>}
-        {pending && (
-          <div className="picker-pending">
-            <span>{t("pickInnerKey", { template: pending.qmkId.replace("kc", "…") })}</span>
-            <button onClick={() => setPending(null)}>{t("cancel")}</button>
+        {anyError && (
+          <div className="alert alert-error alert-soft mb-2 py-1 text-sm">
+            <span>{anyError}</span>
           </div>
         )}
-        {hint && <p className="picker-error">{hint}</p>}
+        {pending && (
+          <div className="alert alert-info alert-soft mb-2 flex items-center py-1 text-sm">
+            <span>{t("pickInnerKey", { template: pending.qmkId.replace("kc", "…") })}</span>
+            <button className="btn btn-xs ml-auto" onClick={() => setPending(null)}>
+              {t("cancel")}
+            </button>
+          </div>
+        )}
+        {hint && (
+          <div className="alert alert-warning alert-soft mb-2 py-1 text-sm">
+            <span>{hint}</span>
+          </div>
+        )}
         {categories.map((category) => (
           <section key={category.name}>
-            <h4>{CATEGORY_KEYS[category.name] ? t(CATEGORY_KEYS[category.name]) : category.name}</h4>
-            <div className="picker-grid">
+            <h4 className="mt-3 mb-1 text-sm font-semibold opacity-70">
+              {CATEGORY_KEYS[category.name] ? t(CATEGORY_KEYS[category.name]) : category.name}
+            </h4>
+            <div className="flex flex-wrap gap-1">
               {category.entries.map((entry) => (
                 <button
                   key={entry.qmkId}
-                  className={entry.masked ? "masked" : undefined}
+                  className={`btn btn-sm btn-outline h-auto min-h-8 min-w-12 whitespace-pre-line py-1 font-normal normal-case leading-tight${
+                    entry.masked ? " italic" : ""
+                  }`}
                   title={entry.qmkId}
                   onClick={() => pick(entry)}
                 >
@@ -191,8 +212,9 @@ export function KeycodePicker({ onPick, onClose }: Props) {
             </div>
           </section>
         ))}
-        {categories.length === 0 && <p>{t("noMatch", { query })}</p>}
+        {categories.length === 0 && <p className="text-sm">{t("noMatch", { query })}</p>}
       </div>
+      <div className="modal-backdrop" onClick={onClose} />
     </div>,
     document.body,
   );

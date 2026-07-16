@@ -93,14 +93,14 @@ export function MatrixTester({ keyboard }: Props) {
   }
 
   if (unlocked === null) {
-    return <p>{t("checkingLock")}</p>;
+    return <p className="text-brand-on-surface-variant">{t("checkingLock")}</p>;
   }
 
   if (!unlocked) {
     if (dialogDismissed) {
       return (
         <div className="matrix-tester">
-          <p>{t("mustUnlock")}</p>
+          <p className="mb-3">{t("mustUnlock")}</p>
           <button className="btn btn-outline border-base-300" onClick={() => setDialogDismissed(false)}>
           {t("unlock")}
         </button>
@@ -129,7 +129,7 @@ export function MatrixTester({ keyboard }: Props) {
 
   return (
     <div className="matrix-tester">
-      <p>{t("matrixInstructions")}</p>
+      <p className="mb-3">{t("matrixInstructions")}</p>
       <div className="mockup-window w-fit max-w-full border border-base-300 bg-base-100">
         <div className="overflow-auto border-t border-base-300 p-4">
           <div
