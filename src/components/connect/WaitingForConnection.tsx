@@ -7,6 +7,11 @@ interface Props {
   status: ConnectionStatus;
   error: string | null;
   onConnect: () => void;
+  // When true, plays the connect-success exit choreography: the 3D model
+  // rapidly scales up to fill the viewport, the page fades to black, and the
+  // rest of the UI (logo, toggles, title, button) fades out — leaving a black
+  // canvas for App's config page to rise into from below.
+  zoom?: boolean;
 }
 
 // three.js is a large dependency (~600 kB); split into its own chunk so it
@@ -31,18 +36,36 @@ class ModelErrorBoundary extends Component<{ onError: () => void; children: Reac
   }
 }
 
-export function WaitingForConnection({ status, error, onConnect }: Props) {
+export function WaitingForConnection({ status, error, onConnect, zoom = false }: Props) {
   const { lang, setLang, t } = useI18n();
   const { theme, setTheme } = useTheme();
   const connecting = status === "connecting";
   const [modelReady, setModelReady] = useState(false);
   const [modelFailed, setModelFailed] = useState(false);
 
-  return (
-    <div className="relative box-border flex h-screen flex-col items-center justify-center overflow-hidden bg-white p-4">
-      <img className="fixed top-6 left-6 h-12 w-auto md:h-16" src="/logo-full.svg" alt="Vialite" />
+  // Everything except the 3D model fades out during the zoom exit.
+  const fadeStyle = { opacity: zoom ? 0 : 1 };
 
-      <div className="fixed top-4 right-4 flex items-center gap-2">
+  return (
+    <div
+      className={`relative box-border flex h-screen flex-col items-center justify-center overflow-hidden bg-white p-4 ${
+        zoom ? "pointer-events-none" : ""
+      }`}
+    >
+      {/* Black curtain that fades in behind the (positioned) content so the
+          zooming model stays visible on top of it. */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-black transition-opacity duration-[240ms] ease-in"
+        style={{ opacity: zoom ? 1 : 0 }}
+      />
+      <img
+        className="fixed top-6 left-6 h-12 w-auto transition-opacity duration-300 md:h-16"
+        style={fadeStyle}
+        src="/logo-full.svg"
+        alt="Vialite"
+      />
+
+      <div className="fixed top-4 right-4 flex items-center gap-2 transition-opacity duration-300" style={fadeStyle}>
         <button
           type="button"
           className="flex h-12 w-12 items-center justify-center rounded-full border border-brand-outline/40 bg-white/60 text-brand-on-surface backdrop-blur-md transition hover:bg-white/80 dark:bg-black/40 dark:hover:bg-black/60"
@@ -64,7 +87,17 @@ export function WaitingForConnection({ status, error, onConnect }: Props) {
       </div>
 
       <div className="relative w-full max-w-3xl p-6 text-center md:px-16 md:py-8">
-        <div className="relative mx-auto mb-2 h-[20.3rem] w-full max-w-[40.5rem] md:h-[28.1rem]">
+        <div
+          className="relative mx-auto mb-2 h-[20.3rem] w-full max-w-[40.5rem] md:h-[28.1rem]"
+          // easeInExpo: the model barely grows at first (staying crisp at small
+          // scale), then explodes to full size in the final moments — exactly
+          // when the black curtain slams in, so the rough CSS-upscaled pixels
+          // are never on screen long enough to register.
+          style={{
+            transform: zoom ? "scale(18)" : "scale(1)",
+            transition: "transform 400ms cubic-bezier(0.7, 0, 0.84, 0)",
+          }}
+        >
           <div className="animate-kawaii-pulse absolute inset-x-0 top-1/2 -z-10 h-2/3 -translate-y-1/2 rounded-full bg-brand-secondary-container/30 blur-2xl" />
           <div
             className="absolute inset-0 flex items-center justify-center transition-opacity duration-300"
@@ -83,7 +116,7 @@ export function WaitingForConnection({ status, error, onConnect }: Props) {
           )}
         </div>
 
-        <div className="mx-auto max-w-lg space-y-4">
+        <div className="mx-auto max-w-lg space-y-4 transition-opacity duration-300" style={fadeStyle}>
           <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">{t("waitingTitle")}</h1>
 
           <div className="pt-4">
@@ -105,6 +138,15 @@ export function WaitingForConnection({ status, error, onConnect }: Props) {
           {error && <p className="error text-sm font-medium">{error}</p>}
         </div>
       </div>
+
+      {/* Top-most darkening layer. ease-in keeps it near-transparent while the
+          model is still growing, then rushes to full black at the end of the
+          zoom so the whole frame — model included — snaps to black before the
+          config page rises. */}
+      <div
+        className="pointer-events-none absolute inset-0 z-10 bg-black transition-opacity duration-[340ms] ease-in"
+        style={{ opacity: zoom ? 1 : 0 }}
+      />
     </div>
   );
 }

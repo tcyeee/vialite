@@ -7,7 +7,6 @@ import { HelpIcon } from "./components/common/HelpIcon.tsx";
 import { KeycodePicker } from "./components/common/KeycodePicker.tsx";
 import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
 import { QuickConfig104 } from "./components/keymap/QuickConfig104.tsx";
-import { LayoutConfigPanel } from "./components/layout/LayoutConfigPanel.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { Navbar } from "./components/shell/Navbar.tsx";
@@ -23,7 +22,7 @@ import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./contexts/toast.tsx";
 
-type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
+type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
 
 type Selected =
   | { kind: "key"; row: number; col: number }
@@ -55,6 +54,10 @@ function App() {
   // re-render so KeyboardLayout picks up the new label after a remap.
   const [, forceUpdate] = useState(0);
   const [importing, setImporting] = useState(false);
+  // Connect-success page transition. "zoom": the waiting page's 3D model
+  // scales up to fill a blackened screen; "rise": the config page slides up
+  // from below over that black. Driven from below and cleared once complete.
+  const [transition, setTransition] = useState<"none" | "zoom" | "rise">("none");
   const transportRef = useRef<HidTransport | null>(null);
   // Target mode of a navigation attempt that got intercepted by qmkLeaveRequested; applied once
   // QmkSettingsPanel reports how the user resolved the "unsaved changes" dialog.
@@ -76,7 +79,7 @@ function App() {
   }, []);
 
   const attachTransport = useCallback(
-    async (transport: HidTransport) => {
+    async (transport: HidTransport, withTransition = false) => {
       await teardown();
       transportRef.current = transport;
       transport.onDisconnect = () => {
@@ -103,6 +106,11 @@ function App() {
       qmkPendingNavigationRef.current = null;
       setError(null);
       setStatus("connected");
+      // Only the manual connect flow (from the visible waiting page) plays the
+      // zoom-and-rise transition; silent auto-reconnect skips straight in.
+      if (withTransition) {
+        setTransition("zoom");
+      }
       showToast(t("deviceConnected", { name: transport.productName }), "success");
     },
     [teardown, t, showToast],
@@ -117,7 +125,7 @@ function App() {
     setError(null);
     try {
       const transport = await HidTransport.requestDevice();
-      await attachTransport(transport);
+      await attachTransport(transport, true);
     } catch (err) {
       await teardown();
       setError(err instanceof Error ? err.message : String(err));
@@ -202,6 +210,19 @@ function App() {
     })();
   }, [attachTransport, teardown]);
 
+  // Drives the connect-success transition timeline: hold on the model zoom,
+  // then let the config page rise, then clear the overlay entirely.
+  useEffect(() => {
+    if (transition === "zoom") {
+      const id = setTimeout(() => setTransition("rise"), 380);
+      return () => clearTimeout(id);
+    }
+    if (transition === "rise") {
+      const id = setTimeout(() => setTransition("none"), 560);
+      return () => clearTimeout(id);
+    }
+  }, [transition]);
+
   // Assigns a keycode to the currently-selected key/encoder. Unlike the old
   // popup flow, the selection is kept so the user can keep re-assigning the
   // same key from the quick-config board below.
@@ -285,13 +306,33 @@ function App() {
     );
   }
 
-  if (status !== "connected") {
-    return <WaitingForConnection status={status} error={error} onConnect={handleConnect} />;
-  }
+  const connected = status === "connected";
+  const inTransition = transition !== "none";
+  // Keep the waiting page mounted through the transition so its 3D model
+  // (three.js scene) isn't torn down and re-created mid-animation.
+  const showWaiting = !connected || inTransition;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black/30 dark:backdrop-blur-md">
-      <Navbar />
+    <>
+      {connected && (
+        <div
+          key="config"
+          className={
+            inTransition
+              ? "fixed inset-0 z-50 overflow-y-auto bg-white dark:bg-black/30 dark:backdrop-blur-md"
+              : "min-h-screen bg-white dark:bg-black/30 dark:backdrop-blur-md"
+          }
+          style={
+            inTransition
+              ? {
+                  transform: transition === "rise" ? "translateY(0)" : "translateY(100%)",
+                  transition:
+                    transition === "rise" ? "transform 520ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
+                }
+              : undefined
+          }
+        >
+          <Navbar />
       <div className="p-4 md:p-6">
         <div className="mx-auto max-w-[1600px]">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6 lg:gap-8 xl:gap-10 2xl:gap-12">
@@ -299,9 +340,6 @@ function App() {
               productName={productName}
               onDisconnect={handleDisconnect}
               mode={mode}
-              layoutConfigSupported={
-                !!keyboard?.layoutLabels && keyboard.layoutLabels.length > 0 && keyboard.layoutOptions >= 0
-              }
               matrixTesterSupported={!!keyboard?.supportsMatrixTester}
               macroSupported={!!keyboard && keyboard.macroCount > 0}
               tapDanceSupported={!!keyboard && keyboard.tapDanceCount > 0}
@@ -312,19 +350,17 @@ function App() {
             <main className="min-w-0 flex-1 p-6 md:p-8">
               <div className="mb-6 flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-brand-on-surface">
-                  {mode === "layout"
-                    ? t("navLayoutConfig")
-                    : mode === "matrix"
-                      ? t("navMatrixTest")
-                      : mode === "macro"
-                        ? t("navMacro")
-                        : mode === "tapdance"
-                          ? t("navTapDance")
-                          : mode === "combo"
-                            ? t("navCombo")
-                            : mode === "color"
-                              ? t("navKeyboardColor")
-                              : mode === "advanced"
+                  {mode === "matrix"
+                    ? t("navMatrixTest")
+                    : mode === "macro"
+                      ? t("navMacro")
+                      : mode === "tapdance"
+                        ? t("navTapDance")
+                        : mode === "combo"
+                          ? t("navCombo")
+                          : mode === "color"
+                            ? t("navKeyboardColor")
+                            : mode === "advanced"
                               ? t("navAdvanced")
                               : mode === "site"
                                 ? t("navSiteSettings")
@@ -333,6 +369,8 @@ function App() {
                                   : t("keyboardLayoutTitle")}
                 </h1>
                 {mode === "macro" && <HelpIcon text={t("macroHint")} />}
+                {mode === "tapdance" && <HelpIcon text={t("tapDanceHint")} />}
+                {mode === "combo" && <HelpIcon text={t("comboHint")} />}
               </div>
               {keyboard && mode === "keymap" && (
                 <>
@@ -377,9 +415,6 @@ function App() {
                   </section>
                 </>
               )}
-              {keyboard && mode === "layout" && (
-                <LayoutConfigPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
-              )}
               {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
               {keyboard && mode === "macro" && (
                 <MacroPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
@@ -400,7 +435,9 @@ function App() {
                   onLeaveResolved={handleQmkLeaveResolved}
                 />
               )}
-              {keyboard && mode === "color" && <KeyboardColorPanel keyboard={keyboard} />}
+              {keyboard && mode === "color" && (
+                <KeyboardColorPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+              )}
               {mode === "site" && <SiteSettingsPanel />}
               {keyboard && mode === "io" && (
                 <ImportExportPanel importing={importing} onExport={handleExport} onImportFile={handleImportFile} />
@@ -409,11 +446,26 @@ function App() {
           </div>
         </div>
       </div>
-      {pickerOpen && selected && mode === "keymap" && (
-        <KeycodePicker onPick={handlePick} onClose={() => setPickerOpen(false)} />
+          {pickerOpen && selected && mode === "keymap" && (
+            <KeycodePicker onPick={handlePick} onClose={() => setPickerOpen(false)} />
+          )}
+          {importing && <div className="io-busy-overlay" />}
+        </div>
       )}
-      {importing && <div className="io-busy-overlay" />}
-    </div>
+      {showWaiting && (
+        <div
+          key="waiting"
+          className={inTransition ? "fixed inset-0 z-40 pointer-events-none" : "fixed inset-0 z-40"}
+        >
+          <WaitingForConnection
+            status={status}
+            error={error}
+            onConnect={handleConnect}
+            zoom={inTransition}
+          />
+        </div>
+      )}
+    </>
   );
 }
 

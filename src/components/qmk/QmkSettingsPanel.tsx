@@ -34,14 +34,19 @@ export function SettingsRow({
   label,
   description,
   control,
+  disabled = false,
 }: {
   icon: ReactNode;
   label: string;
   description?: string;
   control: ReactNode;
+  /** Grey the row and show a not-allowed cursor when the setting is inert. */
+  disabled?: boolean;
 }) {
   return (
-    <li className="list-row items-center">
+    <li
+      className={`list-row items-center ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+    >
       <div className="btn btn-circle btn-ghost pointer-events-none text-brand-on-surface">{icon}</div>
       <div className="min-w-0">
         <div className="text-sm font-medium text-brand-on-surface">{label}</div>

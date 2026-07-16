@@ -9,6 +9,8 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 const MAX_YAW = 0.5; // radians, rotation.y at the far left/right edge of the window
 const MAX_PITCH = 0.2; // radians, rotation.x at the top/bottom edge of the window
 const FOLLOW_SMOOTHING = 4; // higher = snappier tracking, lower = more lag
+const FLOAT_AMPLITUDE = 0.06; // world units the model drifts up/down while idle-hovering
+const FLOAT_SPEED = 1.5; // radians/sec of the bob sine — slow, so it reads as gentle suspension
 
 interface Props {
   // WebGL can be unavailable (disabled by the user, no GPU, a lost context)
@@ -115,14 +117,18 @@ export function KeyboardModelPreview({ onReady, onError }: Props) {
 
     let raf = 0;
     let last = performance.now();
+    let elapsed = 0;
     const animate = (now: number) => {
       raf = requestAnimationFrame(animate);
       const dt = (now - last) / 1000;
       last = now;
       if (!reduceMotion) {
+        elapsed += dt;
         const t = 1 - Math.exp(-FOLLOW_SMOOTHING * dt);
         pivot.rotation.y += (target.yaw - pivot.rotation.y) * t;
         pivot.rotation.x += (target.pitch - pivot.rotation.x) * t;
+        // Gentle vertical bob so the model reads as softly suspended in air.
+        pivot.position.y = Math.sin(elapsed * FLOAT_SPEED) * FLOAT_AMPLITUDE;
       }
       try {
         renderer.render(scene, camera);

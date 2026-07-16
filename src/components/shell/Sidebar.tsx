@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 
-type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
+type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
 
 const SIDEBAR_WIDTH_KEY = "vialite-sidebar-width";
 const SIDEBAR_COLLAPSED_KEY = "vialite-sidebar-collapsed";
@@ -46,7 +46,6 @@ interface Props {
   productName?: string;
   onDisconnect: () => void;
   mode: PageMode;
-  layoutConfigSupported: boolean;
   matrixTesterSupported: boolean;
   macroSupported: boolean;
   tapDanceSupported: boolean;
@@ -94,14 +93,13 @@ function useScrollSpy(sectionIds: string[], active: boolean): string | null {
   return activeId;
 }
 
-type NavKind = "home" | "layoutConfig" | "matrixTest" | "macro" | "tapDance" | "combo" | "keyboardColor" | "advanced" | "site" | "importExport";
+type NavKind = "home" | "matrixTest" | "macro" | "tapDance" | "combo" | "keyboardColor" | "advanced" | "site" | "importExport";
 
 const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; Icon: (props: SVGProps<SVGSVGElement>) => ReactNode }[] = [
   { kind: "home", mode: "keymap", labelKey: "navHome", Icon: HomeIcon },
   { kind: "macro", mode: "macro", labelKey: "navMacro", Icon: MacroIcon },
   { kind: "tapDance", mode: "tapdance", labelKey: "navTapDance", Icon: TapDanceIcon },
   { kind: "combo", mode: "combo", labelKey: "navCombo", Icon: ComboIcon },
-  { kind: "layoutConfig", mode: "layout", labelKey: "navLayoutConfig", Icon: LayoutConfigIcon },
   { kind: "keyboardColor", mode: "color", labelKey: "navKeyboardColor", Icon: KeyboardColorIcon },
   { kind: "importExport", mode: "io", labelKey: "navImportExport", Icon: ImportExportIcon },
   { kind: "matrixTest", mode: "matrix", labelKey: "navMatrixTest", Icon: MatrixIcon },
@@ -113,7 +111,6 @@ export function Sidebar({
   productName,
   onDisconnect,
   mode,
-  layoutConfigSupported,
   matrixTesterSupported,
   macroSupported,
   tapDanceSupported,
@@ -123,7 +120,6 @@ export function Sidebar({
 }: Props) {
   const { t } = useI18n();
   const supportedByKind: Partial<Record<NavKind, boolean>> = {
-    layoutConfig: layoutConfigSupported,
     matrixTest: matrixTesterSupported,
     macro: macroSupported,
     tapDance: tapDanceSupported,
@@ -282,7 +278,7 @@ export function Sidebar({
         ) : (
           <div className="group mt-[50px] flex h-[52px] items-center gap-2 rounded-2xl px-4">
             <span className="h-2 w-2 shrink-0 rounded-full bg-brand-secondary animate-status-breathe" />
-            <span className="min-w-0 flex-1 truncate text-sm font-medium uppercase text-brand-on-surface-variant">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium uppercase text-green-800">
               {productName ?? t("disconnect")}
             </span>
             <div className="tooltip tooltip-top shrink-0" data-tip={t("disconnect")}>
@@ -329,15 +325,6 @@ function HomeIcon(props: SVGProps<SVGSVGElement>) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 11.5 12 4l8 7.5" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 10v9h12v-9" />
-    </svg>
-  );
-}
-
-function LayoutConfigIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <rect x="3.5" y="5" width="17" height="14" rx="2" />
-      <path strokeLinecap="round" d="M3.5 10h17M9 10v9" />
     </svg>
   );
 }

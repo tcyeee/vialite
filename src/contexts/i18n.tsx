@@ -32,7 +32,6 @@ const MESSAGES = {
   deviceConnected: { en: "Connected to {name}", zh: "已连接:{name}" },
   deviceDisconnected: { en: "Disconnected", zh: "已断开连接" },
   keyboardLayoutTitle: { en: "Keyboard Layout", zh: "键盘布局" },
-  layoutConfigEmpty: { en: "This keyboard has no layout options.", zh: "此键盘没有可配置的布局选项。" },
   magicSettingsTitle: { en: "Magic", zh: "Magic" },
   magicSwapCapsLockControl: { en: "Swap Caps Lock and Left Control", zh: "交换 Caps Lock 与左 Control" },
   magicCapsLockAsControl: { en: "Treat Caps Lock as Control", zh: "将 Caps Lock 作为 Control 使用" },
@@ -116,7 +115,6 @@ const MESSAGES = {
   themeLight: { en: "Light", zh: "浅色" },
   themeDark: { en: "Dark", zh: "深色" },
   siteGeneralTitle: { en: "General", zh: "通用" },
-  siteKeyboardTitle: { en: "Keyboard", zh: "键盘" },
   languageDesc: { en: "Interface language", zh: "界面语言" },
   themeDesc: { en: "Light or dark theme", zh: "浅色或深色主题" },
   keyDisplayTitle: { en: "Key display style", zh: "按键显示类型" },
@@ -130,10 +128,14 @@ const MESSAGES = {
     en: "The layout read from the connected keyboard",
     zh: "从已连接键盘读取到的配列",
   },
+  colorLayoutTitle: { en: "Layout options", zh: "布局选项" },
+  colorAppearanceTitle: { en: "Appearance", zh: "外观" },
   displaySizeTitle: { en: "Display size", zh: "显示尺寸" },
   displaySizeSmaller: { en: "Smaller", zh: "缩小" },
   displaySizeLarger: { en: "Larger", zh: "放大" },
   keySpacingTitle: { en: "Key spacing", zh: "按键间距" },
+  keycapWidthTitle: { en: "Keycap width", zh: "键帽宽度" },
+  caseRadiusTitle: { en: "Case corner radius", zh: "外壳圆角" },
   caseThicknessTitle: { en: "Case thickness", zh: "外壳厚度" },
   caseColorTitle: { en: "Case color", zh: "外壳颜色" },
   plateColorTitle: { en: "Plate color", zh: "定位板颜色" },
@@ -142,7 +144,6 @@ const MESSAGES = {
 
   // Sidebar
   navHome: { en: "Home", zh: "主页" },
-  navLayoutConfig: { en: "Layout", zh: "布局配置" },
   navMatrixTest: { en: "Keyboard Test", zh: "键盘测试" },
   navMacro: { en: "Macro", zh: "宏配置" },
   navTapDance: { en: "Tap Dance", zh: "点击舞步" },
@@ -206,6 +207,10 @@ const MESSAGES = {
     en: "Use TD(n) in the keymap to trigger tap dance n.",
     zh: "在按键映射中使用 TD(n) 来触发对应编号的点击舞步。",
   },
+  tapDanceUsedHelp: {
+    en: "This bar shows how many tap dance slots are in use out of the total this keyboard provides.",
+    zh: "这个进度条表示已使用的点击舞步槽位数占键盘可用总数的比例。",
+  },
   tapDanceTermMs: { en: "{ms} ms", zh: "{ms} 毫秒" },
   msUnit: { en: "ms", zh: "毫秒" },
   tapDanceDeleteConfirm: {
@@ -231,6 +236,20 @@ const MESSAGES = {
   comboHint: {
     en: "Press all input keys together to trigger the output key.",
     zh: "同时按下所有输入按键,即可触发输出按键。",
+  },
+  comboUsedHelp: {
+    en: "This bar shows how many combo slots are in use out of the total this keyboard provides.",
+    zh: "这个进度条表示已使用的组合键槽位数占键盘可用总数的比例。",
+  },
+  comboDeleteConfirm: {
+    en: "Delete this combo?",
+    zh: "确定删除这个组合键吗?",
+  },
+  comboAdd: { en: "Add combo", zh: "添加组合键" },
+  comboEmpty: { en: "No combos configured yet.", zh: "还没有配置任何组合键。" },
+  comboFull: {
+    en: "All combo slots are already in use.",
+    zh: "所有组合键槽位都已被使用。",
   },
 
   // DeviceConnect

@@ -3,6 +3,7 @@ import { type MessageKey, useI18n } from "../../contexts/i18n.tsx";
 import { label as kcLabel } from "../../protocol/keycodes.ts";
 import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
 import { useToast } from "../../contexts/toast.tsx";
+import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
 
 const PREVIEW_STATES: { labelKey: MessageKey; field: keyof TapDanceEntry }[] = [
@@ -214,12 +215,12 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="max-w-md text-xs text-brand-on-surface-variant">{t("tapDanceHint")}</p>
       <div className="flex items-center gap-3">
-        <progress className="progress w-40" value={usedCount} max={Math.max(keyboard.tapDanceCount, 1)} />
+        <progress className="progress h-3 w-80" value={usedCount} max={Math.max(keyboard.tapDanceCount, 1)} />
         <span className="text-xs text-brand-on-surface-variant">
           {t("tapDanceUsed", { used: usedCount, total: keyboard.tapDanceCount })}
         </span>
+        <HelpIcon text={t("tapDanceUsedHelp")} />
         <button type="button" className="btn btn-primary btn-sm" onClick={handleAdd}>
           {t("tapDanceAdd")}
         </button>
