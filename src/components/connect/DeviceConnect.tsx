@@ -1,4 +1,4 @@
-import { useI18n } from "../i18n.tsx";
+import { useI18n } from "../../i18n.tsx";
 
 export type ConnectionStatus = "reconnecting" | "idle" | "connecting" | "connected" | "error";
 

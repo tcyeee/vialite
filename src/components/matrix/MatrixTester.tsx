@@ -6,9 +6,9 @@
 // nothing else in Vialite needs the unlocked state, so we re-lock on exit.
 
 import { useEffect, useState } from "react";
-import { useI18n } from "../i18n.tsx";
-import type { Keyboard } from "../protocol/keyboard.ts";
-import { UnlockDialog } from "./UnlockDialog.tsx";
+import { useI18n } from "../../i18n.tsx";
+import type { Keyboard } from "../../protocol/keyboard.ts";
+import { UnlockDialog } from "../common/UnlockDialog.tsx";
 
 const UNIT = 54; // same scale as KeyboardLayout
 
@@ -101,7 +101,9 @@ export function MatrixTester({ keyboard }: Props) {
       return (
         <div className="matrix-tester">
           <p>{t("mustUnlock")}</p>
-          <button onClick={() => setDialogDismissed(false)}>{t("unlock")}</button>
+          <button className="btn btn-outline border-base-300" onClick={() => setDialogDismissed(false)}>
+          {t("unlock")}
+        </button>
         </div>
       );
     }

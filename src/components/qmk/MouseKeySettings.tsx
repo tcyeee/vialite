@@ -10,13 +10,11 @@ import {
   QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_MAX_SPEED,
   QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_TIME_TO_MAX,
   type Keyboard,
-} from "../protocol/keyboard.ts";
+} from "../../protocol/keyboard.ts";
 import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after a setting was written to the device, so the parent re-renders. */
-  onChange: () => void;
 }
 
 /** vial-gui's qmk_settings.json "Mouse keys" tab (qsid 9-17, all plain integers). */
@@ -96,14 +94,13 @@ const FIELDS: QmkSettingField[] = [
 ];
 
 /** Mouse Keys QMK-Settings fields; hidden entirely when the device exposes none of the qsids above. */
-export function MouseKeySettings({ keyboard, onChange }: Props) {
+export function MouseKeySettings({ keyboard }: Props) {
   return (
     <QmkSettingsSection
       keyboard={keyboard}
       titleKey="mouseKeySettingsTitle"
       fields={FIELDS}
       icon={<MouseKeyIcon className="h-4.5 w-4.5" />}
-      onChange={onChange}
     />
   );
 }

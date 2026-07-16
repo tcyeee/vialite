@@ -1,11 +1,9 @@
 import type { SVGProps } from "react";
-import { QMK_SETTINGS_QSID_MAGIC, type Keyboard } from "../protocol/keyboard.ts";
+import { QMK_SETTINGS_QSID_MAGIC, type Keyboard } from "../../protocol/keyboard.ts";
 import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after a setting was written to the device, so the parent re-renders. */
-  onChange: () => void;
 }
 
 /** vial-gui's qmk_settings.json "Magic" tab (qsid 21, one bit per toggle). */
@@ -23,14 +21,13 @@ const FIELDS: QmkSettingField[] = [
 ];
 
 /** Magic QMK-Settings toggles; hidden entirely when the device doesn't expose qsid 21. */
-export function MagicSettings({ keyboard, onChange }: Props) {
+export function MagicSettings({ keyboard }: Props) {
   return (
     <QmkSettingsSection
       keyboard={keyboard}
       titleKey="magicSettingsTitle"
       fields={FIELDS}
       icon={<MagicIcon className="h-4.5 w-4.5" />}
-      onChange={onChange}
     />
   );
 }

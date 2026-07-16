@@ -7,9 +7,9 @@ import {
   label as kcLabel,
   serialize,
   type KeycodeDef,
-} from "../protocol/keycodes.ts";
-import { useI18n, type MessageKey } from "../i18n.tsx";
-import { EVENT_CODE_TO_QMK } from "./keyEventMap.ts";
+} from "../../protocol/keycodes.ts";
+import { useI18n, type MessageKey } from "../../i18n.tsx";
+import { EVENT_CODE_TO_QMK } from "../keymap/keyEventMap.ts";
 
 /** Maps KEYCODE_CATEGORIES names (defined in keycodes.ts) to translation keys. */
 const CATEGORY_KEYS: Record<string, MessageKey> = {

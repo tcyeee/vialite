@@ -12,13 +12,11 @@ import {
   QMK_SETTINGS_QSID_TAPPING_TERM,
   QMK_SETTINGS_QSID_TAPPING_TOGGLE,
   type Keyboard,
-} from "../protocol/keyboard.ts";
+} from "../../protocol/keyboard.ts";
 import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after a setting was written to the device, so the parent re-renders. */
-  onChange: () => void;
 }
 
 /**
@@ -89,14 +87,13 @@ const FIELDS: QmkSettingField[] = [
 ];
 
 /** Tap-Hold QMK-Settings fields; hidden entirely when the device exposes none of the qsids above. */
-export function TapHoldSettings({ keyboard, onChange }: Props) {
+export function TapHoldSettings({ keyboard }: Props) {
   return (
     <QmkSettingsSection
       keyboard={keyboard}
       titleKey="tapHoldSettingsTitle"
       fields={FIELDS}
       icon={<TapHoldIcon className="h-4.5 w-4.5" />}
-      onChange={onChange}
     />
   );
 }

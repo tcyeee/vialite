@@ -254,6 +254,19 @@ body {
   opacity: 0.6;
 }
 
+/* daisyUI's .modal-backdrop is a bare <button>, and it relies on Tailwind's
+   Preflight to strip the native button chrome. Preflight is skipped app-wide
+   (see the top-of-file comment), so without this the backdrop keeps its opaque
+   `buttonface` fill + beveled border and paints an opaque grey box over the
+   whole viewport (z-index:-1, stretched) — hiding the .modal's own translucent
+   dim. Scoped here rather than resetting all buttons, to leave native button
+   styling elsewhere untouched. */
+.modal-backdrop {
+  appearance: none;
+  background: transparent;
+  border: none;
+}
+
 .picker-overlay {
   position: fixed;
   inset: 0;

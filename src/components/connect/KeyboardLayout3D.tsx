@@ -9,9 +9,9 @@
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { Keyboard, PhysicalEncoder, PhysicalKey } from "../protocol/keyboard.ts";
-import { label as kcLabel } from "../protocol/keycodes.ts";
-import { hasSecondRect, placeLayout, rotatePoint } from "./layoutGeometry.ts";
+import type { Keyboard, PhysicalEncoder, PhysicalKey } from "../../protocol/keyboard.ts";
+import { label as kcLabel } from "../../protocol/keycodes.ts";
+import { hasSecondRect, placeLayout, rotatePoint } from "../keymap/layoutGeometry.ts";
 
 const UNIT = 1;
 const GAP = 0.06;

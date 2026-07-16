@@ -1,9 +1,9 @@
 import { useState, type SVGProps } from "react";
-import { type MessageKey, useI18n } from "../i18n.tsx";
-import { label as kcLabel } from "../protocol/keycodes.ts";
-import type { Keyboard, TapDanceEntry } from "../protocol/keyboard.ts";
-import { useToast } from "../toast.tsx";
-import { KeySlot } from "./KeySlot.tsx";
+import { type MessageKey, useI18n } from "../../i18n.tsx";
+import { label as kcLabel } from "../../protocol/keycodes.ts";
+import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
+import { useToast } from "../../toast.tsx";
+import { KeySlot } from "../common/KeySlot.tsx";
 
 const PREVIEW_STATES: { labelKey: MessageKey; field: keyof TapDanceEntry }[] = [
   { labelKey: "tapDanceOnTap", field: "onTap" },

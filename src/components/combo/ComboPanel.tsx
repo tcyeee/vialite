@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useI18n } from "../i18n.tsx";
-import type { ComboEntry, Keyboard } from "../protocol/keyboard.ts";
-import { useToast } from "../toast.tsx";
-import { KeySlot } from "./KeySlot.tsx";
+import { useI18n } from "../../i18n.tsx";
+import type { ComboEntry, Keyboard } from "../../protocol/keyboard.ts";
+import { useToast } from "../../toast.tsx";
+import { KeySlot } from "../common/KeySlot.tsx";
 
 interface Props {
   keyboard: Keyboard;

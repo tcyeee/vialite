@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
-import type { Keyboard } from "../protocol/keyboard.ts";
-import { SettingsRow } from "./QmkSettingsPanel.tsx";
+import type { Keyboard } from "../../protocol/keyboard.ts";
+import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 
 interface Props {
   keyboard: Keyboard;

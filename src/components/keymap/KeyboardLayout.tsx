@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
-import type { Keyboard } from "../protocol/keyboard.ts";
-import { label as kcLabel } from "../protocol/keycodes.ts";
+import type { Keyboard } from "../../protocol/keyboard.ts";
+import { label as kcLabel } from "../../protocol/keycodes.ts";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
 
 const UNIT = 54;

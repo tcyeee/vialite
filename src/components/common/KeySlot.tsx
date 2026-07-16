@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { label as kcLabel } from "../protocol/keycodes.ts";
+import { label as kcLabel } from "../../protocol/keycodes.ts";
 import { KeycodePicker } from "./KeycodePicker.tsx";
 
 interface Props {

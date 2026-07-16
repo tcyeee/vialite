@@ -6,9 +6,9 @@ import {
   type ReactNode,
   type SVGProps,
 } from "react";
-import { useI18n, type MessageKey } from "../i18n.tsx";
+import { useI18n, type MessageKey } from "../../i18n.tsx";
 
-type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "advanced";
+type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "advanced" | "io";
 
 const SIDEBAR_WIDTH_KEY = "vialite-sidebar-width";
 const DEFAULT_SIDEBAR_WIDTH = 256;
@@ -33,6 +33,7 @@ interface Props {
   productName?: string;
   onDisconnect: () => void;
   mode: PageMode;
+  layoutConfigSupported: boolean;
   matrixTesterSupported: boolean;
   macroSupported: boolean;
   tapDanceSupported: boolean;
@@ -80,7 +81,7 @@ function useScrollSpy(sectionIds: string[], active: boolean): string | null {
   return activeId;
 }
 
-type NavKind = "home" | "matrixTest" | "macro" | "tapDance" | "combo" | "advanced";
+type NavKind = "home" | "layoutConfig" | "matrixTest" | "macro" | "tapDance" | "combo" | "advanced" | "importExport";
 
 const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; Icon: (props: SVGProps<SVGSVGElement>) => ReactNode }[] = [
   { kind: "home", mode: "keymap", labelKey: "navHome", Icon: HomeIcon },
@@ -88,6 +89,8 @@ const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; Icon: (p
   { kind: "macro", mode: "macro", labelKey: "navMacro", Icon: MacroIcon },
   { kind: "tapDance", mode: "tapdance", labelKey: "navTapDance", Icon: TapDanceIcon },
   { kind: "combo", mode: "combo", labelKey: "navCombo", Icon: ComboIcon },
+  { kind: "layoutConfig", mode: "layout", labelKey: "navLayoutConfig", Icon: LayoutConfigIcon },
+  { kind: "importExport", mode: "io", labelKey: "navImportExport", Icon: ImportExportIcon },
   { kind: "advanced", mode: "advanced", labelKey: "navAdvanced", Icon: AdvancedIcon },
 ];
 
@@ -95,6 +98,7 @@ export function Sidebar({
   productName,
   onDisconnect,
   mode,
+  layoutConfigSupported,
   matrixTesterSupported,
   macroSupported,
   tapDanceSupported,
@@ -104,6 +108,7 @@ export function Sidebar({
 }: Props) {
   const { t } = useI18n();
   const supportedByKind: Partial<Record<NavKind, boolean>> = {
+    layoutConfig: layoutConfigSupported,
     matrixTest: matrixTesterSupported,
     macro: macroSupported,
     tapDance: tapDanceSupported,
@@ -244,6 +249,15 @@ function HomeIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function LayoutConfigIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <path strokeLinecap="round" d="M3.5 10h17M9 10v9" />
+    </svg>
+  );
+}
+
 function MatrixIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
@@ -292,6 +306,15 @@ function AdvancedIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         d="M19.4 13.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19.5a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H4.5a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H10a1.65 1.65 0 0 0 1-1.51V4.5a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V10a1.65 1.65 0 0 0 1.51 1h.09a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"
       />
+    </svg>
+  );
+}
+
+function ImportExportIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 8 5 11l3 3M16 8l3 3-3 3" />
+      <path strokeLinecap="round" d="M5 11h6M13 11h6" />
     </svg>
   );
 }

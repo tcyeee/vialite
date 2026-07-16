@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
-import { useI18n } from "../i18n.tsx";
-import { useTheme } from "../theme.tsx";
+import { useI18n } from "../../i18n.tsx";
+import { useTheme } from "../../theme.tsx";
 
 export function Navbar() {
   const { lang, setLang, t } = useI18n();

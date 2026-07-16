@@ -1,4 +1,4 @@
-import { useI18n } from "../i18n.tsx";
+import { useI18n } from "../../i18n.tsx";
 
 interface Props {
   layers: number;

@@ -1,11 +1,9 @@
 import type { SVGProps } from "react";
-import { QMK_SETTINGS_QSID_COMBO_TERM, type Keyboard } from "../protocol/keyboard.ts";
+import { QMK_SETTINGS_QSID_COMBO_TERM, type Keyboard } from "../../protocol/keyboard.ts";
 import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after a setting was written to the device, so the parent re-renders. */
-  onChange: () => void;
 }
 
 /** vial-gui's qmk_settings.json "Combo" tab (qsid 2, combo timeout in ms). */
@@ -14,14 +12,13 @@ const FIELDS: QmkSettingField[] = [
 ];
 
 /** Combo timeout QMK-Settings field; hidden entirely when the device doesn't expose qsid 2. */
-export function ComboSettings({ keyboard, onChange }: Props) {
+export function ComboSettings({ keyboard }: Props) {
   return (
     <QmkSettingsSection
       keyboard={keyboard}
       titleKey="comboSettingsTitle"
       fields={FIELDS}
       icon={<ComboIcon className="h-4.5 w-4.5" />}
-      onChange={onChange}
     />
   );
 }

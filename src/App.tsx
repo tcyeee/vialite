@@ -1,23 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ComboPanel } from "./components/ComboPanel.tsx";
-import { type ConnectionStatus } from "./components/DeviceConnect.tsx";
-import { KeyboardLayout } from "./components/KeyboardLayout.tsx";
-import { KeycodePicker } from "./components/KeycodePicker.tsx";
-import { LayerTabs } from "./components/LayerTabs.tsx";
-import { MacroPanel } from "./components/MacroPanel.tsx";
-import { MatrixTester } from "./components/MatrixTester.tsx";
-import { Navbar } from "./components/Navbar.tsx";
-import { QmkSettingsPanel } from "./components/QmkSettingsPanel.tsx";
-import { Sidebar } from "./components/Sidebar.tsx";
-import { TapDancePanel } from "./components/TapDancePanel.tsx";
-import { SpinnerIcon, WaitingForConnection } from "./components/WaitingForConnection.tsx";
+import { ComboPanel } from "./components/combo/ComboPanel.tsx";
+import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
+import { KeyboardLayout } from "./components/keymap/KeyboardLayout.tsx";
+import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
+import { KeycodePicker } from "./components/common/KeycodePicker.tsx";
+import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
+import { LayoutConfigPanel } from "./components/layout/LayoutConfigPanel.tsx";
+import { MacroPanel } from "./components/macro/MacroPanel.tsx";
+import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
+import { Navbar } from "./components/shell/Navbar.tsx";
+import { QmkSettingsPanel } from "./components/qmk/QmkSettingsPanel.tsx";
+import { Sidebar } from "./components/shell/Sidebar.tsx";
+import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
+import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
 import { useI18n, type MessageKey } from "./i18n.tsx";
 import { Keyboard } from "./protocol/keyboard.ts";
 import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./toast.tsx";
 
-type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "advanced";
+type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "advanced" | "io";
 
 type Selected =
   | { kind: "key"; row: number; col: number }
@@ -42,11 +44,16 @@ function App() {
   const [mode, setMode] = useState<PageMode>("keymap");
   const [selected, setSelected] = useState<Selected | null>(null);
   const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
+  const [qmkPendingCount, setQmkPendingCount] = useState(0);
+  const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
   // Keyboard mutates its internal keymap in place; bumping this forces a
   // re-render so KeyboardLayout picks up the new label after a remap.
   const [, forceUpdate] = useState(0);
   const [importing, setImporting] = useState(false);
   const transportRef = useRef<HidTransport | null>(null);
+  // Target mode of a navigation attempt that got intercepted by qmkLeaveRequested; applied once
+  // QmkSettingsPanel reports how the user resolved the "unsaved changes" dialog.
+  const qmkPendingNavigationRef = useRef<PageMode | null>(null);
   // Guards handleConnect and the auto-connect effect against running
   // concurrently — e.g. a manual click landing in the async gap between the
   // auto-connect effect finding a device and it calling setStatus("connecting").
@@ -74,6 +81,9 @@ function App() {
         setSelected(null);
         setStatus("idle");
         setError(t("keyboardDisconnected"));
+        setQmkPendingCount(0);
+        setQmkLeaveRequested(false);
+        qmkPendingNavigationRef.current = null;
         showToast(t("keyboardDisconnected"), "warning");
       };
       const kb = new Keyboard(transport);
@@ -83,6 +93,9 @@ function App() {
       setLayer(0);
       setSelected(null);
       setMode("keymap");
+      setQmkPendingCount(0);
+      setQmkLeaveRequested(false);
+      qmkPendingNavigationRef.current = null;
       setError(null);
       setStatus("connected");
       showToast(t("deviceConnected", { name: transport.productName }), "success");
@@ -114,6 +127,9 @@ function App() {
     setError(null);
     setStatus("idle");
     setQmkSections([]);
+    setQmkPendingCount(0);
+    setQmkLeaveRequested(false);
+    qmkPendingNavigationRef.current = null;
     showToast(t("deviceDisconnected"), "warning");
   }, [teardown, t, showToast]);
 
@@ -123,6 +139,31 @@ function App() {
     setQmkSections((prev) =>
       prev.length === sections.length && prev.every((id, i) => id === sections[i]) ? prev : sections,
     );
+  }, []);
+
+  // Tries to switch page mode, but detours through QmkSettingsPanel's "unsaved changes" dialog
+  // first when leaving Advanced Settings with edits still pending.
+  const navigate = useCallback(
+    (next: PageMode) => {
+      if (mode === "advanced" && next !== "advanced" && qmkPendingCount > 0) {
+        qmkPendingNavigationRef.current = next;
+        setQmkLeaveRequested(true);
+        return;
+      }
+      setMode(next);
+      setSelected(null);
+    },
+    [mode, qmkPendingCount],
+  );
+
+  const handleQmkLeaveResolved = useCallback((shouldLeave: boolean) => {
+    setQmkLeaveRequested(false);
+    const next = qmkPendingNavigationRef.current;
+    qmkPendingNavigationRef.current = null;
+    if (shouldLeave && next !== null) {
+      setMode(next);
+      setSelected(null);
+    }
   }, []);
 
   // Reconnect to an already-authorized keyboard on page load, so returning
@@ -242,30 +283,34 @@ function App() {
               productName={productName}
               onDisconnect={handleDisconnect}
               mode={mode}
+              layoutConfigSupported={
+                !!keyboard?.layoutLabels && keyboard.layoutLabels.length > 0 && keyboard.layoutOptions >= 0
+              }
               matrixTesterSupported={!!keyboard?.supportsMatrixTester}
               macroSupported={!!keyboard && keyboard.macroCount > 0}
               tapDanceSupported={!!keyboard && keyboard.tapDanceCount > 0}
               comboSupported={!!keyboard && keyboard.comboCount > 0}
               qmkSections={qmkSections}
-              onNavigate={(next) => {
-                setMode(next);
-                setSelected(null);
-              }}
+              onNavigate={navigate}
             />
             <main className="min-w-0 flex-1 p-6 md:p-8">
               <div className="mb-6">
                 <h1 className="text-3xl font-bold text-brand-on-surface">
-                  {mode === "matrix"
-                    ? t("navMatrixTest")
-                    : mode === "macro"
-                      ? t("navMacro")
-                      : mode === "tapdance"
-                        ? t("navTapDance")
-                        : mode === "combo"
-                          ? t("navCombo")
-                          : mode === "advanced"
-                            ? t("navAdvanced")
-                            : t("keyboardLayoutTitle")}
+                  {mode === "layout"
+                    ? t("navLayoutConfig")
+                    : mode === "matrix"
+                      ? t("navMatrixTest")
+                      : mode === "macro"
+                        ? t("navMacro")
+                        : mode === "tapdance"
+                          ? t("navTapDance")
+                          : mode === "combo"
+                            ? t("navCombo")
+                            : mode === "advanced"
+                              ? t("navAdvanced")
+                              : mode === "io"
+                                ? t("navImportExport")
+                                : t("keyboardLayoutTitle")}
                 </h1>
               </div>
               {keyboard && mode === "keymap" && (
@@ -281,6 +326,9 @@ function App() {
                   </div>
                 </>
               )}
+              {keyboard && mode === "layout" && (
+                <LayoutConfigPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+              )}
               {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
               {keyboard && mode === "macro" && (
                 <MacroPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
@@ -294,12 +342,15 @@ function App() {
               {keyboard && mode === "advanced" && (
                 <QmkSettingsPanel
                   keyboard={keyboard}
-                  importing={importing}
-                  onExport={handleExport}
-                  onImportFile={handleImportFile}
                   onChange={() => forceUpdate((r) => r + 1)}
                   onSectionsChange={handleQmkSectionsChange}
+                  onPendingCountChange={setQmkPendingCount}
+                  leaveRequested={qmkLeaveRequested}
+                  onLeaveResolved={handleQmkLeaveResolved}
                 />
+              )}
+              {keyboard && mode === "io" && (
+                <ImportExportPanel importing={importing} onExport={handleExport} onImportFile={handleImportFile} />
               )}
             </main>
           </div>

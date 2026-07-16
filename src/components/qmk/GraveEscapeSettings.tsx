@@ -1,11 +1,9 @@
 import type { SVGProps } from "react";
-import { QMK_SETTINGS_QSID_GRAVE_ESCAPE, type Keyboard } from "../protocol/keyboard.ts";
+import { QMK_SETTINGS_QSID_GRAVE_ESCAPE, type Keyboard } from "../../protocol/keyboard.ts";
 import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after a setting was written to the device, so the parent re-renders. */
-  onChange: () => void;
 }
 
 /** vial-gui's qmk_settings.json "Grave Escape" tab (qsid 1, one bit per toggle). */
@@ -17,14 +15,13 @@ const FIELDS: QmkSettingField[] = [
 ];
 
 /** Grave Escape QMK-Settings toggles; hidden entirely when the device doesn't expose qsid 1. */
-export function GraveEscapeSettings({ keyboard, onChange }: Props) {
+export function GraveEscapeSettings({ keyboard }: Props) {
   return (
     <QmkSettingsSection
       keyboard={keyboard}
       titleKey="graveEscapeSettingsTitle"
       fields={FIELDS}
       icon={<GraveEscapeIcon className="h-4.5 w-4.5" />}
-      onChange={onChange}
     />
   );
 }
