@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, type DragEvent } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { VIAL_PROTOCOL_ADVANCED_MACROS } from "../../protocol/constants.ts";
 import type { Keyboard, MacroAction } from "../../protocol/keyboard.ts";
@@ -22,23 +22,9 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return true;
 }
 
-function RowControls({
-  onRemove,
-  onMoveUp,
-  onMoveDown,
-}: {
-  onRemove: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-}) {
+function RowControls({ onRemove }: { onRemove: () => void }) {
   return (
     <div className="ml-auto flex shrink-0 gap-1">
-      <button type="button" className="btn btn-ghost btn-xs btn-circle" onClick={onMoveUp} aria-label="up">
-        ↑
-      </button>
-      <button type="button" className="btn btn-ghost btn-xs btn-circle" onClick={onMoveDown} aria-label="down">
-        ↓
-      </button>
       <button
         type="button"
         className="btn btn-ghost btn-xs btn-circle text-error"
@@ -103,20 +89,39 @@ function MacroActionRow({
   action,
   onChange,
   onRemove,
-  onMoveUp,
-  onMoveDown,
+  isDragging,
+  onDragStartRow,
+  onDragEndRow,
+  onDragOverRow,
+  onDropRow,
 }: {
   action: MacroAction;
   onChange: (next: MacroAction) => void;
   onRemove: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
+  isDragging: boolean;
+  onDragStartRow: () => void;
+  onDragEndRow: () => void;
+  onDragOverRow: (e: DragEvent) => void;
+  onDropRow: () => void;
 }) {
   const { t } = useI18n();
 
+  const handle = (
+    <span
+      className="cursor-grab select-none px-1 text-brand-on-surface-variant"
+      draggable
+      onDragStart={onDragStartRow}
+      onDragEnd={onDragEndRow}
+      aria-label="drag"
+    >
+      ⠿
+    </span>
+  );
+
+  let body;
   if (action.kind === "text") {
-    return (
-      <div className="flex items-center gap-2 rounded-box border border-brand-outline/20 p-2">
+    body = (
+      <>
         <span className="badge badge-neutral">{t("macroActionText")}</span>
         <input
           type="text"
@@ -124,14 +129,11 @@ function MacroActionRow({
           value={action.text}
           onChange={(e) => onChange({ ...action, text: e.target.value })}
         />
-        <RowControls onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
-      </div>
+      </>
     );
-  }
-
-  if (action.kind === "delay") {
-    return (
-      <div className="flex items-center gap-2 rounded-box border border-brand-outline/20 p-2">
+  } else if (action.kind === "delay") {
+    body = (
+      <>
         <span className="badge badge-neutral">{t("macroActionDelay")}</span>
         <input
           type="number"
@@ -141,39 +143,50 @@ function MacroActionRow({
           onChange={(e) => onChange({ ...action, ms: Number(e.target.value) })}
         />
         <span className="text-xs text-brand-on-surface-variant">ms</span>
-        <RowControls onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
-      </div>
+      </>
+    );
+  } else {
+    const kindLabel = { tap: t("macroActionTap"), down: t("macroActionDown"), up: t("macroActionUp") }[action.kind];
+    body = (
+      <>
+        <span className="badge badge-neutral">{kindLabel}</span>
+        {action.keycodes.map((qmkId, i) => (
+          <span key={i} className="inline-flex items-center gap-0.5">
+            <KeySlot
+              qmkId={qmkId}
+              className="btn btn-outline btn-xs min-h-8 whitespace-pre-line"
+              onChange={(id) => {
+                const next = [...action.keycodes];
+                next[i] = id;
+                onChange({ ...action, keycodes: next });
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs btn-circle"
+              aria-label="remove keycode"
+              onClick={() => onChange({ ...action, keycodes: action.keycodes.filter((_, idx) => idx !== i) })}
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+        <AddKeycodeButton onPick={(id) => onChange({ ...action, keycodes: [...action.keycodes, id] })} />
+      </>
     );
   }
 
-  const kindLabel = { tap: t("macroActionTap"), down: t("macroActionDown"), up: t("macroActionUp") }[action.kind];
-
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-box border border-brand-outline/20 p-2">
-      <span className="badge badge-neutral">{kindLabel}</span>
-      {action.keycodes.map((qmkId, i) => (
-        <span key={i} className="inline-flex items-center gap-0.5">
-          <KeySlot
-            qmkId={qmkId}
-            className="btn btn-outline btn-xs min-h-8 whitespace-pre-line"
-            onChange={(id) => {
-              const next = [...action.keycodes];
-              next[i] = id;
-              onChange({ ...action, keycodes: next });
-            }}
-          />
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs btn-circle"
-            aria-label="remove keycode"
-            onClick={() => onChange({ ...action, keycodes: action.keycodes.filter((_, idx) => idx !== i) })}
-          >
-            ✕
-          </button>
-        </span>
-      ))}
-      <AddKeycodeButton onPick={(id) => onChange({ ...action, keycodes: [...action.keycodes, id] })} />
-      <RowControls onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
+    <div
+      className={`flex flex-wrap items-center gap-2 rounded-box border border-brand-outline/20 p-2 ${
+        isDragging ? "opacity-50" : ""
+      }`}
+      onDragOver={onDragOverRow}
+      onDrop={onDropRow}
+    >
+      {handle}
+      {body}
+      <RowControls onRemove={onRemove} />
     </div>
   );
 }
@@ -186,6 +199,7 @@ export function MacroPanel({ keyboard, onChange }: Props) {
   const [savedMacros, setSavedMacros] = useState<MacroAction[][]>(() => keyboard.macros);
   const [saving, setSaving] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setEdited(keyboard.macros);
@@ -221,11 +235,11 @@ export function MacroPanel({ keyboard, onChange }: Props) {
   const addAction = (action: MacroAction) => updateActive([...actions, action]);
   const removeAction = (i: number) => updateActive(actions.filter((_, idx) => idx !== i));
   const updateAction = (i: number, next: MacroAction) => updateActive(actions.map((a, idx) => (idx === i ? next : a)));
-  const moveAction = (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= actions.length) return;
+  const moveActionTo = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= actions.length || to >= actions.length) return;
     const next = [...actions];
-    [next[i], next[j]] = [next[j], next[i]];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
     updateActive(next);
   };
 
@@ -299,52 +313,65 @@ export function MacroPanel({ keyboard, onChange }: Props) {
                         action={action}
                         onChange={(next) => updateAction(idx, next)}
                         onRemove={() => removeAction(idx)}
-                        onMoveUp={() => moveAction(idx, -1)}
-                        onMoveDown={() => moveAction(idx, 1)}
+                        isDragging={dragIndex === idx}
+                        onDragStartRow={() => setDragIndex(idx)}
+                        onDragEndRow={() => setDragIndex(null)}
+                        onDragOverRow={(e) => e.preventDefault()}
+                        onDropRow={() => {
+                          if (dragIndex !== null) moveActionTo(dragIndex, idx);
+                          setDragIndex(null);
+                        }}
                       />
                     ))}
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline"
-                      onClick={() => addAction({ kind: "text", text: "" })}
-                    >
-                      {t("macroAddText")}
-                    </button>
-                    <AddActionButton kind="tap" label={t("macroAddTap")} onAdd={addAction} />
-                    <AddActionButton kind="down" label={t("macroAddDown")} onAdd={addAction} />
-                    <AddActionButton kind="up" label={t("macroAddUp")} onAdd={addAction} />
-                    {supportsDelay && (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
                         className="btn btn-sm btn-outline"
-                        onClick={() => addAction({ kind: "delay", ms: 0 })}
+                        onClick={() => addAction({ kind: "text", text: "" })}
                       >
-                        {t("macroAddDelay")}
+                        {t("macroAddText")}
                       </button>
-                    )}
+                      <AddActionButton kind="tap" label={t("macroAddTap")} onAdd={addAction} />
+                      <AddActionButton kind="down" label={t("macroAddDown")} onAdd={addAction} />
+                      <AddActionButton kind="up" label={t("macroAddUp")} onAdd={addAction} />
+                      {supportsDelay && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => addAction({ kind: "delay", ms: 0 })}
+                        >
+                          {t("macroAddDelay")}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        disabled={!hasChanges || overBudget || saving || currentBuffer === null}
+                        onClick={() => void handleSaveClick()}
+                      >
+                        {saving ? t("macroSaving") : t("save")}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        disabled={!hasChanges || saving}
+                        onClick={revert}
+                      >
+                        {t("revert")}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
           </Fragment>
         ))}
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className="btn btn-sm btn-primary"
-          disabled={!hasChanges || overBudget || saving || currentBuffer === null}
-          onClick={() => void handleSaveClick()}
-        >
-          {saving ? t("macroSaving") : t("save")}
-        </button>
-        <button type="button" className="btn btn-sm btn-ghost" disabled={!hasChanges || saving} onClick={revert}>
-          {t("revert")}
-        </button>
       </div>
 
       {unlocking && (
