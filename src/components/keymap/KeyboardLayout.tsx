@@ -1,11 +1,9 @@
-import { useMemo, type CSSProperties } from "react";
+import { useMemo } from "react";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { label as kcLabel } from "../../protocol/keycodes.ts";
+import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
+import { appearanceMetrics, shapeStyle } from "./KeyboardLayoutPreview.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
-
-const UNIT = 54;
-/** Gap between keycaps, in px (subtracted from each key's rendered size). */
-const GAP = 4;
 
 type Selected =
   | { kind: "key"; row: number; col: number }
@@ -19,28 +17,21 @@ interface Props {
   onEncoderSelect: (index: number, direction: 0 | 1) => void;
 }
 
-function shapeStyle(
-  s: { x: number; y: number; width: number; height: number; rotationAngle: number; rotationX: number; rotationY: number },
-  shiftX: number,
-  shiftY: number,
-): CSSProperties {
-  const style: CSSProperties = {
-    left: (s.x + shiftX) * UNIT,
-    top: (s.y + shiftY) * UNIT,
-    width: s.width * UNIT - GAP,
-    height: s.height * UNIT - GAP,
-  };
-  if (s.rotationAngle) {
-    // Rotate around the KLE cluster origin (rx, ry), expressed relative to
-    // this element's top-left. The shift moves element and origin together,
-    // matching vial-gui's translate-after-rotate transform order.
-    style.transform = `rotate(${s.rotationAngle}deg)`;
-    style.transformOrigin = `${(s.rotationX - s.x) * UNIT}px ${(s.rotationY - s.y) * UNIT}px`;
-  }
-  return style;
-}
-
 export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncoderSelect }: Props) {
+  // Physical appearance (size, spacing, case/plate) is shared with the 键盘配色
+  // page via context, so tuning it there restyles this interactive board too.
+  // Geometry runs through the same helpers as KeyboardLayoutPreview, so the two
+  // boards stay pixel-identical — this one just swaps read-only divs for
+  // clickable buttons and captions the active layer instead of layer 0.
+  const { size, spacing, keycapWidth, caseRadius, caseThickness, caseColor, plateColor } =
+    usePreviewAppearance();
+  const { PITCH, inset, outerRadius, innerRadius, showCase } = appearanceMetrics(
+    size,
+    spacing,
+    keycapWidth,
+    caseRadius,
+    caseThickness,
+  );
   const placed = useMemo(
     () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
     // Keyboard mutates in place; layoutOptions is the only geometry input that
@@ -50,57 +41,72 @@ export function KeyboardLayout({ keyboard, layer, selected, onKeySelect, onEncod
 
   return (
     <div
-      className="keyboard-layout"
-      style={{ width: placed.width * UNIT, height: placed.height * UNIT }}
+      className="keyboard-case"
+      style={{
+        padding: caseThickness,
+        background: showCase ? caseColor : "transparent",
+        borderRadius: showCase ? outerRadius : 0,
+        width: "fit-content",
+      }}
     >
-      {placed.keys
-        .filter(({ key }) => !key.decal)
-        .map(({ key, shiftX, shiftY }) => {
-          const qmkId = keyboard.getKey(layer, key.row, key.col);
+      <div
+        className="keyboard-layout"
+        style={{
+          width: placed.width * PITCH + inset,
+          height: placed.height * PITCH + inset,
+          background: plateColor,
+          borderRadius: innerRadius,
+        }}
+      >
+        {placed.keys
+          .filter(({ key }) => !key.decal)
+          .map(({ key, shiftX, shiftY }) => {
+            const qmkId = keyboard.getKey(layer, key.row, key.col);
+            const isSelected =
+              selected?.kind === "key" && selected.row === key.row && selected.col === key.col;
+            return (
+              <button
+                key={`${key.row},${key.col}@${key.x},${key.y}`}
+                className={isSelected ? "key selected" : "key"}
+                title={qmkId}
+                onClick={() => onKeySelect(key.row, key.col)}
+                style={shapeStyle(key, shiftX, shiftY, PITCH, inset, inset)}
+              >
+                {hasSecondRect(key) && (
+                  <span
+                    className="key-part2"
+                    style={{
+                      left: key.x2 * PITCH,
+                      top: key.y2 * PITCH,
+                      width: key.width2 * PITCH - inset,
+                      height: key.height2 * PITCH - inset,
+                    }}
+                  />
+                )}
+                <span className="key-label">{kcLabel(qmkId)}</span>
+              </button>
+            );
+          })}
+        {placed.encoders.map(({ encoder, shiftX, shiftY }) => {
+          const qmkId = keyboard.getEncoder(layer, encoder.index, encoder.direction);
           const isSelected =
-            selected?.kind === "key" && selected.row === key.row && selected.col === key.col;
+            selected?.kind === "encoder" &&
+            selected.index === encoder.index &&
+            selected.direction === encoder.direction;
           return (
             <button
-              key={`${key.row},${key.col}@${key.x},${key.y}`}
-              className={isSelected ? "key selected" : "key"}
-              title={qmkId}
-              onClick={() => onKeySelect(key.row, key.col)}
-              style={shapeStyle(key, shiftX, shiftY)}
+              key={`e${encoder.index},${encoder.direction}@${encoder.x},${encoder.y}`}
+              className={isSelected ? "encoder selected" : "encoder"}
+              title={`Encoder ${encoder.index} ${encoder.direction === 1 ? "CW" : "CCW"}: ${qmkId}`}
+              onClick={() => onEncoderSelect(encoder.index, encoder.direction)}
+              style={shapeStyle(encoder, shiftX, shiftY, PITCH, inset, inset)}
             >
-              {hasSecondRect(key) && (
-                <span
-                  className="key-part2"
-                  style={{
-                    left: key.x2 * UNIT,
-                    top: key.y2 * UNIT,
-                    width: key.width2 * UNIT - GAP,
-                    height: key.height2 * UNIT - GAP,
-                  }}
-                />
-              )}
+              <span className="encoder-dir">{encoder.direction === 1 ? "↻" : "↺"}</span>
               <span className="key-label">{kcLabel(qmkId)}</span>
             </button>
           );
         })}
-      {placed.encoders.map(({ encoder, shiftX, shiftY }) => {
-        const qmkId = keyboard.getEncoder(layer, encoder.index, encoder.direction);
-        const isSelected =
-          selected?.kind === "encoder" &&
-          selected.index === encoder.index &&
-          selected.direction === encoder.direction;
-        return (
-          <button
-            key={`e${encoder.index},${encoder.direction}@${encoder.x},${encoder.y}`}
-            className={isSelected ? "encoder selected" : "encoder"}
-            title={`Encoder ${encoder.index} ${encoder.direction === 1 ? "CW" : "CCW"}: ${qmkId}`}
-            onClick={() => onEncoderSelect(encoder.index, encoder.direction)}
-            style={shapeStyle(encoder, shiftX, shiftY)}
-          >
-            <span className="encoder-dir">{encoder.direction === 1 ? "↻" : "↺"}</span>
-            <span className="key-label">{kcLabel(qmkId)}</span>
-          </button>
-        );
-      })}
+      </div>
     </div>
   );
 }

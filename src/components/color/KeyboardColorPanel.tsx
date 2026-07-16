@@ -2,79 +2,21 @@ import type { SVGProps } from "react";
 import { useState } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
+import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
   KeyboardLayoutPreview,
-  DEFAULT_KEY_SPACING,
-  DEFAULT_KEYCAP_WIDTH,
-  DEFAULT_CASE_RADIUS,
-  DEFAULT_CASE_THICKNESS,
-  DEFAULT_CASE_COLOR,
-  DEFAULT_PLATE_COLOR,
   SPACING_LEVELS,
   type PreviewSize,
-  type SpacingLevel,
 } from "../keymap/KeyboardLayoutPreview.tsx";
 
-const SIZE_KEY = "vialite-color-preview-size";
-const SPACING_KEY = "vialite-color-key-spacing";
-const KEYCAP_WIDTH_KEY = "vialite-color-keycap-width";
-const CASE_RADIUS_KEY = "vialite-color-case-radius";
-const CASE_THICKNESS_KEY = "vialite-color-case-thickness";
-const CASE_COLOR_KEY = "vialite-color-case-color";
-const PLATE_COLOR_KEY = "vialite-color-plate-color";
 const CASE_RECENT_KEY = "vialite-color-case-recent";
 const PLATE_RECENT_KEY = "vialite-color-plate-recent";
 const MAX_RECENT_COLORS = 3;
 const SIZES: PreviewSize[] = ["s", "m", "l", "xl"];
 const LEVEL_LABELS = { s: "S", m: "M", l: "L", xl: "XL" } as const;
-
-function readStoredLevel(key: string, fallback: SpacingLevel): SpacingLevel {
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (raw && (SPACING_LEVELS as string[]).includes(raw)) {
-      return raw as SpacingLevel;
-    }
-  } catch {
-    // Fall through to default.
-  }
-  return fallback;
-}
-
-function readStoredSize(): PreviewSize {
-  try {
-    const raw = window.localStorage.getItem(SIZE_KEY);
-    if (raw && (SIZES as string[]).includes(raw)) {
-      return raw as PreviewSize;
-    }
-  } catch {
-    // Fall through to default.
-  }
-  return "m";
-}
-
-function readStoredNumber(key: string, fallback: number): number {
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (raw !== null) {
-      const n = Number(raw);
-      if (Number.isFinite(n)) return n;
-    }
-  } catch {
-    // Fall through to default.
-  }
-  return fallback;
-}
-
-function readStoredString(key: string, fallback: string): string {
-  try {
-    return window.localStorage.getItem(key) ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 function readStoredColors(key: string): string[] {
   try {
@@ -123,23 +65,24 @@ export function KeyboardColorPanel({
     !!keyboard.layoutLabels &&
     keyboard.layoutLabels.length > 0 &&
     keyboard.layoutOptions >= 0;
-  const [size, setSize] = useState<PreviewSize>(readStoredSize);
-  const [spacing, setSpacing] = useState<SpacingLevel>(() => readStoredLevel(SPACING_KEY, DEFAULT_KEY_SPACING));
-  const [keycapWidth, setKeycapWidth] = useState<SpacingLevel>(() =>
-    readStoredLevel(KEYCAP_WIDTH_KEY, DEFAULT_KEYCAP_WIDTH),
-  );
-  const [caseRadius, setCaseRadius] = useState<SpacingLevel>(() =>
-    readStoredLevel(CASE_RADIUS_KEY, DEFAULT_CASE_RADIUS),
-  );
-  const [caseThickness, setCaseThickness] = useState(() =>
-    readStoredNumber(CASE_THICKNESS_KEY, DEFAULT_CASE_THICKNESS),
-  );
-  const [caseColor, setCaseColor] = useState(() =>
-    readStoredString(CASE_COLOR_KEY, DEFAULT_CASE_COLOR),
-  );
-  const [plateColor, setPlateColor] = useState(() =>
-    readStoredString(PLATE_COLOR_KEY, DEFAULT_PLATE_COLOR),
-  );
+  // Appearance settings are shared with the main keymap board via context, so
+  // tuning them here also restyles the interactive layout on the 键位 page.
+  const {
+    size,
+    spacing,
+    keycapWidth,
+    caseRadius,
+    caseThickness,
+    caseColor,
+    plateColor,
+    setSize,
+    setSpacing,
+    setKeycapWidth,
+    setCaseRadius,
+    setCaseThickness,
+    setCaseColor,
+    setPlateColor,
+  } = usePreviewAppearance();
   const [caseRecent, setCaseRecent] = useState<string[]>(() =>
     readStoredColors(CASE_RECENT_KEY),
   );
@@ -156,46 +99,31 @@ export function KeyboardColorPanel({
   const caseHidden = caseThickness === 0;
 
   const onSizeChange = (index: number) => {
-    const clamped = Math.min(SIZES.length - 1, Math.max(0, index));
-    const next = SIZES[clamped];
-    setSize(next);
-    store(SIZE_KEY, next);
+    setSize(SIZES[Math.min(SIZES.length - 1, Math.max(0, index))]);
   };
 
   const onSpacingChange = (index: number) => {
-    const clamped = Math.min(SPACING_LEVELS.length - 1, Math.max(0, index));
-    const next = SPACING_LEVELS[clamped];
-    setSpacing(next);
-    store(SPACING_KEY, next);
+    setSpacing(SPACING_LEVELS[Math.min(SPACING_LEVELS.length - 1, Math.max(0, index))]);
   };
 
   const onKeycapWidthChange = (index: number) => {
-    const clamped = Math.min(SPACING_LEVELS.length - 1, Math.max(0, index));
-    const next = SPACING_LEVELS[clamped];
-    setKeycapWidth(next);
-    store(KEYCAP_WIDTH_KEY, next);
+    setKeycapWidth(SPACING_LEVELS[Math.min(SPACING_LEVELS.length - 1, Math.max(0, index))]);
   };
 
   const onCaseRadiusChange = (index: number) => {
-    const clamped = Math.min(SPACING_LEVELS.length - 1, Math.max(0, index));
-    const next = SPACING_LEVELS[clamped];
-    setCaseRadius(next);
-    store(CASE_RADIUS_KEY, next);
+    setCaseRadius(SPACING_LEVELS[Math.min(SPACING_LEVELS.length - 1, Math.max(0, index))]);
   };
 
   const onCaseThicknessChange = (value: number) => {
     setCaseThickness(value);
-    store(CASE_THICKNESS_KEY, String(value));
   };
 
   const onCaseColorChange = (value: string) => {
     setCaseColor(value);
-    store(CASE_COLOR_KEY, value);
   };
 
   const onPlateColorChange = (value: string) => {
     setPlateColor(value);
-    store(PLATE_COLOR_KEY, value);
   };
 
   // Commit the picked color to the per-field recent list (most recent first,
@@ -225,10 +153,10 @@ export function KeyboardColorPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-brand-on-surface-variant">
-        {t("siteColorDesc")}
+      <p className="text-xs text-brand-on-surface-variant/70">
+        {t("colorDisplayNote")}
       </p>
-      <div className="overflow-x-auto rounded-box border border-brand-outline/30 p-4">
+      <div className="overflow-x-auto p-4">
         <KeyboardLayoutPreview
           keyboard={keyboard}
           size={size}
@@ -240,15 +168,6 @@ export function KeyboardColorPanel({
           plateColor={plateColor}
         />
       </div>
-
-      {hasLayoutOptions && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
-            {t("colorLayoutTitle")}
-          </h2>
-          <LayoutOptions keyboard={keyboard} onChange={onChange} />
-        </section>
-      )}
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
@@ -433,6 +352,15 @@ export function KeyboardColorPanel({
           />
         </ul>
       </section>
+
+      {hasLayoutOptions && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+            {t("colorLayoutTitle")}
+          </h2>
+          <LayoutOptions keyboard={keyboard} onChange={onChange} />
+        </section>
+      )}
     </div>
   );
 }

@@ -128,6 +128,10 @@ const MESSAGES = {
     en: "The layout read from the connected keyboard",
     zh: "从已连接键盘读取到的配列",
   },
+  colorDisplayNote: {
+    en: "Color settings only affect the on-screen preview and are not written to the keyboard.",
+    zh: "颜色配置仅调整显示效果，不会存入键盘。",
+  },
   colorLayoutTitle: { en: "Layout options", zh: "布局选项" },
   colorAppearanceTitle: { en: "Appearance", zh: "外观" },
   displaySizeTitle: { en: "Display size", zh: "显示尺寸" },

@@ -65,7 +65,7 @@ export interface PreviewAppearance {
  * top/left keys sit flush against the plate edge while only the bottom/right
  * keys leave their inter-key gap.
  */
-function shapeStyle(
+export function shapeStyle(
   s: { x: number; y: number; width: number; height: number; rotationAngle: number; rotationX: number; rotationY: number },
   shiftX: number,
   shiftY: number,
@@ -86,6 +86,46 @@ function shapeStyle(
   return style;
 }
 
+/** Derived px geometry for a given display size + appearance settings. */
+export interface AppearanceMetrics {
+  /** Per-unit advance (one pitch cell), in px. */
+  PITCH: number;
+  /** Gap between adjacent caps, in px (also the plate margin). */
+  inset: number;
+  /** Case outer corner radius, in px. */
+  outerRadius: number;
+  /** Plate inner corner radius, kept concentric with the case, in px. */
+  innerRadius: number;
+  /** Whether the case bezel is drawn at all (thickness > 0). */
+  showCase: boolean;
+}
+
+/**
+ * Resolves the display size + appearance knobs into the concrete px metrics both
+ * {@link KeyboardLayoutPreview} and the interactive KeyboardLayout render from,
+ * so the two boards stay pixel-identical in geometry. Keycap width sets the cap
+ * size, key spacing sets the (constant) gap, and the pitch is their sum — so each
+ * knob is independent; display size (UNIT) zooms everything uniformly.
+ */
+export function appearanceMetrics(
+  size: PreviewSize,
+  spacing: SpacingLevel,
+  keycapWidth: SpacingLevel,
+  caseRadius: SpacingLevel,
+  caseThickness: number,
+): AppearanceMetrics {
+  const UNIT = PREVIEW_UNITS[size];
+  const cap = UNIT * CAP_RATIOS[keycapWidth];
+  const inset = UNIT * SPACING_RATIOS[spacing];
+  const PITCH = cap + inset;
+  // Concentric corners: the plate's inner radius is the case's outer radius less
+  // the bezel thickness, so the two arcs stay parallel. Clamp at 5 — once the
+  // bezel is thicker than the outer radius the inner corner is essentially square.
+  const outerRadius = CASE_RADIUS_PX[caseRadius];
+  const innerRadius = Math.max(5, outerRadius - caseThickness + 5);
+  return { PITCH, inset, outerRadius, innerRadius, showCase: caseThickness > 0 };
+}
+
 /**
  * Read-only rendering of the connected board's physical layout — same geometry
  * pipeline as {@link KeyboardLayout}, but non-interactive (`pointer-events:none`)
@@ -104,22 +144,13 @@ export function KeyboardLayoutPreview({
   caseColor = DEFAULT_CASE_COLOR,
   plateColor = DEFAULT_PLATE_COLOR,
 }: { keyboard: Keyboard; size?: PreviewSize } & PreviewAppearance) {
-  const UNIT = PREVIEW_UNITS[size];
-  // Keycap width sets the cap size; key spacing sets the (constant) gap between
-  // caps; the pitch is just their sum. So each knob is independent: widening the
-  // cap grows the board with the gap unchanged, and widening the gap grows the
-  // board with the cap unchanged. Display size (UNIT) zooms everything uniformly.
-  const cap = UNIT * CAP_RATIOS[keycapWidth];
-  const inset = UNIT * SPACING_RATIOS[spacing];
-  const PITCH = cap + inset;
-  // Concentric corners: the plate's inner radius is the case's outer radius less
-  // the bezel thickness, so the two arcs stay parallel. Clamp at 0 — once the
-  // bezel is thicker than the outer radius the inner corner is simply square.
-  const outerRadius = CASE_RADIUS_PX[caseRadius];
-  const innerRadius = Math.max(5, outerRadius - caseThickness + 5);
-  // Thickness 0 means "no case" — collapse the bezel wrapper to nothing (no
-  // fill, no corner) so only the plate shows.
-  const showCase = caseThickness > 0;
+  const { PITCH, inset, outerRadius, innerRadius, showCase } = appearanceMetrics(
+    size,
+    spacing,
+    keycapWidth,
+    caseRadius,
+    caseThickness,
+  );
   const placed = useMemo(
     () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
     [keyboard, keyboard.layoutOptions],

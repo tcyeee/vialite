@@ -304,7 +304,7 @@ export function MacroPanel({ keyboard, onChange }: Props) {
               checked={i === active}
               onChange={() => setActive(i)}
             />
-            <div className="tab-content bg-base-100 border-base-300 p-6">
+            <div className="tab-content bg-base-100 border-base-300 p-6 min-h-90">
               {i === active && (
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-2">
