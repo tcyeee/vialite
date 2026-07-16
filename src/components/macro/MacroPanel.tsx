@@ -4,6 +4,7 @@ import { VIAL_PROTOCOL_ADVANCED_MACROS } from "../../protocol/constants.ts";
 import type { Keyboard, MacroAction } from "../../protocol/keyboard.ts";
 import { serializeMacro, serializeMacros } from "../../protocol/macro.ts";
 import { useToast } from "../../contexts/toast.tsx";
+import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
 import { KeycodePicker } from "../common/KeycodePicker.tsx";
 import { UnlockDialog } from "../common/UnlockDialog.tsx";
@@ -288,16 +289,8 @@ export function MacroPanel({ keyboard, onChange }: Props) {
           <span className={overBudget ? "text-xs text-error" : "text-xs text-brand-on-surface-variant"}>
             {t("macroMemoryUsed", { used: memoryUsed, total: keyboard.macroMemory })}
           </span>
-          <span
-            className="tooltip tooltip-top before:max-w-xs before:whitespace-normal before:content-[attr(data-tip)]"
-            data-tip={t("macroMemoryHelp")}
-          >
-            <span className="flex size-4 cursor-help items-center justify-center rounded-full bg-brand-on-surface-variant/20 text-[10px] font-bold text-brand-on-surface-variant">
-              ?
-            </span>
-          </span>
+          <HelpIcon text={t("macroMemoryHelp")} />
         </div>
-        <p className="max-w-md text-xs text-brand-on-surface-variant">{t("macroHint", { n: active })}</p>
       </div>
       <MacroKeycap3D label={`M${active}`} />
       <div className="tabs tabs-lift">

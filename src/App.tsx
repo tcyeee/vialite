@@ -3,6 +3,7 @@ import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
 import { KeyboardLayout } from "./components/keymap/KeyboardLayout.tsx";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
+import { HelpIcon } from "./components/common/HelpIcon.tsx";
 import { KeycodePicker } from "./components/common/KeycodePicker.tsx";
 import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
 import { QuickConfig104 } from "./components/keymap/QuickConfig104.tsx";
@@ -12,6 +13,7 @@ import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { Navbar } from "./components/shell/Navbar.tsx";
 import { QmkSettingsPanel } from "./components/qmk/QmkSettingsPanel.tsx";
 import { Sidebar } from "./components/shell/Sidebar.tsx";
+import { KeyboardColorPanel } from "./components/color/KeyboardColorPanel.tsx";
 import { SiteSettingsPanel } from "./components/site/SiteSettingsPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
@@ -21,7 +23,7 @@ import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./contexts/toast.tsx";
 
-type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "advanced" | "site" | "io";
+type PageMode = "keymap" | "layout" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
 
 type Selected =
   | { kind: "key"; row: number; col: number }
@@ -308,7 +310,7 @@ function App() {
               onNavigate={navigate}
             />
             <main className="min-w-0 flex-1 p-6 md:p-8">
-              <div className="mb-6">
+              <div className="mb-6 flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-brand-on-surface">
                   {mode === "layout"
                     ? t("navLayoutConfig")
@@ -320,7 +322,9 @@ function App() {
                           ? t("navTapDance")
                           : mode === "combo"
                             ? t("navCombo")
-                            : mode === "advanced"
+                            : mode === "color"
+                              ? t("navKeyboardColor")
+                              : mode === "advanced"
                               ? t("navAdvanced")
                               : mode === "site"
                                 ? t("navSiteSettings")
@@ -328,6 +332,7 @@ function App() {
                                   ? t("navImportExport")
                                   : t("keyboardLayoutTitle")}
                 </h1>
+                {mode === "macro" && <HelpIcon text={t("macroHint")} />}
               </div>
               {keyboard && mode === "keymap" && (
                 <>
@@ -395,6 +400,7 @@ function App() {
                   onLeaveResolved={handleQmkLeaveResolved}
                 />
               )}
+              {keyboard && mode === "color" && <KeyboardColorPanel keyboard={keyboard} />}
               {mode === "site" && <SiteSettingsPanel />}
               {keyboard && mode === "io" && (
                 <ImportExportPanel importing={importing} onExport={handleExport} onImportFile={handleImportFile} />

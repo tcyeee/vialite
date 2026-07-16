@@ -10,6 +10,7 @@ import {
 } from "../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import { EVENT_CODE_TO_QMK } from "../keymap/keyEventMap.ts";
+import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "../keymap/QuickConfig104.tsx";
 
 /** Maps KEYCODE_CATEGORIES names (defined in keycodes.ts) to translation keys. */
 const CATEGORY_KEYS: Record<string, MessageKey> = {
@@ -116,8 +117,13 @@ export function KeycodePicker({ onPick, onClose }: Props) {
 
   const q = query.trim().toLowerCase();
   const categories = useMemo(() => {
+    // When the 104-key board is visible (no active search), hide the keys it
+    // already exposes so the category lists don't duplicate them.
     if (!q) {
-      return KEYCODE_CATEGORIES;
+      return KEYCODE_CATEGORIES.map((cat) => ({
+        name: cat.name,
+        entries: cat.entries.filter((e) => !QUICK_CONFIG_QMK_IDS.has(e.qmkId)),
+      })).filter((cat) => cat.entries.length > 0);
     }
     return KEYCODE_CATEGORIES.map((cat) => ({
       name: cat.name,
@@ -129,8 +135,8 @@ export function KeycodePicker({ onPick, onClose }: Props) {
 
   return createPortal(
     <div className="modal modal-open">
-      <div className="modal-box max-w-3xl">
-        <div className="sticky top-0 z-10 -mx-6 -mt-6 flex gap-2 bg-base-100 px-6 pt-6 pb-2">
+      <div className="modal-box max-w-5xl">
+        <div className="mb-2 flex gap-2">
           <input
             type="search"
             className="input input-sm flex-1"
@@ -190,6 +196,14 @@ export function KeycodePicker({ onPick, onClose }: Props) {
           <div className="alert alert-warning alert-soft mb-2 py-1 text-sm">
             <span>{hint}</span>
           </div>
+        )}
+        {!q && (
+          <section>
+            <h4 className="mt-3 mb-1 text-sm font-semibold opacity-70">{t("quickConfigTitle")}</h4>
+            <div className="overflow-x-auto pb-1">
+              <QuickConfig104 onPick={pickByQmkId} />
+            </div>
+          </section>
         )}
         {categories.map((category) => (
           <section key={category.name}>

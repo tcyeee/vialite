@@ -23,7 +23,7 @@
    daisyui's component classes (btn, card, ...) aren't adopted yet, so this
    is the source of truth until/unless that changes. */
 @theme {
-  --color-brand-primary: #78555e;
+  --color-brand-primary: #000000;
   --color-brand-primary-container: #ffd1dc;
   --color-brand-secondary: #2f6a3f;
   --color-brand-secondary-container: #b2f2bb;
@@ -43,7 +43,7 @@
    layer(theme) regardless of selector specificity, so this overrides the
    light values whenever the attribute is present. */
 :root[data-theme="dark"] {
-  --color-brand-primary: #e6bac4;
+  --color-brand-primary: #ffffff;
   --color-brand-primary-container: #4a2c34;
   --color-brand-secondary: #8fd9a0;
   --color-brand-secondary-container: #1f4a2a;
@@ -55,6 +55,19 @@
   --color-brand-on-surface: #e7e2e4;
   --color-brand-on-surface-variant: #cbbfc1;
   --color-brand-outline: #948e90;
+}
+
+/* Monochrome black accent: override daisyUI's own `primary` token (used by
+   btn-primary, range-primary, ...) to match --color-brand-primary. Black in
+   light mode; inverted to white in dark mode so the accent stays visible on a
+   dark surface. */
+:root {
+  --color-primary: #000000;
+  --color-primary-content: #ffffff;
+}
+:root[data-theme="dark"] {
+  --color-primary: #ffffff;
+  --color-primary-content: #000000;
 }
 
 :root {
@@ -164,6 +177,28 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .sidebar-appear {
+    animation: none;
+  }
+}
+
+@keyframes nav-label-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.nav-label-appear {
+  animation: nav-label-appear 0.35s ease-out both;
+  animation-delay: var(--nav-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-label-appear {
     animation: none;
   }
 }

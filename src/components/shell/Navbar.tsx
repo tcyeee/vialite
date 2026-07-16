@@ -7,14 +7,14 @@ export function Navbar() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="navbar sticky top-0 z-40 min-h-16 bg-brand-background px-6 md:px-10 lg:px-12">
+    <div className="navbar sticky top-0 z-40 min-h-16 bg-black text-white px-6 md:px-10 lg:px-12">
       <div className="navbar-start">
         <img className="h-8 w-auto md:h-9" src="/logo-full.svg" alt="Vialite" />
       </div>
       <div className="navbar-end gap-2">
         <button
           type="button"
-          className="btn btn-sm btn-outline rounded-full"
+          className="btn btn-sm btn-outline rounded-full border-white/40 text-white hover:border-white hover:bg-white hover:text-black"
           onClick={() => setLang(lang === "zh" ? "en" : "zh")}
           title={t("toggleLanguage")}
         >
@@ -22,7 +22,7 @@ export function Navbar() {
           {lang === "zh" ? "中文" : "English"}
         </button>
         <label
-          className="btn btn-sm btn-circle btn-outline swap swap-rotate text-brand-on-surface"
+          className="btn btn-sm btn-circle btn-outline swap swap-rotate border-white/40 text-white hover:border-white hover:bg-white hover:text-black"
           title={t("toggleTheme")}
         >
           <input

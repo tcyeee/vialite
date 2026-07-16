@@ -140,6 +140,9 @@ const KEYS_104: Qc[] = [
 const BOARD_WIDTH = 22.5;
 const BOARD_HEIGHT = 6.25;
 
+/** qmk_ids the 104-key board already exposes, so other pickers can avoid listing them twice. */
+export const QUICK_CONFIG_QMK_IDS: ReadonlySet<string> = new Set(KEYS_104.map((k) => k.id));
+
 interface Props {
   onPick: (qmkId: string) => void;
   disabled?: boolean;

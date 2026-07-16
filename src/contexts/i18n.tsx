@@ -126,21 +126,29 @@ const MESSAGES = {
   },
   keyDisplayMacos: { en: "macOS", zh: "macOS" },
   keyDisplayWindows: { en: "Windows", zh: "Windows" },
+  siteColorDesc: {
+    en: "The layout read from the connected keyboard",
+    zh: "从已连接键盘读取到的配列",
+  },
+  displaySizeTitle: { en: "Display size", zh: "显示尺寸" },
   exportLayoutDesc: { en: "Save the current keymap to a .vil file", zh: "将当前配置保存为 .vil 文件" },
   importLayoutDesc: { en: "Load a keymap from a .vil file", zh: "从 .vil 文件加载配置" },
 
   // Sidebar
   navHome: { en: "Home", zh: "主页" },
   navLayoutConfig: { en: "Layout", zh: "布局配置" },
-  navMatrixTest: { en: "Matrix Test", zh: "矩阵测试" },
+  navMatrixTest: { en: "Keyboard Test", zh: "键盘测试" },
   navMacro: { en: "Macro", zh: "宏配置" },
   navTapDance: { en: "Tap Dance", zh: "点击舞步" },
   navCombo: { en: "Combo", zh: "组合键" },
+  navKeyboardColor: { en: "Keyboard Color", zh: "键盘配色" },
   navAdvanced: { en: "QMK Settings", zh: "QMK 设置" },
   navSiteSettings: { en: "Website Settings", zh: "网站设置" },
   navImportExport: { en: "Import / Export", zh: "导入导出" },
   comingSoon: { en: "Coming soon", zh: "即将推出" },
   resizeSidebar: { en: "Resize sidebar", zh: "拖动调整侧边栏宽度" },
+  collapseSidebar: { en: "Collapse sidebar", zh: "收起侧边栏" },
+  expandSidebar: { en: "Expand sidebar", zh: "展开侧边栏" },
 
   // Shared
   save: { en: "Save", zh: "保存" },
@@ -156,8 +164,8 @@ const MESSAGES = {
   },
   macroEmpty: { en: "No actions yet — add one below.", zh: "还没有任何动作,在下方添加一个。" },
   macroHint: {
-    en: "Assign M{n} to a key in the keymap to trigger this macro.",
-    zh: "在按键映射中把某个键位设为 M{n},即可触发这个宏。",
+    en: "Each macro has its own number — M0, M1, M2, and so on. Assign a key in the keymap to the matching number (e.g. M0 for the first macro), and pressing it triggers that macro.",
+    zh: "每个宏都有自己的编号:M0、M1、M2……。在按键映射中把某个键位设为对应的编号(例如第一个宏是 M0),按下它就会触发那个宏。",
   },
   macroAddText: { en: "+ Text", zh: "+ 文本" },
   macroAddTap: { en: "+ Tap", zh: "+ 点按" },

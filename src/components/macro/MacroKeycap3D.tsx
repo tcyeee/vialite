@@ -52,7 +52,10 @@ export function MacroKeycap3D({ label }: Props) {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-    camera.position.set(0, 3.4, 4.2);
+    // Base framing (wide panels). resize() pulls the camera further back when
+    // the panel is narrow so the cap never gets clipped at the sides.
+    const baseCameraPos = new THREE.Vector3(0, 3.4, 4.2);
+    camera.position.copy(baseCameraPos);
     camera.lookAt(0, 0, 0);
 
     let renderer: THREE.WebGLRenderer;
@@ -95,8 +98,14 @@ export function MacroKeycap3D({ label }: Props) {
     const resize = () => {
       const w = mount.clientWidth || 1;
       const h = mount.clientHeight || 1;
+      const aspect = w / h;
       renderer.setSize(w, h);
-      camera.aspect = w / h;
+      camera.aspect = aspect;
+      // A perspective camera's horizontal FOV shrinks with the aspect ratio, so
+      // a narrow panel would clip the cap's sides. Pull back proportionally
+      // (never closer than the base framing) to keep the whole cap visible.
+      const zoom = aspect < 1 ? 1 / aspect : 1;
+      camera.position.copy(baseCameraPos).multiplyScalar(zoom);
       camera.updateProjectionMatrix();
     };
     const resizeObserver = new ResizeObserver(resize);
