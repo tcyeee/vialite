@@ -6,7 +6,14 @@
 import pkg from "xz-decompress";
 import * as C from "./constants.ts";
 import { deserialize as kleDeserialize, type KleData, type KleKeyboard } from "./kleSerial.ts";
-import { deserialize as kcDeserialize, serialize as kcSerialize, setKeycodeVersion } from "./keycodes.ts";
+import {
+  deserialize as kcDeserialize,
+  serialize as kcSerialize,
+  setCustomKeycodes,
+  setKeycodeVersion,
+  setTapDanceCount,
+  type CustomKeycode,
+} from "./keycodes.ts";
 import { deserializeMacros, serializeMacros, type MacroAction } from "./macro.ts";
 import { HidTransport, ProtocolError } from "./transport.ts";
 import { normalizeVilKeycode, type ParsedVilFile, type VilRestoreReport, type VilSnapshot } from "./vilFile.ts";
@@ -132,6 +139,7 @@ export type LayoutLabel = string | string[];
 interface VialDefinition {
   matrix: { rows: number; cols: number };
   layouts: { keymap: KleData; labels?: LayoutLabel[] };
+  customKeycodes?: CustomKeycode[];
 }
 
 /** Number of bits a layout-options entry occupies in the packed u32 (mirrors vial-gui's LayoutEditor). */
@@ -284,6 +292,38 @@ export class Keyboard {
 
   getEncoder(layer: number, index: number, direction: 0 | 1): string {
     return this.encoderLayout.get(`${layer},${index},${direction}`) ?? "KC_NO";
+  }
+
+  /**
+   * Whether a layer holds any real binding — i.e. any key or encoder that isn't
+   * an empty slot (`KC_NO`) or a pass-through (`KC_TRNS`). Used to flag which
+   * layers the user has actually configured. Layer 0 normally has a full keymap
+   * and so always counts as configured.
+   */
+  isLayerConfigured(layer: number): boolean {
+    const prefix = `${layer},`;
+    for (const [k, code] of this.layout) {
+      if (k.startsWith(prefix) && code !== "KC_NO" && code !== "KC_TRNS") return true;
+    }
+    for (const [k, code] of this.encoderLayout) {
+      if (k.startsWith(prefix) && code !== "KC_NO" && code !== "KC_TRNS") return true;
+    }
+    return false;
+  }
+
+  /**
+   * Whether a keycode is bound to at least one key or encoder direction across
+   * every layer. Used to flag whether a tap-dance slot (TD(n)) is actually
+   * reachable from the keymap, versus configured but never placed on a key.
+   */
+  isKeycodeAssigned(qmkId: string): boolean {
+    for (const code of this.layout.values()) {
+      if (code === qmkId) return true;
+    }
+    for (const code of this.encoderLayout.values()) {
+      if (code === qmkId) return true;
+    }
+    return false;
   }
 
   async setKey(layer: number, row: number, col: number, qmkId: string): Promise<void> {
@@ -477,6 +517,9 @@ export class Keyboard {
     this.rows = definition.matrix.rows;
     this.cols = definition.matrix.cols;
     this.layoutLabels = definition.layouts.labels?.length ? definition.layouts.labels : null;
+    // Register this device's custom keycodes (Bluetooth switches, etc.) so the
+    // picker can list them and label() can name their USER0n slots.
+    setCustomKeycodes(definition.customKeycodes ?? []);
 
     const kb: KleKeyboard = kleDeserialize(definition.layouts.keymap);
     this.keys = [];
@@ -598,6 +641,7 @@ export class Keyboard {
       this.comboCount = 0;
       this.tapDanceEntries = [];
       this.comboEntries = [];
+      setTapDanceCount(0);
       return;
     }
     const data = await this.transport.send(
@@ -606,6 +650,7 @@ export class Keyboard {
     );
     this.tapDanceCount = data[0];
     this.comboCount = data[1];
+    setTapDanceCount(this.tapDanceCount);
 
     this.tapDanceEntries = [];
     for (let i = 0; i < this.tapDanceCount; i++) {

@@ -115,6 +115,19 @@ const MESSAGES = {
   themeLight: { en: "Light", zh: "浅色" },
   themeDark: { en: "Dark", zh: "深色" },
   siteGeneralTitle: { en: "General", zh: "通用" },
+  siteDangerTitle: { en: "Danger Zone", zh: "危险操作" },
+  clearCacheTitle: { en: "Clear site cache", zh: "清空网站缓存" },
+  clearCacheDesc: {
+    en: "Reset all locally stored preferences",
+    zh: "重置本地存储的所有偏好设置",
+  },
+  clearCacheButton: { en: "Clear cache", zh: "清空缓存" },
+  clearCacheConfirmTitle: { en: "Clear site cache?", zh: "确定清空网站缓存?" },
+  clearCacheConfirmHint: {
+    en: "This will erase your saved keyboard style settings (colors, keycap appearance, layout preferences). This cannot be undone.",
+    zh: "此操作会清除已保存的键盘样式信息(配色、键帽外观、布局偏好等),且无法撤销。",
+  },
+  clearCacheConfirm: { en: "Clear cache", zh: "确认清空" },
   languageDesc: { en: "Interface language", zh: "界面语言" },
   themeDesc: { en: "Light or dark theme", zh: "浅色或深色主题" },
   keyDisplayTitle: { en: "Modifier key style", zh: "修饰键类型" },
@@ -175,6 +188,8 @@ const MESSAGES = {
   resizeSidebar: { en: "Resize sidebar", zh: "拖动调整侧边栏宽度" },
   collapseSidebar: { en: "Collapse sidebar", zh: "收起侧边栏" },
   expandSidebar: { en: "Expand sidebar", zh: "展开侧边栏" },
+  openMenu: { en: "Open menu", zh: "打开菜单" },
+  closeMenu: { en: "Close menu", zh: "关闭菜单" },
 
   // Shared
   save: { en: "Save", zh: "保存" },
@@ -236,6 +251,16 @@ const MESSAGES = {
     en: "Delete this tap dance? This clears all its actions.",
     zh: "确定要删除这个点击舞步吗?这会清空它的所有动作。",
   },
+  tapDanceAssigned: { en: "In use", zh: "已使用" },
+  tapDanceUnassigned: { en: "Not in use", zh: "未使用" },
+  tapDanceAssignedHelp: {
+    en: "TD({n}) is placed on a key in the keymap.",
+    zh: "TD({n}) 已被放置到按键映射中。",
+  },
+  tapDanceUnassignedHelp: {
+    en: "TD({n}) is configured but not yet placed on any key.",
+    zh: "TD({n}) 已配置,但还没有放置到任何按键上。",
+  },
   tapDanceAdd: { en: "Add tap dance", zh: "添加点击舞步" },
   tapDanceRenumber: { en: "Change slot number", zh: "更换槽位编号" },
   tapDanceEmpty: { en: "No tap dances configured yet.", zh: "还没有配置任何点击舞步。" },
@@ -265,6 +290,7 @@ const MESSAGES = {
     en: "Delete this combo?",
     zh: "确定删除这个组合键吗?",
   },
+  comboActive: { en: "Active", zh: "已生效" },
   comboAdd: { en: "Add combo", zh: "添加组合键" },
   comboRenumber: { en: "Change slot number", zh: "更换槽位编号" },
   comboEmpty: { en: "No combos configured yet.", zh: "还没有配置任何组合键。" },
@@ -321,7 +347,7 @@ const MESSAGES = {
   noMatch: { en: "No keycodes match “{query}”.", zh: "没有匹配 “{query}” 的键码。" },
 
   // Keycode categories (keys must mirror KEYCODE_CATEGORIES names in keycodes.ts)
-  categoryBasic: { en: "Basic", zh: "基础" },
+  categoryBasic: { en: "Basic Keys", zh: "基础按键" },
   categoryNumpad: { en: "Numpad", zh: "小键盘" },
   categoryNavigation: { en: "Navigation", zh: "导航" },
   categoryShifted: { en: "Shifted", zh: "上档符号" },
@@ -332,7 +358,88 @@ const MESSAGES = {
   categoryMacros: { en: "Macros", zh: "宏" },
   categoryMedia: { en: "Media", zh: "媒体" },
   categoryMouse: { en: "Mouse", zh: "鼠标" },
+  categoryFnMediaMouse: { en: "Function", zh: "功能按键" },
   categoryLighting: { en: "Lighting", zh: "灯光" },
+  categoryCustom: { en: "Custom", zh: "自定义" },
+  categoryTapDance: { en: "Tap Dance", zh: "Tap Dance" },
+  categoryMacrosTapDance: { en: "Macros / Tap Dance", zh: "宏 / Tap Dance" },
+
+  // Sub-groups within the "Function" tab
+  groupFnKeys: { en: "F13–F24", zh: "F13–F24" },
+  groupMouse: { en: "Mouse", zh: "鼠标按键" },
+  groupOther: { en: "Other", zh: "其他按键" },
+
+  // Sub-groups within the merged "Macros / Tap Dance" tab
+  groupMacros: { en: "Macros", zh: "宏" },
+  groupTapDance: { en: "Tap Dance", zh: "Tap Dance" },
+
+  // Sub-groups within the "Layers" tab (one per layer-switch function)
+  groupLayerMO: { en: "MO · Momentary", zh: "MO · 临时层" },
+  groupLayerTG: { en: "TG · Toggle", zh: "TG · 切换层" },
+  groupLayerTT: { en: "TT · Tap-Toggle", zh: "TT · 点触切换" },
+  groupLayerOSL: { en: "OSL · One-Shot", zh: "OSL · 单次层" },
+  groupLayerTO: { en: "TO · Activate", zh: "TO · 激活层" },
+  groupLayerDF: { en: "DF · Default", zh: "DF · 默认层" },
+  groupLayerOther: { en: "Other", zh: "其他" },
+
+  // Hover help for each "Layers" sub-group
+  groupLayerMOHelp: {
+    en: "Activates the target layer only while the key is held down; releasing returns to the previous layer.",
+    zh: "按住时临时激活目标层，松开后立即回到原来的层。",
+  },
+  groupLayerTGHelp: {
+    en: "Toggles the target layer on or off with each tap; the layer stays active until you toggle it off.",
+    zh: "每次点按在开/关之间切换目标层，激活后会保持，直到再次切换关闭。",
+  },
+  groupLayerTTHelp: {
+    en: "Acts like MO when held, but tapping it repeatedly toggles the layer on like TG.",
+    zh: "按住时表现为 MO（临时层），连续点按则像 TG 一样把层锁定开启。",
+  },
+  groupLayerOSLHelp: {
+    en: "Activates the target layer for the next single key press only, then returns automatically.",
+    zh: "只对下一次按键激活目标层，按完一个键后自动返回。",
+  },
+  groupLayerTOHelp: {
+    en: "Switches to the target layer and keeps it active, turning off other layers above the base.",
+    zh: "切换到目标层并保持激活，同时关闭基础层之上的其他层。",
+  },
+  groupLayerDFHelp: {
+    en: "Sets the target layer as the new default (base) layer that stays active by default.",
+    zh: "将目标层设为新的默认（基础）层，默认保持激活。",
+  },
+  groupLayerOtherHelp: {
+    en: "Other layer-switching keycodes that don't fit the categories above.",
+    zh: "不属于上述分类的其他层切换键码。",
+  },
+
+  // Sub-groups within the "Quantum" tab
+  groupQuantumOSM: { en: "One-Shot Mods", zh: "单次修饰键" },
+  groupQuantumMods: { en: "Modifiers", zh: "修饰键" },
+  groupQuantumModTap: { en: "Mod-Tap", zh: "修饰 / 点触" },
+  groupQuantumLayerTap: { en: "Layer-Tap", zh: "层 / 点触" },
+  groupQuantumOther: { en: "Other", zh: "其他" },
+
+  // Hover help for each "Quantum" sub-group
+  groupQuantumOSMHelp: {
+    en: "Tap to apply the modifier to the next single key press only, so you don't have to hold it down.",
+    zh: "点按后只对下一次按键生效对应修饰键，无需一直按住。",
+  },
+  groupQuantumModsHelp: {
+    en: "Applies one or more modifiers (Ctrl/Shift/Alt/GUI) to another basic keycode.",
+    zh: "为某个基础键码叠加一个或多个修饰键（Ctrl/Shift/Alt/GUI）。",
+  },
+  groupQuantumModTapHelp: {
+    en: "Acts as a modifier when held and sends the basic keycode when tapped.",
+    zh: "按住时作为修饰键，点按时发送基础键码。",
+  },
+  groupQuantumLayerTapHelp: {
+    en: "Activates the target layer when held and sends the basic keycode when tapped.",
+    zh: "按住时激活目标层，点按时发送基础键码。",
+  },
+  groupQuantumOtherHelp: {
+    en: "Other Quantum keycodes that don't fit the categories above.",
+    zh: "不属于上述分类的其他 Quantum 键码。",
+  },
 
   // MatrixTester
   matrixStopped: { en: "Matrix test stopped: {error}", zh: "矩阵测试已停止:{error}" },

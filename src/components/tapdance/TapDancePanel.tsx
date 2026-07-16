@@ -7,6 +7,7 @@ import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
 import { RenumberPicker } from "../common/RenumberPicker.tsx";
+import { ConfirmDialog } from "../common/ConfirmDialog.tsx";
 import { startViewTransition } from "../common/viewTransition.ts";
 
 const PREVIEW_STATES: { labelKey: MessageKey; field: keyof TapDanceEntry }[] = [
@@ -21,6 +22,8 @@ interface PreviewCardProps {
   entry: TapDanceEntry;
   /** Total number of tap dance slots on the device, for the renumber picker. */
   tapDanceCount: number;
+  /** Whether TD(index) is placed on a key in the keymap (drives the used/unused tag). */
+  assigned: boolean;
   /** Slot indices already occupied by another entry — greyed out in the renumber picker. */
   usedIndices: Set<number>;
   /** Present only for already-configured entries — enables the hover toolbar + flip-to-edit. */
@@ -45,6 +48,7 @@ function TapDancePreviewCard({
   index,
   entry,
   tapDanceCount,
+  assigned,
   usedIndices,
   onSave,
   onDelete,
@@ -76,11 +80,7 @@ function TapDancePreviewCard({
             type="button"
             className="btn btn-ghost btn-xs px-2 text-white hover:bg-white/20 hover:text-white"
             title={t("delete")}
-            onClick={() => {
-              if (window.confirm(t("tapDanceDeleteConfirm"))) {
-                onDelete?.();
-              }
-            }}
+            onClick={() => onDelete?.()}
           >
             <TrashIcon className="h-3.5 w-3.5" />
           </button>
@@ -98,6 +98,14 @@ function TapDancePreviewCard({
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
               TAP DANCE
             </span>
+          </div>
+          <div
+            className={`badge badge-sm absolute top-3 right-3 z-10 border-none font-medium text-white ${
+              assigned ? "bg-emerald-600" : "bg-rose-600"
+            }`}
+            title={t(assigned ? "tapDanceAssignedHelp" : "tapDanceUnassignedHelp", { n: index })}
+          >
+            {t(assigned ? "tapDanceAssigned" : "tapDanceUnassigned")}
           </div>
           <div className="card-body relative flex flex-col pb-3">
             <div className="mb-4 font-mono text-4xl font-bold tracking-tight">TD-{index}</div>
@@ -215,6 +223,8 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
    * a beat before it animates to its sorted position. Cleared inside a View Transition.
    */
   const [pendingOrder, setPendingOrder] = useState<number[] | null>(null);
+  /** Slot awaiting delete confirmation, or null when the confirm dialog is closed. */
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
   const reorderTimer = useRef<number | null>(null);
 
   useEffect(() => () => {
@@ -345,9 +355,10 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
               index={i}
               entry={keyboard.tapDanceEntries[i]}
               tapDanceCount={keyboard.tapDanceCount}
+              assigned={keyboard.isKeycodeAssigned(`TD(${i})`)}
               usedIndices={usedIndices}
               onSave={(patch) => void updateAt(i, patch)}
-              onDelete={() => clearAt(i)}
+              onDelete={() => setPendingDelete(i)}
               onMove={(toIdx) => void moveTo(i, toIdx)}
               editing={i === editingIndex}
               onEdit={() => handleEdit(i)}
@@ -356,6 +367,16 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
           ))
         )}
       </div>
+      {pendingDelete !== null && (
+        <ConfirmDialog
+          message={t("tapDanceDeleteConfirm")}
+          onConfirm={() => {
+            clearAt(pendingDelete);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   );
 }

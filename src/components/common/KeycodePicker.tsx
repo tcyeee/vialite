@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   KEYCODE_CATEGORIES,
+  customKeycodeDefs,
   deserialize,
   isBasicQmkId,
   label as kcLabel,
   serialize,
+  tapDanceKeycodeDefs,
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
@@ -26,11 +28,30 @@ export const CATEGORY_KEYS: Record<string, MessageKey> = {
   Media: "categoryMedia",
   Mouse: "categoryMouse",
   Lighting: "categoryLighting",
+  "Fn/Media/Mouse": "categoryFnMediaMouse",
+  Custom: "categoryCustom",
+  "Tap Dance": "categoryTapDance",
+  "Macros/Tap Dance": "categoryMacrosTapDance",
 };
 
 /** Categories hidden from the advanced picker (both browse and search). */
 const HIDDEN_CATEGORIES: ReadonlySet<string> = new Set(["ISO/International", "Numpad", "Shifted"]);
 const VISIBLE_CATEGORIES = KEYCODE_CATEGORIES.filter((c) => !HIDDEN_CATEGORIES.has(c.name));
+
+/**
+ * Categories that only exist once a keyboard is connected: its custom keycodes
+ * (Bluetooth switches, etc.) and tap-dance slots. Read live from the keycode
+ * registry so they reflect whichever device is attached, and omitted entirely
+ * when the device defines none.
+ */
+export function deviceCategories(): { name: string; entries: KeycodeDef[] }[] {
+  const out: { name: string; entries: KeycodeDef[] }[] = [];
+  const custom = customKeycodeDefs();
+  if (custom.length > 0) out.push({ name: "Custom", entries: [...custom] });
+  const tapDance = tapDanceKeycodeDefs();
+  if (tapDance.length > 0) out.push({ name: "Tap Dance", entries: [...tapDance] });
+  return out;
+}
 
 interface Props {
   onPick: (qmkId: string) => void;
@@ -121,20 +142,28 @@ export function KeycodePicker({ onPick, onClose }: Props) {
 
   const q = query.trim().toLowerCase();
   const categories = useMemo(() => {
+    const all = [...VISIBLE_CATEGORIES, ...deviceCategories()];
     // When the 104-key board is visible (no active search), hide the keys it
     // already exposes so the category lists don't duplicate them.
     if (!q) {
-      return VISIBLE_CATEGORIES.map((cat) => ({
-        name: cat.name,
-        entries: cat.entries.filter((e) => !QUICK_CONFIG_QMK_IDS.has(e.qmkId)),
-      })).filter((cat) => cat.entries.length > 0);
+      return all
+        .map((cat) => ({
+          name: cat.name,
+          entries: cat.entries.filter((e) => !QUICK_CONFIG_QMK_IDS.has(e.qmkId)),
+        }))
+        .filter((cat) => cat.entries.length > 0);
     }
-    return VISIBLE_CATEGORIES.map((cat) => ({
-      name: cat.name,
-      entries: cat.entries.filter(
-        (e) => e.qmkId.toLowerCase().includes(q) || e.label.toLowerCase().includes(q),
-      ),
-    })).filter((cat) => cat.entries.length > 0);
+    return all
+      .map((cat) => ({
+        name: cat.name,
+        entries: cat.entries.filter(
+          (e) =>
+            e.qmkId.toLowerCase().includes(q) ||
+            e.label.toLowerCase().includes(q) ||
+            (e.title?.toLowerCase().includes(q) ?? false),
+        ),
+      }))
+      .filter((cat) => cat.entries.length > 0);
   }, [q]);
 
   return createPortal(
@@ -221,7 +250,7 @@ export function KeycodePicker({ onPick, onClose }: Props) {
                   className={`btn btn-sm btn-outline h-auto min-h-8 min-w-12 whitespace-pre-line py-1 font-normal normal-case leading-tight${
                     entry.masked ? " italic" : ""
                   }`}
-                  title={entry.qmkId}
+                  title={entry.title ?? entry.qmkId}
                   onClick={() => pick(entry)}
                 >
                   {entry.label || entry.qmkId}

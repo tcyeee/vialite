@@ -12,6 +12,8 @@ export interface KeycodeDef {
   label: string;
   /** Template like "LCTL_T(kc)" that must be completed with an inner basic key. */
   masked?: boolean;
+  /** Longer human description (e.g. a custom keycode's title) shown as a tooltip. */
+  title?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -1566,8 +1568,71 @@ export function withHold(current: string, pickedHold: string): string {
   return pickedHold;
 }
 
+// ---------------------------------------------------------------------------
+// Device-specific keycodes (custom keycodes + tap dance)
+// ---------------------------------------------------------------------------
+//
+// These aren't part of the fixed tables: their names, labels and counts come
+// from the connected keyboard's vial.json / dynamic-entry counts, so the UI and
+// label() resolve them through this registry, set once per device on connect
+// (mirroring setKeycodeVersion). Custom keycodes occupy the USER00.. (QK_KB)
+// slots; tap dance uses TD(n).
+
+/** One `customKeycodes` entry from a device's vial.json. */
+export interface CustomKeycode {
+  name: string;
+  title?: string;
+  shortName?: string;
+}
+
+let customKeycodeDefsCache: KeycodeDef[] = [];
+let tapDanceDefsCache: KeycodeDef[] = [];
+/** qmk_id -> display label for whatever the connected device defines. */
+const deviceLabelByQmkId = new Map<string, string>();
+
+/**
+ * Registers the connected keyboard's custom keycodes (from vial.json's
+ * `customKeycodes`). The i-th entry maps to the `USER0i` slot; its `shortName`
+ * (falling back to `name`) becomes the keycap/button label. Pass `[]` to clear.
+ */
+export function setCustomKeycodes(list: CustomKeycode[]): void {
+  customKeycodeDefsCache = [];
+  for (const [i, c] of list.entries()) {
+    if (i >= 16) break;
+    const qmkId = `USER${String(i).padStart(2, "0")}`;
+    const short = (c.shortName || c.name || qmkId).trim();
+    if (!short || short === qmkId) continue;
+    deviceLabelByQmkId.set(qmkId, short);
+    customKeycodeDefsCache.push({ qmkId, label: short, title: c.title || c.name });
+  }
+}
+
+/** Registers how many tap-dance slots the device exposes, as TD(0)..TD(n-1). */
+export function setTapDanceCount(count: number): void {
+  tapDanceDefsCache = [];
+  for (let i = 0; i < count; i++) {
+    const qmkId = `TD(${i})`;
+    deviceLabelByQmkId.set(qmkId, `TD${i}`);
+    tapDanceDefsCache.push({ qmkId, label: `TD${i}` });
+  }
+}
+
+/** The connected device's custom keycodes, for building a picker tab. */
+export function customKeycodeDefs(): readonly KeycodeDef[] {
+  return customKeycodeDefsCache;
+}
+
+/** The connected device's tap-dance keycodes, for building a picker tab. */
+export function tapDanceKeycodeDefs(): readonly KeycodeDef[] {
+  return tapDanceDefsCache;
+}
+
 /** Human-readable label for a qmk_id (or raw hex fallback identifier). */
 export function label(qmkId: string): string {
+  const device = deviceLabelByQmkId.get(qmkId);
+  if (device) {
+    return device;
+  }
   const def = displayByQmkId.get(qmkId);
   if (def) {
     return def.label;

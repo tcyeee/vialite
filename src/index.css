@@ -373,6 +373,13 @@ body {
   height: calc(1.5rem * var(--key-font-scale, 1));
 }
 
+/* Quick-config 104 palette: icon-face keys (letters, modifiers, nav symbols)
+   render 15% smaller than on the board so they sit better beside the text labels. */
+.qc-compact-icons .key-icon {
+  width: calc(1.5rem * var(--key-font-scale, 1) * 0.85);
+  height: calc(1.5rem * var(--key-font-scale, 1) * 0.85);
+}
+
 /* Symbol icons (⌘ ⇧ ⌥ ⌃ ↵ ⌫ ⎵ arrows…) read larger than the text labels and the
    letter icons; scale them down 20% to keep all three keycap face types matched. */
 .key-icon-symbol {
@@ -423,6 +430,27 @@ body {
   padding: 0 3px;
   border-radius: 3px;
   background: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.16));
+}
+
+/* Mod-Tap hold band: side badge + OS-style modifier glyph(s), laid out inline
+   like a plain modifier cap. Icons/badge are sized in em so they track the band's
+   own 0.8em font-size everywhere (board and off-board), overriding the board's
+   rem-based .key-icon so a hold glyph never dwarfs the shaded band. */
+.key-hold-mods {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.key-hold-mods .key-icon,
+.keyboard-layout .key-hold-mods .key-icon {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.key-hold-text {
+  line-height: 1;
 }
 
 /* On the board the split fills the whole cap: tap half flexes to take the space

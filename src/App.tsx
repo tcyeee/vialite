@@ -12,7 +12,7 @@ import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { Navbar } from "./components/shell/Navbar.tsx";
 import { QmkSettingsPanel } from "./components/qmk/QmkSettingsPanel.tsx";
-import { Sidebar } from "./components/shell/Sidebar.tsx";
+import { Sidebar, SidebarDrawer } from "./components/shell/Sidebar.tsx";
 import { KeyboardColorPanel } from "./components/color/KeyboardColorPanel.tsx";
 import { SiteSettingsPanel } from "./components/site/SiteSettingsPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
@@ -56,6 +56,9 @@ function App() {
   // re-render so KeyboardLayout picks up the new label after a remap.
   const [, forceUpdate] = useState(0);
   const [importing, setImporting] = useState(false);
+  // Narrow-viewport (`< md`) sidebar drawer open state; ignored at md+, where the floating
+  // Sidebar card is shown instead.
+  const [drawerOpen, setDrawerOpen] = useState(false);
   // Connect-success page transition. "zoom": the waiting page's 3D model
   // scales up to fill a blackened screen; "rise": the config page slides up
   // from below over that black. Driven from below and cleared once complete.
@@ -103,6 +106,7 @@ function App() {
       setLayer(0);
       setSelected(null);
       setMode("keymap");
+      setDrawerOpen(false);
       setQmkPendingCount(0);
       setQmkLeaveRequested(false);
       qmkPendingNavigationRef.current = null;
@@ -370,7 +374,20 @@ function App() {
               : undefined
           }
         >
-          <Navbar />
+          <Navbar onMenuClick={() => setDrawerOpen(true)} />
+          <SidebarDrawer
+            productName={productName}
+            onDisconnect={handleDisconnect}
+            mode={mode}
+            matrixTesterSupported={!!keyboard?.supportsMatrixTester}
+            macroSupported={!!keyboard && keyboard.macroCount > 0}
+            tapDanceSupported={!!keyboard && keyboard.tapDanceCount > 0}
+            comboSupported={!!keyboard && keyboard.comboCount > 0}
+            qmkSections={qmkSections}
+            onNavigate={navigate}
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+          />
       <div className="p-4 md:p-6">
         <div className="mx-auto max-w-[1600px]">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6 lg:gap-8 xl:gap-10 2xl:gap-12">
@@ -413,7 +430,12 @@ function App() {
               </div>
               {keyboard && mode === "keymap" && (
                 <>
-                  <LayerTabs layers={keyboard.layers} active={layer} onSelect={setLayer}>
+                  <LayerTabs
+                    layers={keyboard.layers}
+                    active={layer}
+                    onSelect={setLayer}
+                    isConfigured={(l) => keyboard.isLayerConfigured(l)}
+                  >
                     <div className="overflow-x-auto">
                       <KeyboardLayout
                         keyboard={keyboard}
@@ -456,9 +478,6 @@ function App() {
                         <h2 className="text-lg font-semibold text-brand-on-surface">
                           {t("quickConfigTitle")}
                         </h2>
-                        <button className="btn btn-sm btn-outline" onClick={() => setPickerOpen(true)}>
-                          {t("advancedPicker")}
-                        </button>
                       </div>
                       <KeycodeTabs onPick={handleAssign} />
                     </section>

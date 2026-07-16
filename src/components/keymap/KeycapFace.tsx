@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
-import { dualRole, label as kcLabel } from "../../protocol/keycodes.ts";
+import { dualRole, holdInfo, label as kcLabel } from "../../protocol/keycodes.ts";
 import { capIconName } from "./keycapIcons.ts";
 
 /**
@@ -35,6 +35,50 @@ function SideBadge({ side }: { side: "L" | "R" }) {
   );
 }
 
+/** Basic modifier keycode for one flag of a Mod-Tap hold, given the hold's side. */
+const HOLD_MOD_BASIC: Record<"ctrl" | "shift" | "alt" | "gui", { L: string; R: string }> = {
+  ctrl: { L: "KC_LCTRL", R: "KC_RCTRL" },
+  shift: { L: "KC_LSHIFT", R: "KC_RSHIFT" },
+  alt: { L: "KC_LALT", R: "KC_RALT" },
+  gui: { L: "KC_LGUI", R: "KC_RGUI" },
+};
+
+/**
+ * The lower (hold) band of a dual-role cap. A Mod-Tap hold renders its modifier(s)
+ * the same way a plain modifier cap does — one {@link SideBadge} for the shared
+ * left/right side, then each modifier's OS-style glyph (so a macOS `RGui` hold
+ * shows Ⓡ + ⌘ instead of the text "RGui"), following the 系统修饰键 setting via
+ * {@link capIconName}. Layer-Tap holds (and any non-mod hold) keep the plain short
+ * label supplied in `fallback` (e.g. "L2").
+ */
+function HoldFace({ qmkId, fallback }: { qmkId: string; fallback: string }) {
+  const { keyDisplay } = useKeyDisplay();
+  const info = holdInfo(qmkId);
+  if (!info || info.type !== "mod") {
+    return <>{fallback}</>;
+  }
+
+  const active = (["ctrl", "shift", "alt", "gui"] as const).filter((m) => info[m]);
+  return (
+    <span className="key-hold-mods">
+      <SideBadge side={info.side} />
+      {active.map((m) => {
+        const kc = HOLD_MOD_BASIC[m][info.side];
+        const icon = capIconName(kc, keyDisplay);
+        return icon ? (
+          <Icon key={m} className="key-icon key-icon-symbol" icon={icon} aria-label={kcLabel(kc)} />
+        ) : (
+          // No OS glyph (e.g. Ctrl/Alt in windows mode) — fall back to the text
+          // label with its redundant leading L/R stripped (the badge shows side).
+          <span key={m} className="key-hold-text">
+            {kcLabel(kc).slice(1)}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 /**
  * The face of one keycap: a Material Design Icon when {@link capIconName} maps
  * the keycode (letters, modifiers, nav/whitespace keys), otherwise the plain
@@ -64,7 +108,9 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
         <span className="key-dual-tap">
           <KeycapFace qmkId={dual.tap} className={className} />
         </span>
-        <span className="key-dual-hold">{dual.hold}</span>
+        <span className="key-dual-hold">
+          <HoldFace qmkId={qmkId} fallback={dual.hold} />
+        </span>
       </span>
     );
   }

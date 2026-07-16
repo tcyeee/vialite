@@ -7,6 +7,7 @@ import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
 import { RenumberPicker } from "../common/RenumberPicker.tsx";
+import { ConfirmDialog } from "../common/ConfirmDialog.tsx";
 import { startViewTransition } from "../common/viewTransition.ts";
 
 interface PreviewCardProps {
@@ -75,11 +76,7 @@ function ComboPreviewCard({
             type="button"
             className="btn btn-ghost btn-xs px-2 text-white hover:bg-white/20 hover:text-white"
             title={t("delete")}
-            onClick={() => {
-              if (window.confirm(t("comboDeleteConfirm"))) {
-                onDelete?.();
-              }
-            }}
+            onClick={() => onDelete?.()}
           >
             <TrashIcon className="h-3.5 w-3.5" />
           </button>
@@ -97,6 +94,9 @@ function ComboPreviewCard({
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
               COMBO
             </span>
+          </div>
+          <div className="badge badge-sm absolute top-3 right-3 z-10 border-none bg-emerald-600 font-medium text-white">
+            {t("comboActive")}
           </div>
           <div className="card-body relative flex flex-col pb-3">
             <div className="mb-4 font-mono text-4xl font-bold tracking-tight">CB-{index}</div>
@@ -208,6 +208,8 @@ export function ComboPanel({ keyboard, onChange }: Props) {
    * a beat before it animates to its sorted position. Cleared inside a View Transition.
    */
   const [pendingOrder, setPendingOrder] = useState<number[] | null>(null);
+  /** Slot awaiting delete confirmation, or null when the confirm dialog is closed. */
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
   const reorderTimer = useRef<number | null>(null);
 
   useEffect(() => () => {
@@ -332,7 +334,7 @@ export function ComboPanel({ keyboard, onChange }: Props) {
               comboCount={keyboard.comboCount}
               usedIndices={usedIndices}
               onSave={(patch) => void updateAt(i, patch)}
-              onDelete={() => clearAt(i)}
+              onDelete={() => setPendingDelete(i)}
               onMove={(toIdx) => void moveTo(i, toIdx)}
               editing={i === editingIndex}
               onEdit={() => handleEdit(i)}
@@ -341,6 +343,16 @@ export function ComboPanel({ keyboard, onChange }: Props) {
           ))
         )}
       </div>
+      {pendingDelete !== null && (
+        <ConfirmDialog
+          message={t("comboDeleteConfirm")}
+          onConfirm={() => {
+            clearAt(pendingDelete);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   );
 }

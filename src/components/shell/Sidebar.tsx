@@ -181,7 +181,7 @@ export function Sidebar({
         // "appears again" when the entrance animation fires. opacity-0 → sidebar-appear (which
         // keyframes from opacity 0) hands off with no flash, so the entrance plays exactly once.
         (appear ? "sidebar-appear " : "opacity-0 ") +
-        "relative w-full shrink-0 transition-[width] duration-300 ease-out md:sticky md:top-20 md:-ml-[30px] md:w-[var(--sidebar-w)] md:self-start"
+        "relative hidden w-full shrink-0 transition-[width] duration-300 ease-out md:block md:sticky md:top-20 md:-ml-[30px] md:w-[var(--sidebar-w)] md:self-start"
       }
       style={{ "--sidebar-w": `${collapsed ? COLLAPSED_SIDEBAR_WIDTH : sidebarWidth}px` } as CSSProperties}
     >
@@ -199,114 +199,17 @@ export function Sidebar({
             </button>
           </div>
         </div>
-        <nav className="flex flex-col gap-2">
-          {NAV_ITEMS.map(({ kind, mode: itemMode, labelKey, Icon }, index) => {
-            const labelDelay = { "--nav-delay": `${index * 40}ms` } as CSSProperties;
-            if (supportedByKind[kind] === false) {
-              return (
-                <div
-                  key={labelKey}
-                  className={
-                    "flex h-[52px] w-full cursor-default items-center gap-3 whitespace-nowrap px-4 text-brand-on-surface-variant opacity-40 transition-[border-radius] duration-300 ease-out " +
-                    (collapsed ? "tooltip tooltip-right rounded-full" : "overflow-hidden rounded-2xl")
-                  }
-                  data-tip={collapsed ? t("comingSoon") : undefined}
-                  title={collapsed ? undefined : t("comingSoon")}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  {!collapsed && (
-                    <span className={appear ? "nav-label-appear" : undefined} style={labelDelay}>
-                      {t(labelKey)}
-                    </span>
-                  )}
-                </div>
-              );
-            }
-            const active = mode === itemMode;
-            return (
-              <div key={labelKey} className={collapsed ? "tooltip tooltip-right block" : undefined} data-tip={collapsed ? t(labelKey) : undefined}>
-                <button
-                  type="button"
-                  onClick={() => onNavigate(itemMode)}
-                  className={
-                    "flex h-[52px] w-full items-center gap-3 overflow-hidden whitespace-nowrap border-none px-4 text-left transition-[background-color,color,border-radius] duration-300 ease-out " +
-                    (collapsed ? "rounded-full " : "rounded-2xl ") +
-                    (active
-                      ? "bg-brand-secondary-container font-semibold text-brand-on-secondary-container"
-                      : "bg-transparent text-brand-on-surface-variant hover:bg-brand-surface-container-highest/60")
-                  }
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  {!collapsed && (
-                    <span className={appear ? "nav-label-appear" : undefined} style={labelDelay}>
-                      {t(labelKey)}
-                    </span>
-                  )}
-                </button>
-                {kind === "advanced" && (
-                  <div
-                    className={
-                      "grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-out " +
-                      (showQmkToc ? "mt-1 mb-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")
-                    }
-                  >
-                    <nav className="ml-5 flex min-h-0 min-w-0 flex-col gap-2 pl-4">
-                      {qmkSections.map((sectionKey) => {
-                        const sectionActive = activeSection === sectionKey;
-                        return (
-                          <button
-                            key={sectionKey}
-                            type="button"
-                            onClick={() =>
-                              document.getElementById(sectionKey)?.scrollIntoView({ behavior: "smooth", block: "start" })
-                            }
-                            className={
-                              sectionActive
-                                ? "block w-full truncate rounded-lg border-none bg-transparent px-2 py-1.5 text-left text-sm font-semibold text-brand-primary transition"
-                                : "block w-full truncate rounded-lg border-none bg-transparent px-2 py-1.5 text-left text-sm text-brand-on-surface-variant transition hover:text-brand-primary"
-                            }
-                          >
-                            {t(sectionKey)}
-                          </button>
-                        );
-                      })}
-                    </nav>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-
-        {collapsed ? (
-          <div className="tooltip tooltip-right mt-[50px] block" data-tip={`${productName ?? ""} · ${t("disconnect")}`.trim()}>
-            <button
-              type="button"
-              onClick={onDisconnect}
-              aria-label={t("disconnect")}
-              className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-none bg-transparent text-brand-on-surface-variant transition hover:bg-red-600 hover:text-white"
-            >
-              <PowerIcon className="h-5 w-5 shrink-0" />
-            </button>
-          </div>
-        ) : (
-          <div className="group mt-[50px] flex h-[52px] items-center gap-2 rounded-2xl px-4">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-brand-secondary animate-status-breathe" />
-            <span className="min-w-0 flex-1 truncate text-sm font-medium uppercase text-green-800">
-              {productName ?? t("disconnect")}
-            </span>
-            <div className="tooltip tooltip-top shrink-0" data-tip={t("disconnect")}>
-              <button
-                type="button"
-                onClick={onDisconnect}
-                aria-label={t("disconnect")}
-                className="flex h-8 w-8 translate-x-2 items-center justify-center rounded-full border-none bg-red-600 text-white opacity-0 shadow-sm transition-all duration-200 hover:bg-red-700 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100"
-              >
-                <PowerIcon className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
+        <SidebarNav
+          mode={mode}
+          supportedByKind={supportedByKind}
+          onNavigate={onNavigate}
+          collapsed={collapsed}
+          appear={appear}
+          showQmkToc={showQmkToc}
+          activeSection={activeSection}
+          qmkSections={qmkSections}
+        />
+        <SidebarFooter collapsed={collapsed} productName={productName} onDisconnect={onDisconnect} />
       </aside>
       <div
         role="separator"
@@ -321,6 +224,268 @@ export function Sidebar({
         <div className="mx-auto h-full w-px bg-transparent transition-colors hover:bg-brand-primary/50" />
       </div>
     </div>
+  );
+}
+
+interface SidebarNavProps {
+  mode: PageMode;
+  supportedByKind: Partial<Record<NavKind, boolean>>;
+  onNavigate: (mode: PageMode) => void;
+  collapsed: boolean;
+  appear: boolean;
+  showQmkToc: boolean;
+  activeSection: string | null;
+  qmkSections: MessageKey[];
+  /** Fired after any nav or QMK-section click; the drawer uses it to close itself on navigation. */
+  onAfterClick?: () => void;
+}
+
+/** The list of nav buttons (plus the Advanced QMK sub-TOC), shared by the desktop aside and the drawer. */
+function SidebarNav({
+  mode,
+  supportedByKind,
+  onNavigate,
+  collapsed,
+  appear,
+  showQmkToc,
+  activeSection,
+  qmkSections,
+  onAfterClick,
+}: SidebarNavProps) {
+  const { t } = useI18n();
+  return (
+    <nav className="flex flex-col gap-2">
+      {NAV_ITEMS.map(({ kind, mode: itemMode, labelKey, Icon }, index) => {
+        const labelDelay = { "--nav-delay": `${index * 40}ms` } as CSSProperties;
+        if (supportedByKind[kind] === false) {
+          return (
+            <div
+              key={labelKey}
+              className={
+                "flex h-[52px] w-full cursor-default items-center gap-3 whitespace-nowrap px-4 text-brand-on-surface-variant opacity-40 transition-[border-radius] duration-300 ease-out " +
+                (collapsed ? "tooltip tooltip-right rounded-full" : "overflow-hidden rounded-2xl")
+              }
+              data-tip={collapsed ? t("comingSoon") : undefined}
+              title={collapsed ? undefined : t("comingSoon")}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              {!collapsed && (
+                <span className={appear ? "nav-label-appear" : undefined} style={labelDelay}>
+                  {t(labelKey)}
+                </span>
+              )}
+            </div>
+          );
+        }
+        const active = mode === itemMode;
+        return (
+          <div key={labelKey} className={collapsed ? "tooltip tooltip-right block" : undefined} data-tip={collapsed ? t(labelKey) : undefined}>
+            <button
+              type="button"
+              onClick={() => {
+                onNavigate(itemMode);
+                onAfterClick?.();
+              }}
+              className={
+                "flex h-[52px] w-full items-center gap-3 overflow-hidden whitespace-nowrap border-none px-4 text-left transition-[background-color,color,border-radius] duration-300 ease-out " +
+                (collapsed ? "rounded-full " : "rounded-2xl ") +
+                (active
+                  ? "bg-brand-secondary-container font-semibold text-brand-on-secondary-container"
+                  : "bg-transparent text-brand-on-surface-variant hover:bg-brand-surface-container-highest/60")
+              }
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              {!collapsed && (
+                <span className={appear ? "nav-label-appear" : undefined} style={labelDelay}>
+                  {t(labelKey)}
+                </span>
+              )}
+            </button>
+            {kind === "advanced" && (
+              <div
+                className={
+                  "grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-out " +
+                  (showQmkToc ? "mt-1 mb-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")
+                }
+              >
+                <nav className="ml-5 flex min-h-0 min-w-0 flex-col gap-2 pl-4">
+                  {qmkSections.map((sectionKey) => {
+                    const sectionActive = activeSection === sectionKey;
+                    return (
+                      <button
+                        key={sectionKey}
+                        type="button"
+                        onClick={() => {
+                          document.getElementById(sectionKey)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          onAfterClick?.();
+                        }}
+                        className={
+                          sectionActive
+                            ? "block w-full truncate rounded-lg border-none bg-transparent px-2 py-1.5 text-left text-sm font-semibold text-brand-primary transition"
+                            : "block w-full truncate rounded-lg border-none bg-transparent px-2 py-1.5 text-left text-sm text-brand-on-surface-variant transition hover:text-brand-primary"
+                        }
+                      >
+                        {t(sectionKey)}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
+
+interface SidebarFooterProps {
+  collapsed: boolean;
+  productName?: string;
+  onDisconnect: () => void;
+}
+
+/** The device-status / disconnect footer, shared by the desktop aside and the drawer. */
+function SidebarFooter({ collapsed, productName, onDisconnect }: SidebarFooterProps) {
+  const { t } = useI18n();
+  if (collapsed) {
+    return (
+      <div className="tooltip tooltip-right mt-[50px] block" data-tip={`${productName ?? ""} · ${t("disconnect")}`.trim()}>
+        <button
+          type="button"
+          onClick={onDisconnect}
+          aria-label={t("disconnect")}
+          className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-none bg-transparent text-brand-on-surface-variant transition hover:bg-red-600 hover:text-white"
+        >
+          <PowerIcon className="h-5 w-5 shrink-0" />
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="group mt-[50px] flex h-[52px] items-center gap-2 rounded-2xl px-4">
+      <span className="h-2 w-2 shrink-0 rounded-full bg-brand-secondary animate-status-breathe" />
+      <span className="min-w-0 flex-1 truncate text-sm font-medium uppercase text-green-800">
+        {productName ?? t("disconnect")}
+      </span>
+      <div className="tooltip tooltip-top shrink-0" data-tip={t("disconnect")}>
+        <button
+          type="button"
+          onClick={onDisconnect}
+          aria-label={t("disconnect")}
+          className="flex h-8 w-8 translate-x-2 items-center justify-center rounded-full border-none bg-red-600 text-white opacity-0 shadow-sm transition-all duration-200 hover:bg-red-700 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100"
+        >
+          <PowerIcon className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface SidebarDrawerProps {
+  productName?: string;
+  onDisconnect: () => void;
+  mode: PageMode;
+  matrixTesterSupported: boolean;
+  macroSupported: boolean;
+  tapDanceSupported: boolean;
+  comboSupported: boolean;
+  qmkSections: MessageKey[];
+  onNavigate: (mode: PageMode) => void;
+  open: boolean;
+  onClose: () => void;
+}
+
+/**
+ * The narrow-viewport (`< md`) sidebar variant: an off-canvas drawer flush to the window's left and
+ * bottom edges, sliding out from under the Navbar (top-16) over a scrim. Hidden at `md` and up,
+ * where the floating {@link Sidebar} card takes over instead. Always mounted so the open/close slide
+ * animates; visibility is driven by `open`.
+ */
+export function SidebarDrawer({
+  productName,
+  onDisconnect,
+  mode,
+  matrixTesterSupported,
+  macroSupported,
+  tapDanceSupported,
+  comboSupported,
+  qmkSections,
+  onNavigate,
+  open,
+  onClose,
+}: SidebarDrawerProps) {
+  const { t } = useI18n();
+  const supportedByKind: Partial<Record<NavKind, boolean>> = {
+    matrixTest: matrixTesterSupported,
+    macro: macroSupported,
+    tapDance: tapDanceSupported,
+    combo: comboSupported,
+  };
+  const showQmkToc = mode === "advanced" && qmkSections.length > 0;
+  const activeSection = useScrollSpy(qmkSections, open && showQmkToc);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  return (
+    <div className={"md:hidden " + (open ? "" : "pointer-events-none")}>
+      <div
+        onClick={onClose}
+        aria-hidden="true"
+        className={
+          "fixed inset-x-0 bottom-0 top-16 z-40 bg-black/40 transition-opacity duration-300 ease-out " +
+          (open ? "opacity-100" : "opacity-0")
+        }
+      />
+      <aside
+        className={
+          "fixed bottom-0 left-0 top-16 z-40 flex w-[min(82vw,320px)] flex-col overflow-y-auto rounded-r-[2rem] bg-brand-background px-6 py-6 shadow-2xl transition-transform duration-300 ease-out " +
+          (open ? "translate-x-0" : "-translate-x-full")
+        }
+      >
+        <div className="mb-2 flex justify-start">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("closeMenu")}
+            className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-none bg-transparent text-brand-on-surface-variant transition hover:bg-brand-surface-container-highest/60"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <SidebarNav
+          mode={mode}
+          supportedByKind={supportedByKind}
+          onNavigate={onNavigate}
+          collapsed={false}
+          appear={false}
+          showQmkToc={showQmkToc}
+          activeSection={activeSection}
+          qmkSections={qmkSections}
+          onAfterClick={onClose}
+        />
+        <SidebarFooter collapsed={false} productName={productName} onDisconnect={onDisconnect} />
+      </aside>
+    </div>
+  );
+}
+
+function CloseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path strokeLinecap="round" d="M6 6l12 12M18 6 6 18" />
+    </svg>
   );
 }
 

@@ -2,13 +2,28 @@ import type { SVGProps } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
 
-export function Navbar() {
+interface NavbarProps {
+  /** When provided, shows a hamburger button (narrow screens only) that opens the sidebar drawer. */
+  onMenuClick?: () => void;
+}
+
+export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const { lang, setLang, t } = useI18n();
   const { theme, setTheme } = useTheme();
 
   return (
     <div className="navbar sticky top-0 z-40 min-h-16 bg-black text-white px-6 md:px-10 lg:px-12">
-      <div className="navbar-start">
+      <div className="navbar-start gap-2">
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            aria-label={t("openMenu")}
+            className="btn btn-sm btn-square btn-ghost text-white hover:bg-white/15 md:hidden"
+          >
+            <MenuIcon className="h-5 w-5" />
+          </button>
+        )}
         <img className="h-8 w-auto md:h-9" src="/logo-full.svg" alt="Vialite" />
       </div>
       <div className="navbar-end gap-2">
@@ -37,6 +52,14 @@ export function Navbar() {
         </label>
       </div>
     </div>
+  );
+}
+
+function MenuIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
   );
 }
 

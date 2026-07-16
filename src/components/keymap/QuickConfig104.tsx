@@ -148,13 +148,15 @@ interface Props {
   disabled?: boolean;
   /** Multiplier on the key unit size (default 1). */
   scale?: number;
+  /** Extra classes on the board container (e.g. to scale the icon faces down). */
+  className?: string;
 }
 
-export function QuickConfig104({ onPick, disabled, scale = 1 }: Props) {
+export function QuickConfig104({ onPick, disabled, scale = 1, className }: Props) {
   const unit = UNIT * scale;
   return (
     <div
-      className="keyboard-layout"
+      className={`keyboard-layout${className ? ` ${className}` : ""}`}
       style={{
         width: BOARD_WIDTH * unit,
         height: BOARD_HEIGHT * unit,
