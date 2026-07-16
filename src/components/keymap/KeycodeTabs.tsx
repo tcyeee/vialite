@@ -9,6 +9,15 @@ import { useI18n } from "../../contexts/i18n.tsx";
 import { CATEGORY_KEYS } from "../common/KeycodePicker.tsx";
 import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "./QuickConfig104.tsx";
 
+/** Categories hidden from the inline homepage picker. */
+const HIDDEN_CATEGORIES: ReadonlySet<string> = new Set([
+  "ISO/International",
+  "Navigation",
+  "Shifted",
+  "Numpad",
+]);
+const VISIBLE_CATEGORIES = KEYCODE_CATEGORIES.filter((c) => !HIDDEN_CATEGORIES.has(c.name));
+
 interface Props {
   onPick: (qmkId: string) => void;
 }
@@ -23,7 +32,7 @@ interface Props {
  */
 export function KeycodeTabs({ onPick }: Props) {
   const { t } = useI18n();
-  const [active, setActive] = useState(KEYCODE_CATEGORIES[0].name);
+  const [active, setActive] = useState(VISIBLE_CATEGORIES[0].name);
   const [pending, setPending] = useState<KeycodeDef | null>(null);
   const [hint, setHint] = useState<string | null>(null);
 
@@ -45,7 +54,7 @@ export function KeycodeTabs({ onPick }: Props) {
     onPick(entry.qmkId);
   };
 
-  const activeCat = KEYCODE_CATEGORIES.find((c) => c.name === active) ?? KEYCODE_CATEGORIES[0];
+  const activeCat = VISIBLE_CATEGORIES.find((c) => c.name === active) ?? VISIBLE_CATEGORIES[0];
   const isBasic = activeCat.name === "Basic";
   const entries = isBasic
     ? activeCat.entries.filter((e) => !QUICK_CONFIG_QMK_IDS.has(e.qmkId))
@@ -54,7 +63,7 @@ export function KeycodeTabs({ onPick }: Props) {
   return (
     <div>
       <div role="tablist" className="tabs tabs-box">
-        {KEYCODE_CATEGORIES.map((cat) => (
+        {VISIBLE_CATEGORIES.map((cat) => (
           <button
             key={cat.name}
             role="tab"

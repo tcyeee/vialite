@@ -42,17 +42,13 @@ function ComboPreviewCard({
   onSave,
   onDelete,
   onMove,
-  startInEditMode,
-  onCollapse,
+  editing,
+  onEdit,
+  onCloseEdit,
 }: PreviewCardProps) {
   const { t } = useI18n();
-  const [flipped, setFlipped] = useState(!!startInEditMode);
+  const flipped = !!editing;
   const editable = !!onSave;
-
-  const closeEdit = () => {
-    setFlipped(false);
-    onCollapse?.();
-  };
 
   const setKeyAt = (i: number, id: string) => {
     const keys = [...entry.keys] as ComboEntry["keys"];
@@ -61,14 +57,17 @@ function ComboPreviewCard({
   };
 
   return (
-    <div className="group/card relative my-2 w-80" style={{ perspective: "1200px" }}>
+    <div
+      className="group/card relative my-2 w-80"
+      style={{ perspective: "1200px", viewTransitionName: `cbcard-${index}` }}
+    >
       {editable && !flipped && (
         <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:-translate-y-2.5 group-hover/card:scale-[1.6] group-hover/card:opacity-100">
           <button
             type="button"
             className="btn btn-ghost btn-xs px-2 text-white hover:bg-white/20 hover:text-white"
             title={t("edit")}
-            onClick={() => setFlipped(true)}
+            onClick={() => onEdit?.()}
           >
             <PencilIcon className="h-3.5 w-3.5" />
           </button>
@@ -132,7 +131,7 @@ function ComboPreviewCard({
                   title={t("comboRenumber")}
                   onMove={(toIdx) => onMove?.(toIdx)}
                 />
-                <button type="button" className="btn btn-ghost btn-sm text-neutral-500" onClick={closeEdit}>
+                <button type="button" className="btn btn-ghost btn-sm text-neutral-500" onClick={() => onCloseEdit?.()}>
                   {t("done")}
                 </button>
               </div>
@@ -199,8 +198,51 @@ const isUsed = (e: ComboEntry) => e.output !== "KC_NO" || e.keys.some((k) => k !
 export function ComboPanel({ keyboard, onChange }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
-  /** Index of a freshly added, still-unused slot being edited; shown even though it's not "used" yet. */
-  const [addingIndex, setAddingIndex] = useState<number | null>(null);
+  /**
+   * The single slot currently flipped to its editor face. Parent-owned so only one card edits at a
+   * time, and it doubles as the "freshly added, still-unused slot" marker (shown even when empty).
+   */
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  /**
+   * When set, overrides the natural (ascending) card order so a just-renumbered card stays put for
+   * a beat before it animates to its sorted position. Cleared inside a View Transition.
+   */
+  const [pendingOrder, setPendingOrder] = useState<number[] | null>(null);
+  const reorderTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (reorderTimer.current) clearTimeout(reorderTimer.current);
+  }, []);
+
+  const cancelPendingReorder = () => {
+    if (reorderTimer.current) {
+      clearTimeout(reorderTimer.current);
+      reorderTimer.current = null;
+    }
+    setPendingOrder(null);
+  };
+
+  /** Play the deferred re-sort (a card was renumbered while editing) as an animated View Transition. */
+  const settlePendingReorder = (delayMs: number) => {
+    if (reorderTimer.current) clearTimeout(reorderTimer.current);
+    reorderTimer.current = window.setTimeout(() => {
+      reorderTimer.current = null;
+      startViewTransition(() => flushSync(() => setPendingOrder(null)));
+    }, delayMs);
+  };
+
+  const handleEdit = (i: number) => {
+    // Switching to another card settles the previous card's pending re-sort first.
+    if (pendingOrder) settlePendingReorder(0);
+    setEditingIndex(i);
+  };
+
+  const handleCloseEdit = () => {
+    setEditingIndex(null);
+    // Only now (on "done") does the card animate into its sorted position — after a beat that lets
+    // it flip back to its front face first.
+    if (pendingOrder) settlePendingReorder(500);
+  };
 
   if (keyboard.comboCount === 0) {
     return <p className="text-brand-on-surface-variant">{t("comboNone")}</p>;
@@ -221,16 +263,34 @@ export function ComboPanel({ keyboard, onChange }: Props) {
   const clearAt = (idx: number) =>
     void updateAt(idx, { keys: ["KC_NO", "KC_NO", "KC_NO", "KC_NO"], output: "KC_NO" });
 
+  const usedIndices = new Set(keyboard.comboEntries.flatMap((e, i) => (isUsed(e) ? [i] : [])));
+
+  /** Cards to show, in the order to show them — `pendingOrder` while a renumber is settling. */
+  const sortedVisible = keyboard.comboEntries
+    .map((_, i) => i)
+    .filter((i) => isUsed(keyboard.comboEntries[i]) || i === editingIndex);
+  const displayOrder = pendingOrder
+    ? pendingOrder.filter((i) => sortedVisible.includes(i))
+    : sortedVisible;
+
   /** Move an entry to a different (free) slot number: write it to the new slot, clear the old one. */
   const moveTo = async (fromIdx: number, toIdx: number) => {
     if (fromIdx === toIdx) return;
     const src = keyboard.comboEntries[fromIdx];
+    // Hold the current visual order, with the moved card renamed in place, until the timer fires.
+    const heldOrder = displayOrder.map((i) => (i === fromIdx ? toIdx : i));
     try {
       await keyboard.setCombo(toIdx, { ...src, keys: [...src.keys] as ComboEntry["keys"] });
       if (isUsed(src)) {
         await keyboard.setCombo(fromIdx, { keys: ["KC_NO", "KC_NO", "KC_NO", "KC_NO"], output: "KC_NO" });
       }
-      setAddingIndex(toIdx);
+      // Hold the card in place, still in edit mode; the re-sort waits until "done" is clicked.
+      if (reorderTimer.current) {
+        clearTimeout(reorderTimer.current);
+        reorderTimer.current = null;
+      }
+      setEditingIndex(toIdx);
+      setPendingOrder(heldOrder);
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err));
     } finally {
@@ -238,20 +298,15 @@ export function ComboPanel({ keyboard, onChange }: Props) {
     }
   };
 
-  const usedIndices = new Set(keyboard.comboEntries.flatMap((e, i) => (isUsed(e) ? [i] : [])));
-
   const handleAdd = () => {
     const freeIdx = keyboard.comboEntries.findIndex((e) => !isUsed(e));
     if (freeIdx === -1) {
       showToast(t("comboFull"));
       return;
     }
-    setAddingIndex(freeIdx);
+    cancelPendingReorder();
+    setEditingIndex(freeIdx);
   };
-
-  const visibleIndices = keyboard.comboEntries
-    .map((_, i) => i)
-    .filter((i) => isUsed(keyboard.comboEntries[i]) || i === addingIndex);
 
   return (
     <div className="flex flex-col gap-4">
@@ -266,10 +321,10 @@ export function ComboPanel({ keyboard, onChange }: Props) {
         </button>
       </div>
       <div className="flex flex-wrap gap-4">
-        {visibleIndices.length === 0 ? (
+        {displayOrder.length === 0 ? (
           <p className="text-sm text-brand-on-surface-variant">{t("comboEmpty")}</p>
         ) : (
-          visibleIndices.map((i) => (
+          displayOrder.map((i) => (
             <ComboPreviewCard
               key={i}
               index={i}
@@ -279,8 +334,9 @@ export function ComboPanel({ keyboard, onChange }: Props) {
               onSave={(patch) => void updateAt(i, patch)}
               onDelete={() => clearAt(i)}
               onMove={(toIdx) => void moveTo(i, toIdx)}
-              startInEditMode={i === addingIndex}
-              onCollapse={i === addingIndex ? () => setAddingIndex(null) : undefined}
+              editing={i === editingIndex}
+              onEdit={() => handleEdit(i)}
+              onCloseEdit={handleCloseEdit}
             />
           ))
         )}

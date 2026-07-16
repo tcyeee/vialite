@@ -229,6 +229,28 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
     setPendingOrder(null);
   };
 
+  /** Play the deferred re-sort (a card was renumbered while editing) as an animated View Transition. */
+  const settlePendingReorder = (delayMs: number) => {
+    if (reorderTimer.current) clearTimeout(reorderTimer.current);
+    reorderTimer.current = window.setTimeout(() => {
+      reorderTimer.current = null;
+      startViewTransition(() => flushSync(() => setPendingOrder(null)));
+    }, delayMs);
+  };
+
+  const handleEdit = (i: number) => {
+    // Switching to another card settles the previous card's pending re-sort first.
+    if (pendingOrder) settlePendingReorder(0);
+    setEditingIndex(i);
+  };
+
+  const handleCloseEdit = () => {
+    setEditingIndex(null);
+    // Only now (on "done") does the card animate into its sorted position — after a beat that lets
+    // it flip back to its front face first.
+    if (pendingOrder) settlePendingReorder(500);
+  };
+
   if (keyboard.tapDanceCount === 0) {
     return <p className="text-brand-on-surface-variant">{t("tapDanceNone")}</p>;
   }
@@ -277,13 +299,13 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
           tappingTerm: 200,
         });
       }
-      if (reorderTimer.current) clearTimeout(reorderTimer.current);
+      // Hold the card in place, still in edit mode; the re-sort waits until "done" is clicked.
+      if (reorderTimer.current) {
+        clearTimeout(reorderTimer.current);
+        reorderTimer.current = null;
+      }
       setEditingIndex(toIdx);
       setPendingOrder(heldOrder);
-      reorderTimer.current = window.setTimeout(() => {
-        reorderTimer.current = null;
-        startViewTransition(() => flushSync(() => setPendingOrder(null)));
-      }, 500);
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err));
     } finally {
@@ -328,8 +350,8 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
               onDelete={() => clearAt(i)}
               onMove={(toIdx) => void moveTo(i, toIdx)}
               editing={i === editingIndex}
-              onEdit={() => setEditingIndex(i)}
-              onCloseEdit={() => setEditingIndex(null)}
+              onEdit={() => handleEdit(i)}
+              onCloseEdit={handleCloseEdit}
             />
           ))
         )}

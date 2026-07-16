@@ -28,6 +28,10 @@ export const CATEGORY_KEYS: Record<string, MessageKey> = {
   Lighting: "categoryLighting",
 };
 
+/** Categories hidden from the advanced picker (both browse and search). */
+const HIDDEN_CATEGORIES: ReadonlySet<string> = new Set(["ISO/International", "Numpad", "Shifted"]);
+const VISIBLE_CATEGORIES = KEYCODE_CATEGORIES.filter((c) => !HIDDEN_CATEGORIES.has(c.name));
+
 interface Props {
   onPick: (qmkId: string) => void;
   onClose: () => void;
@@ -120,12 +124,12 @@ export function KeycodePicker({ onPick, onClose }: Props) {
     // When the 104-key board is visible (no active search), hide the keys it
     // already exposes so the category lists don't duplicate them.
     if (!q) {
-      return KEYCODE_CATEGORIES.map((cat) => ({
+      return VISIBLE_CATEGORIES.map((cat) => ({
         name: cat.name,
         entries: cat.entries.filter((e) => !QUICK_CONFIG_QMK_IDS.has(e.qmkId)),
       })).filter((cat) => cat.entries.length > 0);
     }
-    return KEYCODE_CATEGORIES.map((cat) => ({
+    return VISIBLE_CATEGORIES.map((cat) => ({
       name: cat.name,
       entries: cat.entries.filter(
         (e) => e.qmkId.toLowerCase().includes(q) || e.label.toLowerCase().includes(q),
