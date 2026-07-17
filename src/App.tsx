@@ -17,7 +17,7 @@ import { SiteSettingsPanel } from "./components/site/SiteSettingsPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
 import { useI18n, type MessageKey } from "./contexts/i18n.tsx";
-import { Keyboard } from "./protocol/keyboard.ts";
+import { Keyboard, probeVial } from "./protocol/keyboard.ts";
 import { dualRole, withTap } from "./protocol/keycodes.ts";
 import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
@@ -201,14 +201,36 @@ function App() {
     void (async () => {
       try {
         const devices = await navigator.hid.getDevices();
-        const device = devices.find((d) => HidTransport.isVialDevice(d));
-        if (!device || connectInFlightRef.current) {
+        const candidates = devices.filter((d) => HidTransport.hasVialInterface(d));
+        if (candidates.length === 0 || connectInFlightRef.current) {
           setStatus("idle");
           return;
         }
         connectInFlightRef.current = true;
-        const transport = await HidTransport.fromDevice(device);
-        await attachTransport(transport);
+        // hasVialInterface only proves the board exposes the raw-HID interface
+        // VIA and Vial share, so handshake each candidate and take the first
+        // that actually speaks Vial — otherwise an authorized VIA-only board
+        // would shadow a real Vial keyboard plugged in alongside it.
+        for (const device of candidates) {
+          let transport: HidTransport;
+          try {
+            transport = await HidTransport.fromDevice(device);
+          } catch (err) {
+            // Claimed by another app, permission revoked, ... — a candidate we
+            // can't even open shouldn't stop us reaching a good one behind it.
+            console.warn(`[vialite] cannot open ${device.productName}, skipping:`, err);
+            continue;
+          }
+          if (await probeVial(transport)) {
+            // A reload failure past this point is a real error worth surfacing,
+            // not a reason to fall through to the next candidate.
+            await attachTransport(transport);
+            return;
+          }
+          console.warn(`[vialite] skipping non-Vial device: ${device.productName}`);
+          await transport.close();
+        }
+        setStatus("idle");
       } catch (err) {
         // Best effort — fall back to the manual Connect button.
         console.error("[vialite] auto-reconnect failed:", err);

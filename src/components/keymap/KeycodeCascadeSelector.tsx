@@ -6,6 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   KEYCODE_CATEGORIES,
   label as kcLabel,
@@ -51,6 +52,10 @@ interface Props {
   /** Inline field styling: drop the heading + fixed width so the trigger sits in
    *  a row of controls (macro action rows, tap-dance / combo slots). */
   compact?: boolean;
+  /** Stretch the trigger to its container's width. Compact triggers otherwise
+   *  size to their label (macro rows sit them in a row of buttons), which would
+   *  collapse a slot field whose label is empty — see {@link ../common/KeySlot}. */
+  fullWidth?: boolean;
   /** Extra classes for the trigger button (e.g. to match a slot's sizing). */
   triggerClassName?: string;
   /** Context-menu mode: render only the popover (no trigger button), positioned
@@ -226,6 +231,7 @@ export function KeycodeCascadeSelector({
   placeholder: placeholderProp,
   keepPicked = true,
   compact = false,
+  fullWidth = false,
   triggerClassName,
   anchor = null,
   onClose,
@@ -240,11 +246,23 @@ export function KeycodeCascadeSelector({
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(value ?? null);
   const rootRef = useRef<HTMLDivElement>(null);
-  // Menu mode: the popover element (for measuring) and its clamped viewport
-  // position (null until the layout effect measures it, then falls back to the
-  // raw anchor point).
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // The popover element (for measuring), the viewport point it starts from (the
+  // right-click point in menu mode, just below the trigger otherwise), and its
+  // clamped position (null until the layout effect measures it, then falls back
+  // to the raw base point).
   const popoverRef = useRef<HTMLDivElement>(null);
+  const [basePoint, setBasePoint] = useState<{ x: number; y: number } | null>(null);
   const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
+
+  // Trigger mode: the popover is portalled to the body and positioned `fixed`,
+  // so an ancestor's `overflow-hidden` or transform (e.g. the tap-dance / combo
+  // cards, which clip and 3D-flip their contents) can't clip or mis-anchor it.
+  // Read the trigger's viewport rect as the popover's starting point.
+  const triggerPoint = () => {
+    const r = triggerRef.current?.getBoundingClientRect();
+    return r ? { x: r.left, y: r.bottom + 4 } : null;
+  };
 
   // Close the popover; in menu mode this also tells the parent to unmount us.
   const close = () => {
@@ -294,7 +312,10 @@ export function KeycodeCascadeSelector({
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) close();
+      // The popover is portalled out of `rootRef`, so it needs its own hit test.
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
+      close();
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
@@ -367,35 +388,50 @@ export function KeycodeCascadeSelector({
     // sub-column), like a standard cascade selector, instead of pre-expanding
     // every level at once.
     collapse();
+    setBasePoint(menuMode ? anchor : triggerPoint());
+    setMenuPos(null);
     setOpen(true);
   };
 
   // Menu mode: (re)open whenever the anchor point changes (the parent passes a
   // fresh object per right-click). Runs post-render, so the `openMenu` const is
-  // initialised by the time this fires; also drops any stale clamped position.
+  // initialised by the time this fires.
   useEffect(() => {
     if (!anchor) return;
     openMenu();
-    setMenuPos(null);
     // Keyed on the anchor object identity only; openMenu reads current state.
   }, [anchor]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Menu mode: after the popover renders, clamp it into the viewport — shifting
-  // by only the overflow (never flipping the whole panel past the cursor), so
-  // the category column stays under the pointer and the cascade reads left→right.
+  // Trigger mode: a `fixed` popover doesn't follow the trigger, so re-read the
+  // trigger's rect while scrolling / resizing to keep the two together.
+  useEffect(() => {
+    if (menuMode || !open) return;
+    const track = () => setBasePoint(triggerPoint());
+    window.addEventListener("scroll", track, true);
+    window.addEventListener("resize", track);
+    return () => {
+      window.removeEventListener("scroll", track, true);
+      window.removeEventListener("resize", track);
+    };
+  }, [menuMode, open]);
+
+  // After the popover renders, clamp it into the viewport — shifting by only the
+  // overflow (never flipping the whole panel past the base point), so in menu
+  // mode the category column stays under the pointer and the cascade reads
+  // left→right.
   useLayoutEffect(() => {
-    if (!menuMode || !open || !anchor) return;
+    if (!open || !basePoint) return;
     const el = popoverRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const margin = 8;
-    const left = Math.max(margin, Math.min(anchor.x, window.innerWidth - rect.width - margin));
-    const top = Math.max(margin, Math.min(anchor.y, window.innerHeight - rect.height - margin));
+    const left = Math.max(margin, Math.min(basePoint.x, window.innerWidth - rect.width - margin));
+    const top = Math.max(margin, Math.min(basePoint.y, window.innerHeight - rect.height - margin));
     setMenuPos((p) => (p && p.left === left && p.top === top ? p : { left, top }));
     // Re-clamp as the user drills in: revealing the middle / sub columns and the
     // info panel widens the popover, which could otherwise grow past the
     // viewport's right edge.
-  }, [menuMode, open, anchor, activeCat, activeGroupKey, activeEntryId]);
+  }, [open, basePoint, activeCat, activeGroupKey, activeEntryId]);
 
   const emit = (entry: KeycodeDef) => {
     if (keepPicked) setPickedId(entry.qmkId);
@@ -463,12 +499,13 @@ export function KeycodeCascadeSelector({
         : `Layer ${sub.arg}`
       : entryLabel(sub.entry).split("\n").join(" ");
 
-  // Menu mode anchors the popover `fixed` at the click point; the layout effect
-  // above clamps it into the viewport (falling back to the raw anchor for the
-  // first, pre-measure paint).
-  const menuStyle: CSSProperties | undefined = anchor
-    ? { left: menuPos?.left ?? anchor.x, top: menuPos?.top ?? anchor.y }
-    : undefined;
+  // The popover is always `fixed`, anchored at the click point (menu mode) or
+  // below the trigger; the layout effect above clamps it into the viewport
+  // (falling back to the raw base point for the first, pre-measure paint).
+  const menuStyle: CSSProperties = {
+    left: menuPos?.left ?? basePoint?.x ?? 0,
+    top: menuPos?.top ?? basePoint?.y ?? 0,
+  };
 
   const popover = open && (
     // The popover paints its own base-100 surfaces, so it must also set its own
@@ -477,11 +514,7 @@ export function KeycodeCascadeSelector({
     // it white-on-white.
     <div
       ref={popoverRef}
-      className={
-        menuMode
-          ? "fixed z-50 flex flex-col gap-1 text-base-content"
-          : "absolute left-0 top-full z-10 mt-1 flex flex-col gap-1 text-base-content"
-      }
+      className="fixed z-50 flex flex-col gap-1 text-base-content"
       style={menuStyle}
       // Auto-collapse the drilled-in columns back to the category column when
       // the pointer leaves the popover (React onMouseLeave doesn't fire while
@@ -666,8 +699,12 @@ export function KeycodeCascadeSelector({
   return (
     <div className={compact ? "" : "mt-3"}>
       {!compact && <h4 className="mb-1 text-sm font-semibold opacity-70">{heading}</h4>}
-      <div ref={rootRef} className={`relative ${compact ? "inline-block" : "w-64"}`}>
+      <div
+        ref={rootRef}
+        className={`relative ${compact ? (fullWidth ? "block w-full" : "inline-block") : "w-64"}`}
+      >
         <button
+          ref={triggerRef}
           type="button"
           className={
             triggerClassName ??
@@ -678,7 +715,10 @@ export function KeycodeCascadeSelector({
           <span className={pickedId ? "" : "opacity-50"}>{pickedLabel}</span>
           <span className="opacity-50">▾</span>
         </button>
-        {popover}
+        {/* Portalled to the body: the trigger can sit inside a clipping /
+            transformed ancestor (the tap-dance & combo editor cards), which
+            would otherwise cut the popover off at the card's edge. */}
+        {popover && createPortal(popover, document.body)}
       </div>
     </div>
   );

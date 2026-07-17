@@ -246,25 +246,32 @@ export function KeyboardColorPanel({
       <p className="text-xs text-brand-on-surface-variant/70">
         {t("colorDisplayNote")}
       </p>
-      {/* Layer tabs wrap the preview like the 键盘布局 page, so the labels can
-          be viewed per layer. Negative margins offset the tab-content padding so
-          the board's shaded case shadow isn't clipped by overflow-x-auto. */}
-      <LayerTabs
-        layers={keyboard.layers}
-        active={previewLayer}
-        onSelect={setPreviewLayer}
-        isConfigured={(l) => keyboard.isLayerConfigured(l)}
-      >
-        <div className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2">
-          {/* Reads every appearance value from the shared context, so it stays in
-              sync with the controls below and identical to previews elsewhere.
-              The ref wrapper is the exact node rasterized for the current-layer
-              image (fit-content, so it hugs the board with no extra margin). */}
-          <div ref={currentBoardRef} style={{ width: "fit-content" }}>
-            <KeyboardLayoutPreview keyboard={keyboard} layer={previewLayer} />
+      {/* 预览吸顶:调外观设置时键盘要始终可见。top-16 贴在 Navbar(sticky
+          top-0,min-h-16)下沿;z-20 低于 Navbar 的 z-40。半透明 + backdrop-blur
+          让下方滚动的设置项透出而不糊成一块,同时不必硬编码页面底色(浅色为
+          bg-white,深色是 black/30 叠在 body 的 --color-brand-background 上)。
+          负外边距把背景铺满 main 的左右内边距,滚动时内容不会从两侧漏出。 */}
+      <div className="sticky top-16 z-20 -mx-6 bg-white/80 px-6 pt-3 backdrop-blur-md dark:bg-black/50 md:-mx-8 md:px-8">
+        {/* Layer tabs wrap the preview like the 键盘布局 page, so the labels can
+            be viewed per layer. Negative margins offset the tab-content padding so
+            the board's shaded case shadow isn't clipped by overflow-x-auto. */}
+        <LayerTabs
+          layers={keyboard.layers}
+          active={previewLayer}
+          onSelect={setPreviewLayer}
+          isConfigured={(l) => keyboard.isLayerConfigured(l)}
+        >
+          <div className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2">
+            {/* Reads every appearance value from the shared context, so it stays in
+                sync with the controls below and identical to previews elsewhere.
+                The ref wrapper is the exact node rasterized for the current-layer
+                image (fit-content, so it hugs the board with no extra margin). */}
+            <div ref={currentBoardRef} style={{ width: "fit-content" }}>
+              <KeyboardLayoutPreview keyboard={keyboard} layer={previewLayer} />
+            </div>
           </div>
-        </div>
-      </LayerTabs>
+        </LayerTabs>
+      </div>
 
       <div className="mb-4 flex flex-wrap justify-center gap-2">
         <button

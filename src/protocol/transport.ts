@@ -5,6 +5,7 @@
 // and `device.sendReport(0, payload)` / `event.data` (32 bytes) carry the raw
 // VIA/Vial message with no extra report-ID byte inside the payload itself.
 
+import { debugLog } from "../debug.ts";
 import { MSG_LEN, VIAL_USAGE, VIAL_USAGE_PAGE } from "./constants.ts";
 
 export class ProtocolError extends Error {}
@@ -54,14 +55,14 @@ export class HidTransport {
 
   /** Wraps an already-authorized device (e.g. from navigator.hid.getDevices()). */
   static async fromDevice(device: HIDDevice): Promise<HidTransport> {
-    console.log(
+    debugLog(
       "[vialite] opening device:",
       JSON.stringify({
         productName: device.productName,
         vendorId: `0x${device.vendorId.toString(16).padStart(4, "0")}`,
         productId: `0x${device.productId.toString(16).padStart(4, "0")}`,
         alreadyOpened: device.opened,
-        isVialDevice: HidTransport.isVialDevice(device),
+        hasVialInterface: HidTransport.hasVialInterface(device),
         collections: device.collections.map((c) => ({
           usagePage: c.usagePage,
           usage: c.usage,
@@ -76,12 +77,19 @@ export class HidTransport {
         throw err;
       }
     }
-    console.log("[vialite] device opened successfully");
+    debugLog("[vialite] device opened successfully");
     return new HidTransport(device);
   }
 
-  /** True if the device exposes the Vial raw-HID usage this transport needs. */
-  static isVialDevice(device: HIDDevice): boolean {
+  /**
+   * True if the device exposes the raw-HID usage this transport needs.
+   *
+   * A necessary precondition, not proof the board speaks Vial: VIA and Vial
+   * share the same usage page/usage, and nothing else in the HID descriptor
+   * distinguishes them, so a VIA-only board passes this too. Telling them apart
+   * requires actually handshaking — see `probeVial` in keyboard.ts.
+   */
+  static hasVialInterface(device: HIDDevice): boolean {
     return device.collections.some((c) => c.usagePage === VIAL_USAGE_PAGE && c.usage === VIAL_USAGE);
   }
 

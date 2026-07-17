@@ -4,6 +4,7 @@
 // and unlock/RESET are intentionally left out for now.
 
 import pkg from "xz-decompress";
+import { debugLog, isDebugEnabled } from "../debug.ts";
 import * as C from "./constants.ts";
 import { deserialize as kleDeserialize, type KleData, type KleKeyboard } from "./kleSerial.ts";
 import {
@@ -234,6 +235,33 @@ async function decompressXz(data: Uint8Array<ArrayBuffer>): Promise<string> {
   return new TextDecoder().decode(out);
 }
 
+/**
+ * Whether the device on the other end actually speaks Vial, as opposed to just
+ * exposing the raw-HID interface VIA and Vial share (see
+ * `HidTransport.hasVialInterface`, which can't tell the two apart).
+ *
+ * A VIA-only board answers the Vial-specific CMD_VIAL_GET_KEYBOARD_ID with an
+ * unsupported-command reply (0xff filler), so its protocol reads back well
+ * outside the supported range. The accept condition is deliberately identical
+ * to `checkProtocolVersion`'s, so this can never reject a keyboard that
+ * `reload()` would have gone on to accept.
+ *
+ * Kept to a single round trip with few retries: this runs against candidate
+ * devices that may not answer at all, so it must not stall the connect flow.
+ */
+export async function probeVial(transport: HidTransport): Promise<boolean> {
+  try {
+    const data = await transport.send(
+      new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_GET_KEYBOARD_ID]),
+      3,
+    );
+    const vialProtocol = new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(0, true);
+    return C.SUPPORTED_VIAL_PROTOCOL.includes(vialProtocol);
+  } catch {
+    return false;
+  }
+}
+
 export class Keyboard {
   private readonly transport: HidTransport;
 
@@ -292,7 +320,7 @@ export class Keyboard {
   }
 
   async reload(): Promise<void> {
-    console.log("[vialite] Keyboard.reload() start");
+    debugLog("[vialite] Keyboard.reload() start");
     // Runs one reload step, logging its name, timing, and any error so a
     // connection failure points at the exact stage (and protocol version) that
     // broke instead of surfacing only the final exception message.
@@ -300,7 +328,7 @@ export class Keyboard {
       const t0 = performance.now();
       try {
         await fn();
-        console.log(`[vialite]   ✓ ${name} (${(performance.now() - t0).toFixed(0)}ms)`);
+        debugLog(`[vialite]   ✓ ${name} (${(performance.now() - t0).toFixed(0)}ms)`);
       } catch (err) {
         console.error(`[vialite]   ✗ ${name} failed after ${(performance.now() - t0).toFixed(0)}ms:`, err);
         throw err;
@@ -309,7 +337,7 @@ export class Keyboard {
 
     try {
       await step("reloadLayout", () => this.reloadLayout());
-      console.log(
+      debugLog(
         "[vialite]   device info:",
         JSON.stringify({
           viaProtocol: this.viaProtocol,
@@ -323,13 +351,13 @@ export class Keyboard {
         }),
       );
       await step("reloadLayers", () => this.reloadLayers());
-      console.log(`[vialite]   layers: ${this.layers}`);
+      debugLog(`[vialite]   layers: ${this.layers}`);
       await step("reloadKeymap", () => this.reloadKeymap());
       await step("reloadLayoutOptions", () => this.reloadLayoutOptions());
       await step("reloadDynamic", () => this.reloadDynamic());
-      console.log(`[vialite]   tapDanceCount: ${this.tapDanceCount}, comboCount: ${this.comboCount}`);
+      debugLog(`[vialite]   tapDanceCount: ${this.tapDanceCount}, comboCount: ${this.comboCount}`);
       await step("reloadMacros", () => this.reloadMacros());
-      console.log(`[vialite]   macroCount: ${this.macroCount}, macroMemory: ${this.macroMemory}`);
+      debugLog(`[vialite]   macroCount: ${this.macroCount}, macroMemory: ${this.macroMemory}`);
       await step("reloadQmkSettings", () => this.reloadQmkSettings());
     } catch (err) {
       console.error("[vialite] Keyboard.reload() aborted:", err);
@@ -341,7 +369,7 @@ export class Keyboard {
       this.qmkSettingsBaseline = new Map(this.qmkSettings);
       this.settingsBaselineCaptured = true;
     }
-    console.log("[vialite] Keyboard.reload() done");
+    debugLog("[vialite] Keyboard.reload() done");
   }
 
   /** Parsed per-slot macro action lists, decoded from the raw device buffer. */
@@ -530,13 +558,25 @@ export class Keyboard {
 
   private checkProtocolVersion(): void {
     if (
-      !C.SUPPORTED_VIA_PROTOCOL.includes(this.viaProtocol) ||
-      !C.SUPPORTED_VIAL_PROTOCOL.includes(this.vialProtocol)
+      C.SUPPORTED_VIA_PROTOCOL.includes(this.viaProtocol) &&
+      C.SUPPORTED_VIAL_PROTOCOL.includes(this.vialProtocol)
     ) {
+      return;
+    }
+    // A VIA-only board answers the Vial-specific CMD_VIAL_GET_KEYBOARD_ID with
+    // an unsupported-command reply (0xff filler), so it reads back as a huge
+    // vial protocol with a zero uid. Such a device still passes
+    // hasVialInterface() — VIA and Vial share the same raw-HID usage page — so
+    // this is the first point in a full reload where the two can be told apart.
+    if (!C.SUPPORTED_VIAL_PROTOCOL.includes(this.vialProtocol) && this.uid === 0n) {
       throw new ProtocolError(
-        `Unsupported protocol version (via=${this.viaProtocol}, vial=${this.vialProtocol})`,
+        `This keyboard does not support the Vial protocol — it looks like a VIA-only board ` +
+          `(via=${this.viaProtocol}, vial=${this.vialProtocol}). Vial firmware is required.`,
       );
     }
+    throw new ProtocolError(
+      `Unsupported protocol version (via=${this.viaProtocol}, vial=${this.vialProtocol})`,
+    );
   }
 
   private async reloadLayout(): Promise<void> {
@@ -551,12 +591,17 @@ export class Keyboard {
     this.uid = idView.getBigUint64(4, true);
     setKeycodeVersion(this.vialProtocol);
 
-    console.log(`[vialite]   protocol: via=${this.viaProtocol}, vial=${this.vialProtocol}, uid=${this.uid}`);
+    debugLog(`[vialite]   protocol: via=${this.viaProtocol}, vial=${this.vialProtocol}, uid=${this.uid}`);
+
+    // Validate before fetching the definition, not after: a non-Vial board
+    // returns garbage for CMD_VIAL_GET_SIZE/GET_DEFINITION, so decompressing it
+    // first would fail with an opaque xz error that hides the real cause.
+    this.checkProtocolVersion();
 
     data = await this.transport.send(new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_GET_SIZE]), 20);
     let size = new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(0, true);
     const compressedSize = size;
-    console.log(`[vialite]   vial.json compressed size: ${size} bytes`);
+    debugLog(`[vialite]   vial.json compressed size: ${size} bytes`);
 
     const chunks: Uint8Array<ArrayBuffer>[] = [];
     let block = 0;
@@ -580,7 +625,7 @@ export class Keyboard {
     const magic = Array.from(compressed.slice(0, 6))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join(" ");
-    console.log(
+    debugLog(
       `[vialite]   vial.json xz magic bytes: ${magic} (expected: fd 37 7a 58 5a 00), actualBytes=${compressed.length}`,
     );
 
@@ -601,8 +646,6 @@ export class Keyboard {
       console.error("[vialite]   vial.json JSON.parse failed; raw text follows:", err, json);
       throw err;
     }
-
-    this.checkProtocolVersion();
 
     this.rows = definition.matrix.rows;
     this.cols = definition.matrix.cols;

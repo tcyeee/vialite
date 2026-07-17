@@ -49,7 +49,7 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
 
   return (
     <div
-      className={`relative box-border flex h-screen flex-col items-center justify-center overflow-hidden bg-white p-4 ${
+      className={`relative box-border flex h-screen flex-col items-center justify-center overflow-hidden bg-brand-background p-4 ${
         zoom ? "pointer-events-none" : ""
       }`}
     >
@@ -123,7 +123,7 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
           <div className="pt-4">
             <button
               type="button"
-              className="mx-auto flex items-center gap-3 rounded-2xl bg-black px-8 py-4 text-xl font-bold text-white shadow-none transition hover:bg-neutral-800 disabled:cursor-progress disabled:opacity-70"
+              className="mx-auto flex items-center gap-3 rounded-2xl bg-primary px-8 py-4 text-xl font-bold text-primary-content shadow-none transition hover:bg-primary/85 disabled:cursor-progress disabled:opacity-70"
               onClick={onConnect}
               disabled={connecting}
             >

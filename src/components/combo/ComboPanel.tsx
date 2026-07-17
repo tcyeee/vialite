@@ -92,7 +92,7 @@ function ComboPreviewCard({
       >
         <div
           style={{ backfaceVisibility: "hidden", gridArea: "1 / 1" }}
-          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#ffffff08_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff08_35%,transparent_36%)] bg-[#73575E] bg-size-[4.95em_4.95em] text-brand-background"
+          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#73575e14_35%,transparent_36%),radial-gradient(circle_at_top_right,#73575e14_35%,transparent_36%)] bg-[#f5ecef] bg-size-[4.95em_4.95em] text-[#5b434b]"
         >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden select-none">
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
@@ -107,14 +107,14 @@ function ComboPreviewCard({
             <div className="grid grid-cols-2 gap-y-3">
               {entry.keys.map((qmkId, i) => (
                 <div key={i}>
-                  <div className="text-xs opacity-20 uppercase">{t("comboKeyN", { n: i + 1 })}</div>
+                  <div className="text-xs opacity-45 uppercase">{t("comboKeyN", { n: i + 1 })}</div>
                   <div className="text-xl font-bold">
                     <KeycapFace qmkId={qmkId} className="whitespace-pre-line" />
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-auto pt-3 text-center text-sm tracking-widest opacity-40">
+            <div className="mt-auto pt-3 text-center text-sm tracking-widest opacity-55">
               → <KeycapFace qmkId={entry.output} className="whitespace-pre-line" />
             </div>
           </div>

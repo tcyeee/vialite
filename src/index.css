@@ -98,7 +98,7 @@ body {
     system-ui,
     sans-serif;
   font-size: 15px;
-  color: #262626;
+  color: var(--color-brand-on-surface);
   background: var(--color-brand-background);
 }
 
@@ -351,7 +351,7 @@ body {
 /* Shared by every connect-flow error message (DeviceConnect, WaitingForConnection,
    UnlockDialog, MatrixTester) — kept unscoped so it applies wherever it's used. */
 .error {
-  color: #d33;
+  color: light-dark(#d33, #ff8080);
 }
 
 /* Blocks all interaction while a .vil import is writing to the device. */
