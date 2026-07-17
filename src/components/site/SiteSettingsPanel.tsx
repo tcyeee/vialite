@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
+import { isDebugEnabled, setDebugEnabled } from "../../debug.ts";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 
 /**
@@ -32,6 +33,9 @@ export function SiteSettingsPanel() {
   const { t, lang, setLang } = useI18n();
   const { theme, setTheme } = useTheme();
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  // Debug logging lives in a plain module, not a context (src/protocol/ has to
+  // read it without React), so mirror it into state just to drive this toggle.
+  const [debug, setDebug] = useState(isDebugEnabled);
 
   return (
     <div className="flex flex-col gap-6">
@@ -93,6 +97,32 @@ export function SiteSettingsPanel() {
                 <option value="light">{t("themeLight")}</option>
                 <option value="dark">{t("themeDark")}</option>
               </select>
+            }
+          />
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+          {t("siteDiagnosticsTitle")}
+        </h2>
+        <ul className="list rounded-box border border-brand-outline/30">
+          <SettingsRow
+            icon={<Icon icon="mdi:bug-outline" className="h-4.5 w-4.5" />}
+            label={t("debugLogTitle")}
+            description={t("debugLogDesc")}
+            help={t("debugLogHint")}
+            control={
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={debug}
+                onChange={(e) => {
+                  setDebug(e.target.checked);
+                  setDebugEnabled(e.target.checked);
+                }}
+                aria-label={t("debugLogTitle")}
+              />
             }
           />
         </ul>

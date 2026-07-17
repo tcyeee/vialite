@@ -46,6 +46,12 @@ interface Props {
   value?: string;
   /** Trigger text shown before anything is picked (overrides the default). */
   placeholder?: string;
+  /** Force the trigger's text, replacing the "category / label" form derived from
+   *  the picked keycode. Parent-controlled, so it also sidesteps the internal
+   *  picked-id going stale when a pick maps back to the same {@link Props.value}
+   *  (e.g. a slot that represents KC_NO as "unset" — see {@link ../common/KeySlot}).
+   *  An empty string renders the trigger blank. */
+  triggerLabel?: string;
   /** Keep the picked keycode as the trigger label after committing. Set false for
    *  momentary "add" triggers that should always read as their placeholder. */
   keepPicked?: boolean;
@@ -58,6 +64,10 @@ interface Props {
   fullWidth?: boolean;
   /** Extra classes for the trigger button (e.g. to match a slot's sizing). */
   triggerClassName?: string;
+  /** Drop the trigger's "▾" dropdown caret. Set for slots whose face is a keycap
+   *  glyph, where a second small triangle next to KC_TRNS's "▽" reads as part of
+   *  the keycode — see {@link ../common/KeySlot}. */
+  hideCaret?: boolean;
   /** Context-menu mode: render only the popover (no trigger button), positioned
    *  `fixed` at this viewport point and auto-opened. Used by the keyboard
    *  layout's right-click assign; a fresh object each open re-seeds/reopens it. */
@@ -229,10 +239,12 @@ export function KeycodeCascadeSelector({
   keyboard,
   value,
   placeholder: placeholderProp,
+  triggerLabel,
   keepPicked = true,
   compact = false,
   fullWidth = false,
   triggerClassName,
+  hideCaret = false,
   anchor = null,
   onClose,
 }: Props) {
@@ -374,6 +386,7 @@ export function KeycodeCascadeSelector({
   };
 
   const pickedLabel = (() => {
+    if (triggerLabel !== undefined) return triggerLabel;
     if (!pickedId) return placeholder;
     for (const c of categories) {
       const e = c.entries.find((x) => x.qmkId === pickedId);
@@ -713,7 +726,7 @@ export function KeycodeCascadeSelector({
           onClick={() => (open ? close() : openMenu())}
         >
           <span className={pickedId ? "" : "opacity-50"}>{pickedLabel}</span>
-          <span className="opacity-50">▾</span>
+          {!hideCaret && <span className="opacity-50">▾</span>}
         </button>
         {/* Portalled to the body: the trigger can sit inside a clipping /
             transformed ancestor (the tap-dance & combo editor cards), which

@@ -16,10 +16,10 @@ import { KeyboardColorPanel } from "./components/color/KeyboardColorPanel.tsx";
 import { SiteSettingsPanel } from "./components/site/SiteSettingsPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
-import { useI18n, type MessageKey } from "./contexts/i18n.tsx";
+import { useI18n, type MessageKey, type Translate } from "./contexts/i18n.tsx";
 import { Keyboard, probeVial } from "./protocol/keyboard.ts";
 import { dualRole, withTap } from "./protocol/keycodes.ts";
-import { HidTransport } from "./protocol/transport.ts";
+import { HidTransport, ProtocolError, type ProtocolErrorCode } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./contexts/toast.tsx";
 import { track } from "./analytics.ts";
@@ -34,6 +34,31 @@ type Selected =
 // Module-level so StrictMode's double-invoked mount effect can't trigger two
 // parallel auto-connect attempts.
 let autoConnectStarted = false;
+
+/** i18n key for each failure `src/protocol/` can explain in the user's language. */
+const CONNECT_ERROR_KEY: Record<ProtocolErrorCode, MessageKey> = {
+  webhidUnsupported: "errWebhidUnsupported",
+  noDeviceSelected: "errNoDeviceSelected",
+  deviceDisconnected: "errDeviceDisconnected",
+  commFailed: "errCommFailed",
+  viaOnlyKeyboard: "errViaOnlyKeyboard",
+  unsupportedProtocol: "errUnsupportedProtocol",
+  malformedDefinition: "errMalformedDefinition",
+};
+
+/**
+ * Turns a connect failure into a message to show on the waiting page. Errors
+ * the protocol layer tagged with a code get a fully translated explanation;
+ * anything else (a DOM/WebHID exception, an xz or JSON failure on a corrupt
+ * definition) keeps its English technical detail inside a translated frame —
+ * still more useful than nothing, and the console has the full context.
+ */
+function describeConnectError(err: unknown, t: Translate): string {
+  if (err instanceof ProtocolError && err.code) {
+    return t(CONNECT_ERROR_KEY[err.code], err.params);
+  }
+  return t("errConnectFailed", { error: err instanceof Error ? err.message : String(err) });
+}
 
 function App() {
   const { t } = useI18n();
@@ -136,12 +161,12 @@ function App() {
     } catch (err) {
       console.error("[vialite] manual connect failed:", err);
       await teardown();
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeConnectError(err, t));
       setStatus("error");
     } finally {
       connectInFlightRef.current = false;
     }
-  }, [attachTransport, teardown]);
+  }, [attachTransport, teardown, t]);
 
   const handleDisconnect = useCallback(async () => {
     await teardown();

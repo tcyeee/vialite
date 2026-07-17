@@ -572,10 +572,13 @@ export class Keyboard {
       throw new ProtocolError(
         `This keyboard does not support the Vial protocol — it looks like a VIA-only board ` +
           `(via=${this.viaProtocol}, vial=${this.vialProtocol}). Vial firmware is required.`,
+        "viaOnlyKeyboard",
       );
     }
     throw new ProtocolError(
       `Unsupported protocol version (via=${this.viaProtocol}, vial=${this.vialProtocol})`,
+      "unsupportedProtocol",
+      { via: this.viaProtocol, vial: this.vialProtocol },
     );
   }
 
@@ -733,6 +736,7 @@ export class Keyboard {
         if (row >= this.rows || col >= this.cols) {
           throw new ProtocolError(
             `malformed vial.json: key references ${row},${col} but matrix declares rows=${this.rows} cols=${this.cols}`,
+            "malformedDefinition",
           );
         }
         const offset = layer * this.rows * this.cols * 2 + row * this.cols * 2 + col * 2;

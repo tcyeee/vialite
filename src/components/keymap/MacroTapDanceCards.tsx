@@ -14,6 +14,11 @@ export interface ComboGroup {
   used: number;
   /** Total slots available on the device. */
   total: number;
+  /**
+   * Per-slot "already configured" flags, indexed like {@link entries}. Slots
+   * marked true get a dot on their numbered tile. Absent on {@link info} cards.
+   */
+  configured?: boolean[];
   /** Jump to this category's dedicated editor page (the hover "编辑" action). */
   onEdit: () => void;
   /**
@@ -115,12 +120,18 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
                   {group.entries.map((entry, j) => (
                     <button
                       key={entry.qmkId}
-                      className="combo-num-card"
+                      className="combo-num-card relative"
                       style={{ animationDelay: `${Math.min(j * 30, 400)}ms` }}
                       title={entry.title ?? entry.qmkId}
                       onClick={() => onPick(entry)}
                     >
                       {j + 1}
+                      {group.configured?.[j] && (
+                        <span
+                          className="absolute top-1 right-1 size-1.5 rounded-full bg-white"
+                          title={t("comboSlotConfigured")}
+                        />
+                      )}
                     </button>
                   ))}
                   <button

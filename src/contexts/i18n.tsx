@@ -48,6 +48,41 @@ const MESSAGES = {
   },
   deviceConnected: { en: "Connected to {name}", zh: "已连接:{name}" },
   deviceDisconnected: { en: "Disconnected", zh: "已断开连接" },
+  // Connect failures. Keyed by ProtocolErrorCode (see transport.ts) and mapped
+  // in App.tsx's describeConnectError — the protocol layer is framework-agnostic
+  // and can't translate its own messages.
+  errWebhidUnsupported: {
+    en: "This browser does not support WebHID. Use Chrome or Edge.",
+    zh: "此浏览器不支持 WebHID,请使用 Chrome 或 Edge。",
+  },
+  errNoDeviceSelected: {
+    en: "No device selected.",
+    zh: "未选择设备。",
+  },
+  errDeviceDisconnected: {
+    en: "The keyboard was disconnected during the operation.",
+    zh: "操作过程中键盘已断开连接。",
+  },
+  errCommFailed: {
+    en: "Failed to communicate with the keyboard. Unplug it, plug it back in, and try again.",
+    zh: "与键盘通信失败。请拔下键盘重新插入后再试。",
+  },
+  errViaOnlyKeyboard: {
+    en: "This keyboard does not support the Vial protocol — it looks like a VIA-only board. Vialite only works with keyboards running Vial firmware.",
+    zh: "该键盘不支持 Vial 协议,看起来是仅支持 VIA 的键盘。Vialite 仅支持刷入 Vial 固件的键盘。",
+  },
+  errUnsupportedProtocol: {
+    en: "Unsupported protocol version (VIA {via}, Vial {vial}). This keyboard's firmware is not compatible with Vialite.",
+    zh: "不支持的协议版本(VIA {via}、Vial {vial})。该键盘固件与 Vialite 不兼容。",
+  },
+  errMalformedDefinition: {
+    en: "The keyboard reported a malformed layout definition (vial.json). Its firmware may be broken.",
+    zh: "键盘返回的布局定义(vial.json)格式有误,固件可能存在问题。",
+  },
+  errConnectFailed: {
+    en: "Failed to connect: {error}",
+    zh: "连接失败:{error}",
+  },
   keyboardLayoutTitle: { en: "Keyboard Layout", zh: "键盘布局" },
   magicSettingsTitle: { en: "Magic", zh: "Magic" },
   magicSwapCapsLockControl: { en: "Swap Caps Lock and Left Control", zh: "交换 Caps Lock 与左 Control" },
@@ -292,6 +327,16 @@ const MESSAGES = {
   siteAboutGithub: { en: "GitHub", zh: "GitHub 项目" },
   siteAboutDiscord: { en: "Discord", zh: "Discord 社区" },
   siteGeneralTitle: { en: "General", zh: "通用" },
+  siteDiagnosticsTitle: { en: "Diagnostics", zh: "诊断" },
+  debugLogTitle: { en: "Debug logging", zh: "调试日志" },
+  debugLogDesc: {
+    en: "Print detailed connection logs to the browser console",
+    zh: "在浏览器控制台输出详细的连接日志",
+  },
+  debugLogHint: {
+    en: "Leave this off unless you're troubleshooting. When reporting a connection problem, switch it on, retry, then open the browser console (F12) and share what it prints.",
+    zh: "除非在排查问题,否则请保持关闭。反馈连接故障时,请先打开此开关并重试,然后按 F12 打开浏览器控制台,把输出的内容一并提供。",
+  },
   siteDangerTitle: { en: "Danger Zone", zh: "危险操作" },
   clearCacheTitle: { en: "Clear site cache", zh: "清空网站缓存" },
   clearCacheDesc: {
@@ -649,6 +694,7 @@ const MESSAGES = {
   comboCardUsed: { en: "Total ({used}/{total})", zh: "共计 ({used}/{total}) 个" },
   comboCardEmpty: { en: "None on this device", zh: "此设备暂无" },
   comboCardBack: { en: "Back", zh: "返回" },
+  comboSlotConfigured: { en: "Already configured", zh: "已配置" },
   layerCardCommon: { en: "Common", zh: "常用" },
   comboCardEdit: { en: "Edit", zh: "编辑" },
   // The third, non-expandable Combo card in the "Macros / Tap Dance" tab.

@@ -80,19 +80,29 @@ function comboMeta(
   keyboard: Keyboard,
   titleKey: MessageKey,
   onNavigate: (target: ComboEditTarget) => void,
-): { used: number; total: number; onEdit: () => void } {
+): { used: number; total: number; onEdit: () => void; configured: boolean[] } {
   if (titleKey === "groupTapDance") {
-    const used = keyboard.tapDanceEntries.filter(
+    const configured = keyboard.tapDanceEntries.map(
       (e) =>
         e.onTap !== "KC_NO" ||
         e.onHold !== "KC_NO" ||
         e.onDoubleTap !== "KC_NO" ||
         e.onTapHold !== "KC_NO",
-    ).length;
-    return { used, total: keyboard.tapDanceCount, onEdit: () => onNavigate("tapdance") };
+    );
+    return {
+      used: configured.filter(Boolean).length,
+      total: keyboard.tapDanceCount,
+      onEdit: () => onNavigate("tapdance"),
+      configured,
+    };
   }
-  const used = keyboard.macros.filter((m) => m.length > 0).length;
-  return { used, total: keyboard.macroCount, onEdit: () => onNavigate("macro") };
+  const configured = keyboard.macros.map((m) => m.length > 0);
+  return {
+    used: configured.filter(Boolean).length,
+    total: keyboard.macroCount,
+    onEdit: () => onNavigate("macro"),
+    configured,
+  };
 }
 
 /**

@@ -242,7 +242,7 @@ export function KeyboardColorPanel({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pb-[30px]">
       <p className="text-xs text-brand-on-surface-variant/70">
         {t("colorDisplayNote")}
       </p>
@@ -261,37 +261,49 @@ export function KeyboardColorPanel({
           onSelect={setPreviewLayer}
           isConfigured={(l) => keyboard.isLayerConfigured(l)}
         >
-          <div className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2">
-            {/* Reads every appearance value from the shared context, so it stays in
-                sync with the controls below and identical to previews elsewhere.
-                The ref wrapper is the exact node rasterized for the current-layer
-                image (fit-content, so it hugs the board with no extra margin). */}
-            <div ref={currentBoardRef} style={{ width: "fit-content" }}>
-              <KeyboardLayoutPreview keyboard={keyboard} layer={previewLayer} />
+          {/* Group box spans the tab panel's content area; the overlay below then
+              bleeds out over the panel's p-6 padding so the dim covers the whole
+              tab region rather than just the board. */}
+          <div className="group relative">
+            <div className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2">
+              {/* Reads every appearance value from the shared context, so it stays in
+                  sync with the controls below and identical to previews elsewhere.
+                  The ref wrapper is the exact node rasterized for the current-layer
+                  image (fit-content, so it hugs the board with no extra margin). */}
+              <div ref={currentBoardRef} style={{ width: "fit-content" }}>
+                <KeyboardLayoutPreview keyboard={keyboard} layer={previewLayer} />
+              </div>
+            </div>
+            {/* Save actions live here rather than in a row below the board, and
+                deliberately sit outside currentBoardRef — nodeToCanvas rasterizes
+                that node, so anything inside it would be baked into the export.
+                The scrim spans LayerTabs' content box (p-6), but the board wrapper's
+                padding-compensating negative margins collapse onto this group: its top
+                sits 0.5rem above the content box's padding edge (-mt-2) and its bottom
+                already coincides with that box's border (-mb-6 cancels the pb-6), so the
+                vertical insets are -top-4/bottom-0 rather than a symmetric -inset-6. */}
+            <div className="pointer-events-none absolute -inset-x-6 -top-4 bottom-0 z-10 flex items-center justify-center gap-4 rounded-box rounded-tl-none bg-black/50 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => void saveCurrentLayer()}
+                disabled={saving}
+              >
+                <Icon icon="mdi:content-save-outline" className="h-5 w-5" />
+                {saving ? t("colorSaving") : t("colorSaveCurrentLayer")}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => void saveAllLayers()}
+                disabled={saving || configuredLayers.length === 0}
+              >
+                <Icon icon="mdi:content-save-outline" className="h-5 w-5" />
+                {saving ? t("colorSaving") : t("colorSaveAllLayers")}
+              </button>
             </div>
           </div>
         </LayerTabs>
-      </div>
-
-      <div className="mb-4 flex flex-wrap justify-center gap-2">
-        <button
-          type="button"
-          className="btn btn-sm btn-primary"
-          onClick={() => void saveCurrentLayer()}
-          disabled={saving}
-        >
-          <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
-          {saving ? t("colorSaving") : t("colorSaveCurrentLayer")}
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm btn-outline"
-          onClick={() => void saveAllLayers()}
-          disabled={saving || configuredLayers.length === 0}
-        >
-          <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
-          {saving ? t("colorSaving") : t("colorSaveAllLayers")}
-        </button>
       </div>
 
       {/* Offscreen boards, one per configured layer, kept mounted so the
