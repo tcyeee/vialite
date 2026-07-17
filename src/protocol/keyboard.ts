@@ -203,9 +203,35 @@ function concatUint8Arrays(chunks: Uint8Array<ArrayBuffer>[]): Uint8Array<ArrayB
 }
 
 async function decompressXz(data: Uint8Array<ArrayBuffer>): Promise<string> {
+  // Read the decompressed stream directly instead of wrapping it in a
+  // `Response` and calling `.text()`: when XzReadableStream errors mid-stream,
+  // reading it through a Response surfaces an opaque `TypeError: Failed to
+  // fetch` (Chrome maps an errored fetch-body stream to that), hiding the real
+  // decompression error. A manual reader lets the underlying error propagate.
   const stream = new Blob([data]).stream();
-  const response = new Response(new XzReadableStream(stream));
-  return response.text();
+  const reader = new XzReadableStream(stream).getReader();
+  const chunks: Uint8Array[] = [];
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      if (value) {
+        chunks.push(value);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.length;
+  }
+  return new TextDecoder().decode(out);
 }
 
 export class Keyboard {
@@ -550,9 +576,17 @@ export class Keyboard {
       size -= C.MSG_LEN;
     }
 
+    const compressed = concatUint8Arrays(chunks);
+    const magic = Array.from(compressed.slice(0, 6))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join(" ");
+    console.log(
+      `[vialite]   vial.json xz magic bytes: ${magic} (expected: fd 37 7a 58 5a 00), actualBytes=${compressed.length}`,
+    );
+
     let json: string;
     try {
-      json = await decompressXz(concatUint8Arrays(chunks));
+      json = await decompressXz(compressed);
     } catch (err) {
       console.error(
         `[vialite]   xz decompress of vial.json failed (compressedSize=${compressedSize}, blocks=${block}):`,
