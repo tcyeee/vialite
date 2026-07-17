@@ -7,12 +7,11 @@ import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { Icon } from "@iconify/react";
 import type { Keyboard } from "../../protocol/keyboard.ts";
-import { dualRole } from "../../protocol/keycodes.ts";
-import { useI18n } from "../../contexts/i18n.tsx";
+import { dualRole, type KeycodeDef } from "../../protocol/keycodes.ts";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import { KeycapFace } from "./KeycapFace.tsx";
+import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
 import { KeyInfoCard } from "./KeyInfoCard.tsx";
 import {
   appearanceMetrics,
@@ -21,10 +20,6 @@ import {
   shapeStyle,
 } from "./KeyboardLayoutPreview.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
-
-/** Circle-slash: "no key / disabled" for the KC_NO context action. */
-
-/** Down triangle (▽): "transparent / pass-through" for the KC_TRNS action. */
 
 /** Which half of a dual-role (tap/hold) cap a click targets. */
 export type KeyPart = "tap" | "hold";
@@ -44,7 +39,7 @@ interface Props {
   selected?: Selected | null;
   onKeySelect: (row: number, col: number, part?: KeyPart) => void;
   onEncoderSelect: (index: number, direction: 0 | 1) => void;
-  /** Right-click "设置为 KC_NO / KC_TRNS": writes the keycode to the target. */
+  /** Right-click cascade pick: writes the chosen keycode to the target cap/encoder. */
   onContextAssign?: (target: ContextTarget, qmkId: string) => void;
 }
 
@@ -56,7 +51,6 @@ export function KeyboardLayout({
   onEncoderSelect,
   onContextAssign,
 }: Props) {
-  const { t } = useI18n();
   // Physical appearance (size, spacing, case/plate) is shared with the 键盘配色
   // page via context, so tuning it there restyles this interactive board too.
   // Geometry runs through the same helpers as KeyboardLayoutPreview, so the two
@@ -107,8 +101,10 @@ export function KeyboardLayout({
   };
   useEffect(() => cancelHover, []);
 
-  // Right-click menu: anchored at the click point, targeting one cap/encoder.
-  // Any outside click, scroll, or Escape dismisses it.
+  // Right-click assign: the cascade selector anchored at the click point,
+  // targeting one cap/encoder. Right-clicking also selects the target so the
+  // quick-config board below tracks it; the cascade dismisses itself (outside
+  // click / Escape / after a pick), so there's no separate close listener here.
   const [menu, setMenu] = useState<{ x: number; y: number; target: ContextTarget } | null>(null);
   const openMenu = (e: ReactMouseEvent, target: ContextTarget) => {
     if (!onContextAssign) {
@@ -116,27 +112,24 @@ export function KeyboardLayout({
     }
     e.preventDefault();
     endHover();
+    // Select the target — but skip a plain whole-key that's already selected, so
+    // right-click only ever selects (re-selecting it would toggle it off).
+    if (target.kind === "key") {
+      const alreadyWhole =
+        selected?.kind === "key" &&
+        selected.row === target.row &&
+        selected.col === target.col &&
+        selected.part === undefined;
+      if (!alreadyWhole) onKeySelect(target.row, target.col);
+    } else {
+      const already =
+        selected?.kind === "encoder" &&
+        selected.index === target.index &&
+        selected.direction === target.direction;
+      if (!already) onEncoderSelect(target.index, target.direction);
+    }
     setMenu({ x: e.clientX, y: e.clientY, target });
   };
-  useEffect(() => {
-    if (!menu) {
-      return;
-    }
-    const close = () => setMenu(null);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMenu(null);
-      }
-    };
-    window.addEventListener("click", close);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [menu]);
 
   const placed = useMemo(
     () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
@@ -277,32 +270,25 @@ export function KeyboardLayout({
         />
       )}
       {menu && onContextAssign && (
-        <ul
-          className="menu rounded-box bg-base-100 shadow-lg z-50 w-56 p-1"
-          // Fixed at the click point; default menu font size.
-          style={{ position: "fixed", left: menu.x, top: menu.y }}
-          // Keep the originating right-click from immediately re-closing the menu.
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          {(["KC_NO", "KC_TRNS"] as const).map((qmkId) => {
-            const iconName = qmkId === "KC_NO" ? "mdi:cancel" : "mdi:triangle-down-outline";
-            return (
-              <li key={qmkId}>
-                <button
-                  type="button"
-                  className="flex items-center gap-2"
-                  onClick={() => {
-                    onContextAssign(menu.target, qmkId);
-                    setMenu(null);
-                  }}
-                >
-                  <Icon icon={iconName} className="h-[1.15em] w-[1.15em] shrink-0" />
-                  {qmkId === "KC_NO" ? t("ctxSetKcNo") : t("ctxSetKcTrns")}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        // Suppress the browser's native menu for right-clicks inside the cascade
+        // popover; the cascade handles its own dismissal (outside-click/Escape).
+        <div onContextMenu={(e) => e.preventDefault()}>
+          <KeycodeCascadeSelector
+            anchor={{ x: menu.x, y: menu.y }}
+            keyboard={keyboard}
+            value={
+              menu.target.kind === "key"
+                ? keyboard.getKey(layer, menu.target.row, menu.target.col)
+                : keyboard.getEncoder(layer, menu.target.index, menu.target.direction)
+            }
+            resolveMasked
+            onPick={(entry: KeycodeDef) => {
+              onContextAssign(menu.target, entry.qmkId);
+              setMenu(null);
+            }}
+            onClose={() => setMenu(null)}
+          />
+        </div>
       )}
     </div>
   );

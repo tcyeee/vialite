@@ -35,6 +35,20 @@ export function SiteSettingsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
+      <section className="flex aspect-square w-full max-w-xs flex-col items-center justify-center gap-4 self-center rounded-box bg-brand-surface-variant/30 p-6 text-center">
+        <img src="/logo-full.svg" alt="Vialite" className="h-15 w-auto" />
+        <p className="text-sm leading-relaxed text-brand-on-surface-variant">{t("siteAboutIntro")}</p>
+        <a
+          href="https://github.com/tcyeee/vialite"
+          target="_blank"
+          rel="noreferrer"
+          className="btn btn-ghost btn-circle"
+          aria-label={t("siteAboutGithub")}
+        >
+          <Icon icon="mdi:github" className="h-9 w-9" />
+        </a>
+      </section>
+
       <section>
         <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">{t("siteGeneralTitle")}</h2>
         <ul className="list rounded-box border border-brand-outline/30">

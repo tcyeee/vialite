@@ -42,8 +42,6 @@ const MESSAGES = {
     zh: "这份配置属于另一把键盘,确定要继续导入吗?",
   },
   writeKeyFailed: { en: "Failed to write key: {error}", zh: "写入键值失败:{error}" },
-  ctxSetKcNo: { en: "Disable key (no action)", zh: "禁用此键（无功能）" },
-  ctxSetKcTrns: { en: "Use lower layer's key", zh: "沿用下层按键（透传）" },
   keyboardDisconnected: {
     en: "Keyboard disconnected — plug it back in and reconnect.",
     zh: "键盘已断开——重新插入后再连接。",
@@ -287,6 +285,11 @@ const MESSAGES = {
   themeTitle: { en: "Appearance", zh: "外观" },
   themeLight: { en: "Light", zh: "浅色" },
   themeDark: { en: "Dark", zh: "深色" },
+  siteAboutIntro: {
+    en: "A native web configurator for Vial-protocol keyboards — talking to the keyboard directly over WebHID, with no Qt, no WebAssembly, and no driver install.",
+    zh: "面向 Vial 协议键盘的原生网页配置器 —— 通过 WebHID 直接与键盘通信,无需 Qt、无需 WebAssembly、无需安装驱动。",
+  },
+  siteAboutGithub: { en: "GitHub", zh: "GitHub 项目" },
   siteGeneralTitle: { en: "General", zh: "通用" },
   siteDangerTitle: { en: "Danger Zone", zh: "危险操作" },
   clearCacheTitle: { en: "Clear site cache", zh: "清空网站缓存" },
@@ -518,6 +521,7 @@ const MESSAGES = {
     zh: "任意键码:如 LT(2,KC_A)、LCTL(KC_C)、0x5c00",
   },
   set: { en: "Set", zh: "设置" },
+  anyKeycodeHeading: { en: "Any Keycode", zh: "任意键码" },
   pickInnerKey: { en: "{template} — now pick the inner key", zh: "{template}——请继续选择内部按键" },
   cancel: { en: "Cancel", zh: "取消" },
   cannotNest: {

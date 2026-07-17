@@ -12,8 +12,7 @@ import type { MessageKey } from "../../contexts/i18n.tsx";
  * that shows a key, its label, its description, or a category/sub-category
  * heading reads from here (or from `protocol/keycodes.ts` for the raw keycode
  * tables + `label()`), never from a table inlined in a component — so the
- * advanced picker ({@link ../common/KeycodePicker}), the quick-config tabs
- * ({@link ./KeycodeTabs}) and the cascade selector
+ * quick-config tabs ({@link ./KeycodeTabs}) and the cascade selector
  * ({@link ./KeycodeCascadeSelector}) all classify + describe identically.
  *
  * Descriptions stay as i18n `MessageKey`s (a UI concern) rather than living in

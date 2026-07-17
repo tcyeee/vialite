@@ -6,7 +6,7 @@ import { serializeMacro, serializeMacros } from "../../protocol/macro.ts";
 import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
-import { KeycodePicker } from "../common/KeycodePicker.tsx";
+import { KeycodeCascadeSelector } from "../keymap/KeycodeCascadeSelector.tsx";
 import { UnlockDialog } from "../common/UnlockDialog.tsx";
 import { MacroKeycap3D } from "./MacroKeycap3D.tsx";
 
@@ -40,22 +40,15 @@ function RowControls({ onRemove }: { onRemove: () => void }) {
 }
 
 function AddKeycodeButton({ onPick }: { onPick: (qmkId: string) => void }) {
-  const [picking, setPicking] = useState(false);
   return (
-    <>
-      <button type="button" className="btn btn-dash btn-xs" onClick={() => setPicking(true)}>
-        +
-      </button>
-      {picking && (
-        <KeycodePicker
-          onPick={(id) => {
-            setPicking(false);
-            onPick(id);
-          }}
-          onClose={() => setPicking(false)}
-        />
-      )}
-    </>
+    <KeycodeCascadeSelector
+      placeholder="+"
+      compact
+      resolveMasked
+      keepPicked={false}
+      triggerClassName="btn btn-dash btn-xs gap-1"
+      onPick={(entry) => onPick(entry.qmkId)}
+    />
   );
 }
 
@@ -68,22 +61,15 @@ function AddActionButton({
   label: string;
   onAdd: (action: MacroAction) => void;
 }) {
-  const [picking, setPicking] = useState(false);
   return (
-    <>
-      <button type="button" className="btn btn-sm btn-outline" onClick={() => setPicking(true)}>
-        {label}
-      </button>
-      {picking && (
-        <KeycodePicker
-          onPick={(id) => {
-            setPicking(false);
-            onAdd({ kind, keycodes: [id] });
-          }}
-          onClose={() => setPicking(false)}
-        />
-      )}
-    </>
+    <KeycodeCascadeSelector
+      placeholder={label}
+      compact
+      resolveMasked
+      keepPicked={false}
+      triggerClassName="btn btn-sm btn-outline gap-1"
+      onPick={(entry) => onAdd({ kind, keycodes: [entry.qmkId] })}
+    />
   );
 }
 

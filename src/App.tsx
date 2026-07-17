@@ -5,7 +5,6 @@ import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
 import { KeyboardLayout, type KeyPart } from "./components/keymap/KeyboardLayout.tsx";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
-import { KeycodePicker } from "./components/common/KeycodePicker.tsx";
 import { KeycodeTabs } from "./components/keymap/KeycodeTabs.tsx";
 import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
@@ -49,7 +48,6 @@ function App() {
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("keymap");
   const [selected, setSelected] = useState<Selected | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
   const [qmkPendingCount, setQmkPendingCount] = useState(0);
   const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
@@ -268,15 +266,6 @@ function App() {
     [keyboard, selected, layer, t, showToast],
   );
 
-  // Advanced picker (modal) — assigns then closes.
-  const handlePick = useCallback(
-    async (qmkId: string) => {
-      setPickerOpen(false);
-      await handleAssign(qmkId);
-    },
-    [handleAssign],
-  );
-
   // Dual-role hold editor writes a fully-rebuilt keycode (Mod-Tap / Layer-Tap /
   // plain tap) straight to the selected cap — no recombination. Choosing 无
   // yields a non-dual-role key, so the hold sub-selection is dropped and the cap
@@ -437,6 +426,7 @@ function App() {
             />
             <main className="min-w-0 flex-1 p-6 md:p-8">
               <div key={mode} className="page-transition">
+              {mode !== "site" && (
               <div className="mb-6 flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-brand-on-surface">
                   {mode === "matrix"
@@ -451,16 +441,15 @@ function App() {
                             ? t("navKeyboardColor")
                             : mode === "advanced"
                               ? t("navAdvanced")
-                              : mode === "site"
-                                ? t("navSiteSettings")
-                                : mode === "io"
-                                  ? t("navImportExport")
-                                  : t("keyboardLayoutTitle")}
+                              : mode === "io"
+                                ? t("navImportExport")
+                                : t("keyboardLayoutTitle")}
                 </h1>
                 {mode === "macro" && <HelpIcon text={t("macroHint")} />}
                 {mode === "tapdance" && <HelpIcon text={t("tapDanceHint")} />}
                 {mode === "combo" && <HelpIcon text={t("comboHint")} />}
               </div>
+              )}
               {keyboard && mode === "keymap" && (
                 <>
                   <LayerTabs
@@ -513,11 +502,6 @@ function App() {
                     />
                   ) : selected ? (
                     <section className="mt-6">
-                      <div className="mb-3 flex items-center gap-3">
-                        <h2 className="text-lg font-semibold text-brand-on-surface">
-                          {t("quickConfigTitle")}
-                        </h2>
-                      </div>
                       <KeycodeTabs onPick={handleAssign} keyboard={keyboard} onNavigate={navigate} />
                     </section>
                   ) : (
@@ -559,9 +543,6 @@ function App() {
           </div>
         </div>
       </div>
-          {pickerOpen && selected && mode === "keymap" && (
-            <KeycodePicker onPick={handlePick} onClose={() => setPickerOpen(false)} />
-          )}
           {importing && <div className="io-busy-overlay" />}
         </div>
       )}

@@ -287,8 +287,13 @@ export function QuantumCards({ groups, onPick, keyboard }: Props) {
         return (
           <div
             key={group.titleKey}
+            // Each card sets its own viewTransitionName, so every card is its
+            // own stacking context; the cascade selector's popover is therefore
+            // trapped inside this card and would be painted over by later cards
+            // in the DOM. Lift the expanded card above its siblings so its
+            // popover can overflow on top of them (only one is ever open).
             className={`group/quantumcard card relative select-none text-brand-background transition-shadow ${
-              isOpen ? "w-full" : "w-56"
+              isOpen ? "z-20 w-full" : "w-56"
             } ${empty ? "cursor-default opacity-60" : "cursor-pointer hover:shadow-lg"}`}
             style={{ backgroundColor: CARD_BG[i % CARD_BG.length], viewTransitionName: `quantumcard-${i}` }}
             onClick={() => !empty && toggle(group.titleKey)}

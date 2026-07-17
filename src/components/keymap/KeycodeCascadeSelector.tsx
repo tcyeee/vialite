@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   KEYCODE_CATEGORIES,
   isBasicQmkId,
@@ -50,6 +57,13 @@ interface Props {
   compact?: boolean;
   /** Extra classes for the trigger button (e.g. to match a slot's sizing). */
   triggerClassName?: string;
+  /** Context-menu mode: render only the popover (no trigger button), positioned
+   *  `fixed` at this viewport point and auto-opened. Used by the keyboard
+   *  layout's right-click assign; a fresh object each open re-seeds/reopens it. */
+  anchor?: { x: number; y: number } | null;
+  /** Dismissal callback (outside-click / Escape / after a pick). Required
+   *  companion to {@link Props.anchor} so the parent can unmount the popover. */
+  onClose?: () => void;
 }
 
 /** One category column entry: its display name and the keycodes under it. */
@@ -243,7 +257,10 @@ export function KeycodeCascadeSelector({
   keepPicked = true,
   compact = false,
   triggerClassName,
+  anchor = null,
+  onClose,
 }: Props) {
+  const menuMode = anchor !== null;
   const { t, lang } = useI18n();
   const [open, setOpen] = useState(false);
   const [activeCat, setActiveCat] = useState<string | null>(null);
@@ -256,6 +273,17 @@ export function KeycodeCascadeSelector({
   const [pending, setPending] = useState<KeycodeDef | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  // Menu mode: the popover element (for measuring) and its clamped viewport
+  // position (null until the layout effect measures it, then falls back to the
+  // raw anchor point).
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
+
+  // Close the popover; in menu mode this also tells the parent to unmount us.
+  const close = () => {
+    setOpen(false);
+    onClose?.();
+  };
 
   // Keep the trigger label in sync with a parent-controlled value.
   useEffect(() => {
@@ -298,10 +326,10 @@ export function KeycodeCascadeSelector({
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(e.target as Node)) close();
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") close();
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKeyDown);
@@ -379,10 +407,37 @@ export function KeycodeCascadeSelector({
     setOpen(true);
   };
 
+  // Menu mode: (re)open and seed the columns whenever the anchor point changes
+  // (the parent passes a fresh object per right-click). Runs post-render, so the
+  // `openMenu` const is initialised by the time this fires. Unlike the trigger
+  // dropdown we start collapsed at the top level (no sub-column pre-expanded) so
+  // the user drills left→right, and drop any stale clamped position.
+  useEffect(() => {
+    if (!anchor) return;
+    openMenu();
+    setActiveGroupKey(null);
+    setMenuPos(null);
+    // Keyed on the anchor object identity only; openMenu reads current state.
+  }, [anchor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Menu mode: after the popover renders, clamp it into the viewport — shifting
+  // by only the overflow (never flipping the whole panel past the cursor), so
+  // the category column stays under the pointer and the cascade reads left→right.
+  useLayoutEffect(() => {
+    if (!menuMode || !open || !anchor) return;
+    const el = popoverRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const margin = 8;
+    const left = Math.max(margin, Math.min(anchor.x, window.innerWidth - rect.width - margin));
+    const top = Math.max(margin, Math.min(anchor.y, window.innerHeight - rect.height - margin));
+    setMenuPos((p) => (p && p.left === left && p.top === top ? p : { left, top }));
+  }, [menuMode, open, anchor]);
+
   const emit = (entry: KeycodeDef) => {
     if (keepPicked) setPickedId(entry.qmkId);
     onPick(entry);
-    setOpen(false);
+    close();
   };
 
   const commit = (entry: KeycodeDef) => {
@@ -454,27 +509,27 @@ export function KeycodeCascadeSelector({
         : `Layer ${sub.arg}`
       : entryLabel(sub.entry).split("\n").join(" ");
 
-  return (
-    <div className={compact ? "" : "mt-3"}>
-      {!compact && <h4 className="mb-1 text-sm font-semibold opacity-70">{heading}</h4>}
-      <div ref={rootRef} className={`relative ${compact ? "inline-block" : "w-64"}`}>
-        <button
-          type="button"
-          className={
-            triggerClassName ??
-            `btn btn-sm justify-between font-normal normal-case ${compact ? "" : "w-full"}`
-          }
-          onClick={() => (open ? setOpen(false) : openMenu())}
-        >
-          <span className={pickedId ? "" : "opacity-50"}>{pickedLabel}</span>
-          <span className="opacity-50">▾</span>
-        </button>
-        {open && (
-          {/* The popover paints its own base-100 surfaces, so it must also set
-              its own foreground — it can be embedded in a context with an
-              inherited text color (e.g. the Quantum cards' light-on-dark
-              cards), which would otherwise leave it white-on-white. */}
-          <div className="absolute left-0 top-full z-10 mt-1 flex flex-col gap-1 text-base-content">
+  // Menu mode anchors the popover `fixed` at the click point; the layout effect
+  // above clamps it into the viewport (falling back to the raw anchor for the
+  // first, pre-measure paint).
+  const menuStyle: CSSProperties | undefined = anchor
+    ? { left: menuPos?.left ?? anchor.x, top: menuPos?.top ?? anchor.y }
+    : undefined;
+
+  const popover = open && (
+    // The popover paints its own base-100 surfaces, so it must also set its own
+    // foreground — it can be embedded in a context with an inherited text color
+    // (e.g. the Quantum cards' light-on-dark cards), which would otherwise leave
+    // it white-on-white.
+    <div
+      ref={popoverRef}
+      className={
+        menuMode
+          ? "fixed z-50 flex flex-col gap-1 text-base-content"
+          : "absolute left-0 top-full z-10 mt-1 flex flex-col gap-1 text-base-content"
+      }
+      style={menuStyle}
+    >
             {pending && (
               <div className="alert alert-info alert-soft flex items-center py-1 text-sm">
                 <span>{t("pickInnerKey", { template: pending.qmkId.replace("kc", "…") })}</span>
@@ -653,7 +708,30 @@ export function KeycodeCascadeSelector({
             </div>
             </div>
           </div>
-        )}
+    );
+
+  // Menu mode: just the anchored popover (no trigger/heading), inside a ref
+  // wrapper so the outside-click handler can tell inside from outside.
+  if (menuMode) {
+    return <div ref={rootRef}>{popover}</div>;
+  }
+
+  return (
+    <div className={compact ? "" : "mt-3"}>
+      {!compact && <h4 className="mb-1 text-sm font-semibold opacity-70">{heading}</h4>}
+      <div ref={rootRef} className={`relative ${compact ? "inline-block" : "w-64"}`}>
+        <button
+          type="button"
+          className={
+            triggerClassName ??
+            `btn btn-sm justify-between font-normal normal-case ${compact ? "" : "w-full"}`
+          }
+          onClick={() => (open ? close() : openMenu())}
+        >
+          <span className={pickedId ? "" : "opacity-50"}>{pickedLabel}</span>
+          <span className="opacity-50">▾</span>
+        </button>
+        {popover}
       </div>
     </div>
   );

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import {
   KEYCODE_CATEGORIES,
+  deserialize,
   isBasicQmkId,
+  serialize,
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
@@ -22,12 +24,14 @@ import { LayerCategoryCards } from "./LayerCategoryCards.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
 import { QuantumCards } from "./QuantumCards.tsx";
 
-/** Categories hidden from the inline homepage picker. */
+/** Categories hidden from the inline homepage picker. Quantum is not a tab of its
+ *  own: it's folded into the Combo Keys tab as a labelled section (below). */
 const HIDDEN_CATEGORIES: ReadonlySet<string> = new Set([
   "ISO/International",
   "Navigation",
   "Shifted",
   "Numpad",
+  "Quantum",
 ]);
 
 /** Name of the tab that folds Fn keys, Media and Mouse into one. */
@@ -178,16 +182,18 @@ const VISIBLE_CATEGORIES = (() => {
     out.push({
       name: c.name,
       entries: c.entries,
-      groups:
-        c.name === "Layers"
-          ? layerGroups()
-          : c.name === "Quantum"
-            ? quantumGroups()
-            : undefined,
+      groups: c.name === "Layers" ? layerGroups() : undefined,
     });
   }
   return out;
 })();
+
+/**
+ * Quantum sub-category cards, precomputed once (the display entries are
+ * version-independent). Rendered as a labelled section inside the Combo Keys tab
+ * rather than as a standalone tab (see {@link KeycodeTabs}).
+ */
+const QUANTUM_CARD_GROUPS = quantumGroups();
 
 /** Editor pages the Combo Keys cards can jump to via their hover "编辑" action. */
 export type ComboEditTarget = "macro" | "tapdance" | "combo";
@@ -206,13 +212,32 @@ interface Props {
  * Basic tab renders the cascade selector alone (it already covers every basic
  * key, incl. KC_NO/KC_TRNS), replacing the former physical 104-key board.
  * Masked templates (Layer-Tap, Mod-Tap, …) set a pending state and wait for the
- * user to click an inner basic key, mirroring KeycodePicker's flow.
+ * user to click an inner basic key.
  */
 export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
   const { t } = useI18n();
   const [active, setActive] = useState(VISIBLE_CATEGORIES[0].name);
   const [pending, setPending] = useState<KeycodeDef | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  // The Basic tab's "Any Keycode" field: a free-form keycode expression the user
+  // types (e.g. LT(2,KC_A), LCTL(KC_C), 0x5c00), mirroring the advanced picker.
+  const [anyValue, setAnyValue] = useState("");
+  const [anyError, setAnyError] = useState<string | null>(null);
+
+  /** Parse the free-form keycode field and assign it, or surface a parse error.
+   *  Normalizes to the canonical qmk_id so the keymap round-trips via serialize(). */
+  const submitAny = () => {
+    const text = anyValue.trim();
+    if (!text) return;
+    try {
+      const code = deserialize(text);
+      setAnyError(null);
+      onPick(serialize(code));
+      setAnyValue("");
+    } catch (err) {
+      setAnyError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   const pick = (entry: KeycodeDef) => {
     setHint(null);
@@ -251,14 +276,19 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
     ...(custom ? [{ titleKey: "categoryCustom" as MessageKey, entries: custom.entries }] : []),
   ];
   const base = VISIBLE_CATEGORIES.map((c): VisibleCategory => {
-    // Fold the device's Tap Dance slots into the Macros tab as a sub-group.
-    if (tapDance && c.name === "Macros") {
+    // The Macros category becomes the "Combo Keys" tab: a Macros card, the
+    // device's Tap Dance slots (when present) as a second card, plus a Quantum
+    // section appended at render time. Named "Combo Keys" regardless of tap dance
+    // since it now covers macros / tap dance / combo / quantum together.
+    if (c.name === "Macros") {
       return {
         name: MACRO_TD_NAME,
         entries: [],
         groups: [
           { titleKey: "groupMacros", entries: c.entries },
-          { titleKey: "groupTapDance", entries: tapDance.entries },
+          ...(tapDance
+            ? [{ titleKey: "groupTapDance" as MessageKey, entries: tapDance.entries }]
+            : []),
         ],
       };
     }
@@ -377,7 +407,36 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
         </div>
       )}
       {isBasic && <KeycodeCascadeSelector onPick={pick} keyboard={keyboard} />}
+      {isBasic && (
+        <div className="mt-4">
+          <h4 className="mb-1 text-sm font-semibold opacity-70">{t("anyKeycodeHeading")}</h4>
+          <div className="join flex w-80 max-w-full">
+            <input
+              type="text"
+              className="input input-sm join-item flex-1"
+              placeholder={t("anyKeyPlaceholder")}
+              value={anyValue}
+              onChange={(e) => {
+                setAnyValue(e.target.value);
+                setAnyError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitAny();
+              }}
+            />
+            <button className="btn btn-sm btn-primary join-item" onClick={submitAny}>
+              {t("set")}
+            </button>
+          </div>
+          {anyError && (
+            <div className="alert alert-error alert-soft mt-2 py-1 text-sm">
+              <span>{anyError}</span>
+            </div>
+          )}
+        </div>
+      )}
       {activeCat.name === MACRO_TD_NAME && activeCat.groups ? (
+        <>
         <MacroTapDanceCards
           groups={[
             ...activeCat.groups.map((g) => ({
@@ -405,6 +464,23 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
           ]}
           onPick={pick}
         />
+        <div className="mt-6">
+          <h4 className="mb-1 flex items-center gap-1 text-sm font-semibold">
+            <span className="opacity-70">{t("categoryQuantum")}</span>
+            <HelpIcon text={t("cascadeDescQuantum")} />
+          </h4>
+          <QuantumCards
+            groups={QUANTUM_CARD_GROUPS.map((g) => ({
+              titleKey: g.titleKey!,
+              helpKey: g.helpKey,
+              entries: g.entries,
+              sections: g.sections,
+            }))}
+            onPick={pick}
+            keyboard={keyboard}
+          />
+        </div>
+        </>
       ) : activeCat.name === "Layers" && activeCat.groups ? (
         <LayerCategoryCards
           groups={activeCat.groups.map((g) => ({
@@ -422,17 +498,6 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
             entries: g.entries,
           }))}
           onPick={pick}
-        />
-      ) : activeCat.name === "Quantum" && activeCat.groups ? (
-        <QuantumCards
-          groups={activeCat.groups.map((g) => ({
-            titleKey: g.titleKey!,
-            helpKey: g.helpKey,
-            entries: g.entries,
-            sections: g.sections,
-          }))}
-          onPick={pick}
-          keyboard={keyboard}
         />
       ) : activeCat.groups
         ? activeCat.groups.map((group) => (
