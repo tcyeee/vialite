@@ -568,6 +568,12 @@ const MESSAGES = {
   },
   set: { en: "Set", zh: "设置" },
   anyKeycodeHeading: { en: "Any Keycode", zh: "任意键码" },
+  groupConfigSettings: { en: "Config Settings", zh: "配置设置" },
+  autoAdvance: { en: "Auto-select next", zh: "自动选取下一个" },
+  autoAdvanceHelp: {
+    en: "When on, assigning a key automatically selects the next key so you can configure them in sequence.",
+    zh: "开启后,设置完成一个按键会自动选中下一个按键,便于连续配置。",
+  },
   pickInnerKey: { en: "{template} — now pick the inner key", zh: "{template}——请继续选择内部按键" },
   cancel: { en: "Cancel", zh: "取消" },
   cannotNest: {
@@ -678,6 +684,13 @@ const MESSAGES = {
   groupBasicFKeys: { en: "F-keys", zh: "F 功能键" },
   groupBasicEditing: { en: "Editing", zh: "编辑/导航" },
   groupBasicMods: { en: "Modifiers", zh: "修饰键" },
+  groupBasicBoard: { en: "Keyboard", zh: "键盘布局" },
+
+  // Special-keys section below the simulated keyboard (clear / transparent / any)
+  specialKeys: { en: "Special Keys", zh: "特殊按键" },
+  specialClear: { en: "Clear", zh: "清空按键" },
+  specialTransparent: { en: "Transparent", zh: "穿透按键" },
+  specialAny: { en: "Any Key", zh: "任意按键" },
 
   // Sub-groups within the "Function" tab
   groupFnKeys: { en: "F13–F24", zh: "F13–F24" },

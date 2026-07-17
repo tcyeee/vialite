@@ -3,6 +3,7 @@ import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
 import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
 import { KeyboardLayout, type KeyPart } from "./components/keymap/KeyboardLayout.tsx";
+import { placeLayout } from "./components/keymap/layoutGeometry.ts";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
 import { KeycodeTabs } from "./components/keymap/KeycodeTabs.tsx";
@@ -34,6 +35,35 @@ type Selected =
 // Module-level so StrictMode's double-invoked mount effect can't trigger two
 // parallel auto-connect attempts.
 let autoConnectStarted = false;
+
+/**
+ * Next key after (row, col) in visual reading order — top-to-bottom, then
+ * left-to-right — among the currently-visible caps, wrapping back to the first
+ * after the last. Powers the "自动选取下一个" auto-advance. Keys within ~0.4 KLE
+ * units of the same vertical position count as one row (staggered/keycap gaps).
+ */
+function nextKeyPosition(
+  keyboard: Keyboard,
+  row: number,
+  col: number,
+): { row: number; col: number } | null {
+  const placed = placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices);
+  const ordered = placed.keys
+    .filter(({ key }) => !key.decal)
+    .map(({ key, shiftX, shiftY }) => ({
+      row: key.row,
+      col: key.col,
+      x: key.x + shiftX,
+      y: key.y + shiftY,
+    }))
+    .sort((a, b) => (Math.abs(a.y - b.y) > 0.4 ? a.y - b.y : a.x - b.x));
+  const idx = ordered.findIndex((k) => k.row === row && k.col === col);
+  if (idx === -1) {
+    return null;
+  }
+  const next = ordered[(idx + 1) % ordered.length];
+  return { row: next.row, col: next.col };
+}
 
 /** i18n key for each failure `src/protocol/` can explain in the user's language. */
 const CONNECT_ERROR_KEY: Record<ProtocolErrorCode, MessageKey> = {
@@ -74,6 +104,9 @@ function App() {
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("keymap");
   const [selected, setSelected] = useState<Selected | null>(null);
+  // When on, assigning a key advances the selection to the next key (reading
+  // order) so a run of keys can be configured without re-clicking each cap.
+  const [autoAdvance, setAutoAdvance] = useState(false);
   const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
   const [qmkPendingCount, setQmkPendingCount] = useState(0);
   const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
@@ -289,6 +322,7 @@ function App() {
       if (!keyboard || !selected) {
         return;
       }
+      let ok = false;
       try {
         if (selected.kind === "key") {
           const current = keyboard.getKey(layer, selected.row, selected.col);
@@ -308,12 +342,23 @@ function App() {
         } else {
           await keyboard.setEncoder(layer, selected.index, selected.direction, qmkId);
         }
+        ok = true;
       } catch (err) {
         showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
       }
       forceUpdate((r) => r + 1);
+      // "自动选取下一个": once a whole cap is assigned, advance the selection to the
+      // next key in reading order so the user can configure a run of keys without
+      // clicking each one. Only whole-key picks advance — editing the tap half of a
+      // dual-role cap or an encoder keeps its own selection.
+      if (ok && autoAdvance && selected.kind === "key" && selected.part === undefined) {
+        const next = nextKeyPosition(keyboard, selected.row, selected.col);
+        if (next) {
+          setSelected({ kind: "key", row: next.row, col: next.col });
+        }
+      }
     },
-    [keyboard, selected, layer, t, showToast],
+    [keyboard, selected, layer, t, showToast, autoAdvance],
   );
 
   // Dual-role hold editor writes a fully-rebuilt keycode (Mod-Tap / Layer-Tap /
@@ -433,7 +478,7 @@ function App() {
           className={
             inTransition
               ? "fixed inset-0 z-50 overflow-y-auto bg-white dark:bg-black/30 dark:backdrop-blur-md"
-              : "min-h-screen bg-white dark:bg-black/30 dark:backdrop-blur-md"
+              : "min-h-screen bg-white dark:bg-brand-background"
           }
           style={
             inTransition
@@ -552,7 +597,13 @@ function App() {
                     />
                   ) : selected ? (
                     <section className="mt-6">
-                      <KeycodeTabs onPick={handleAssign} keyboard={keyboard} onNavigate={navigate} />
+                      <KeycodeTabs
+                        onPick={handleAssign}
+                        keyboard={keyboard}
+                        onNavigate={navigate}
+                        autoAdvance={autoAdvance}
+                        onAutoAdvanceChange={setAutoAdvance}
+                      />
                     </section>
                   ) : (
                     <section className="mt-6">

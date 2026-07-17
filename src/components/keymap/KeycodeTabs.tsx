@@ -1,16 +1,14 @@
 import { useState } from "react";
 import {
   KEYCODE_CATEGORIES,
-  deserialize,
   isBasicQmkId,
-  serialize,
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
-import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
+import { BasicKeyboardGrid } from "./BasicKeyboardGrid.tsx";
 import {
   CATEGORY_KEYS,
   KEYCODE_HELP,
@@ -214,40 +212,30 @@ interface Props {
   keyboard: Keyboard;
   /** Navigate to a dedicated editor page (the cards' "编辑" action). */
   onNavigate: (target: ComboEditTarget) => void;
+  /** "自动选取下一个": whether assigning a key auto-advances the selection. */
+  autoAdvance: boolean;
+  /** Toggle {@link autoAdvance}. */
+  onAutoAdvanceChange: (value: boolean) => void;
 }
 
 /**
  * Inline, tabbed keycode palette shown below the keyboard once a key/encoder is
  * selected. Each tab is one KEYCODE_CATEGORIES group (Basic, Media, …). The
- * Basic tab renders the cascade selector alone (it already covers every basic
- * key, incl. KC_NO/KC_TRNS), replacing the former physical 104-key board.
- * Masked templates (Layer-Tap, Mod-Tap, …) set a pending state and wait for the
- * user to click an inner basic key.
+ * Basic tab renders the physical keyboard grid plus a Config Settings block
+ * (the auto-advance toggle). Masked templates (Layer-Tap, Mod-Tap, …) set a
+ * pending state and wait for the user to click an inner basic key.
  */
-export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
+export function KeycodeTabs({
+  onPick,
+  keyboard,
+  onNavigate,
+  autoAdvance,
+  onAutoAdvanceChange,
+}: Props) {
   const { t } = useI18n();
   const [active, setActive] = useState(VISIBLE_CATEGORIES[0].name);
   const [pending, setPending] = useState<KeycodeDef | null>(null);
   const [hint, setHint] = useState<string | null>(null);
-  // The Basic tab's "Any Keycode" field: a free-form keycode expression the user
-  // types (e.g. LT(2,KC_A), LCTL(KC_C), 0x5c00), mirroring the advanced picker.
-  const [anyValue, setAnyValue] = useState("");
-  const [anyError, setAnyError] = useState<string | null>(null);
-
-  /** Parse the free-form keycode field and assign it, or surface a parse error.
-   *  Normalizes to the canonical qmk_id so the keymap round-trips via serialize(). */
-  const submitAny = () => {
-    const text = anyValue.trim();
-    if (!text) return;
-    try {
-      const code = deserialize(text);
-      setAnyError(null);
-      onPick(serialize(code));
-      setAnyValue("");
-    } catch (err) {
-      setAnyError(err instanceof Error ? err.message : String(err));
-    }
-  };
 
   const pick = (entry: KeycodeDef) => {
     setHint(null);
@@ -321,8 +309,8 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
   const allCategories: VisibleCategory[] = ordered;
   const activeCat = allCategories.find((c) => c.name === active) ?? allCategories[0];
   const isBasic = activeCat.name === "Basic";
-  // The Basic tab renders the cascade selector alone (it already covers every
-  // basic key, incl. KC_NO/KC_TRNS), so its flat list is unused.
+  // The Basic tab renders the physical keyboard grid instead of a flat list, so
+  // its category entries are unused.
   const entries = activeCat.entries;
 
   const keyButton = (entry: KeycodeDef) => (
@@ -391,17 +379,19 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
 
   return (
     <div>
-      <div role="tablist" className="tabs tabs-box w-fit">
-        {allCategories.map((cat) => (
-          <button
-            key={cat.name}
-            role="tab"
-            className={`tab${cat.name === activeCat.name ? " tab-active" : ""}`}
-            onClick={() => setActive(cat.name)}
-          >
-            {CATEGORY_KEYS[cat.name] ? t(CATEGORY_KEYS[cat.name]) : cat.name}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div role="tablist" className="tabs tabs-box w-fit">
+          {allCategories.map((cat) => (
+            <button
+              key={cat.name}
+              role="tab"
+              className={`tab${cat.name === activeCat.name ? " tab-active" : ""}`}
+              onClick={() => setActive(cat.name)}
+            >
+              {CATEGORY_KEYS[cat.name] ? t(CATEGORY_KEYS[cat.name]) : cat.name}
+            </button>
+          ))}
+        </div>
       </div>
       {pending && (
         <div className="alert alert-info alert-soft mt-3 flex items-center py-1 text-sm">
@@ -416,33 +406,22 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
           <span>{hint}</span>
         </div>
       )}
-      {isBasic && <KeycodeCascadeSelector onPick={pick} keyboard={keyboard} />}
+      {isBasic && (
+        <BasicKeyboardGrid onPick={(qmkId) => pick({ qmkId, label: qmkId })} />
+      )}
       {isBasic && (
         <div className="mt-4">
-          <h4 className="mb-1 text-sm font-semibold opacity-70">{t("anyKeycodeHeading")}</h4>
-          <div className="join flex w-80 max-w-full">
+          <h4 className="mb-1 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
+          <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
+            <span>{t("autoAdvance")}</span>
+            <HelpIcon text={t("autoAdvanceHelp")} />
             <input
-              type="text"
-              className="input input-sm join-item flex-1"
-              placeholder={t("anyKeyPlaceholder")}
-              value={anyValue}
-              onChange={(e) => {
-                setAnyValue(e.target.value);
-                setAnyError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitAny();
-              }}
+              type="checkbox"
+              className="toggle toggle-sm toggle-primary"
+              checked={autoAdvance}
+              onChange={(e) => onAutoAdvanceChange(e.target.checked)}
             />
-            <button className="btn btn-sm btn-primary join-item" onClick={submitAny}>
-              {t("set")}
-            </button>
-          </div>
-          {anyError && (
-            <div className="alert alert-error alert-soft mt-2 py-1 text-sm">
-              <span>{anyError}</span>
-            </div>
-          )}
+          </label>
         </div>
       )}
       {activeCat.name === MACRO_TD_NAME && activeCat.groups ? (

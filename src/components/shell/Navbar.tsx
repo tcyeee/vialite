@@ -33,7 +33,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           onClick={() => setLang(lang === "zh" ? "en" : "zh")}
           title={t("toggleLanguage")}
         >
-          <Icon icon="mdi:web" className="h-4 w-4" />
+          <Icon icon="mdi:translate" className="h-4 w-4" />
           {lang === "zh" ? "中文" : "English"}
         </button>
         <label

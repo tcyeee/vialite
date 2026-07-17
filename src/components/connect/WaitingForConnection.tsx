@@ -74,7 +74,7 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
           aria-label={t("toggleLanguage")}
           title={t("toggleLanguage")}
         >
-          <Icon icon="mdi:web" className="h-7 w-7" />
+          <Icon icon="mdi:translate" className="h-7 w-7" />
         </button>
         <button
           type="button"
