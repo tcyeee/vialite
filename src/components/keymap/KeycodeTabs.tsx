@@ -7,17 +7,20 @@ import {
 } from "../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
-import { CATEGORY_KEYS, CLEAR_LABELS, deviceCategories } from "../common/KeycodePicker.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "./QuickConfig104.tsx";
 import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
 import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
 import {
+  CATEGORY_KEYS,
+  CLEAR_LABELS,
+  KEYCODE_HELP,
   LAYER_GROUPS,
   LAYER_GROUP_OTHER,
   QUANTUM_GROUPS,
   QUANTUM_GROUP_MISC,
-} from "./keycodeGroupMeta.ts";
+  deviceCategories,
+} from "./keycodeMeta.ts";
 import { LayerCategoryCards } from "./LayerCategoryCards.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
 import { QuantumCards } from "./QuantumCards.tsx";
@@ -40,41 +43,6 @@ const MACRO_TD_NAME = "Macros/Tap Dance";
 
 /** Name of the tab that folds Lighting and the device's Custom keycodes into one. */
 const KEYBOARD_FN_NAME = "Keyboard Function";
-
-/**
- * qmk_id → i18n key describing each Lighting keycode's concrete function, shown
- * as a HelpIcon tooltip on the key in the "Keyboard Function" tab. Custom
- * keycodes get their help text from the device-provided `title` instead.
- */
-const LIGHTING_HELP: Record<string, MessageKey> = {
-  BL_TOGG: "lightBlTogg",
-  BL_STEP: "lightBlStep",
-  BL_BRTG: "lightBlBrtg",
-  BL_ON: "lightBlOn",
-  BL_OFF: "lightBlOff",
-  BL_INC: "lightBlInc",
-  BL_DEC: "lightBlDec",
-  RGB_TOG: "lightRgbTog",
-  RGB_MOD: "lightRgbMod",
-  RGB_RMOD: "lightRgbRmod",
-  RGB_HUI: "lightRgbHui",
-  RGB_HUD: "lightRgbHud",
-  RGB_SAI: "lightRgbSai",
-  RGB_SAD: "lightRgbSad",
-  RGB_VAI: "lightRgbVai",
-  RGB_VAD: "lightRgbVad",
-  RGB_SPI: "lightRgbSpi",
-  RGB_SPD: "lightRgbSpd",
-  RGB_M_P: "lightRgbMP",
-  RGB_M_B: "lightRgbMB",
-  RGB_M_R: "lightRgbMR",
-  RGB_M_SW: "lightRgbMSw",
-  RGB_M_SN: "lightRgbMSn",
-  RGB_M_K: "lightRgbMK",
-  RGB_M_X: "lightRgbMX",
-  RGB_M_G: "lightRgbMG",
-  RGB_M_T: "lightRgbMT",
-};
 
 /** A labelled block of keycodes rendered within a tab. */
 interface KeycodeGroup {
@@ -355,7 +323,7 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
   // description table, or a custom keycode's device-provided title. Returns null
   // when no meaningful description exists (so no help icon is shown).
   const helpText = (entry: KeycodeDef): string | null => {
-    const key = LIGHTING_HELP[entry.qmkId];
+    const key = KEYCODE_HELP[entry.qmkId];
     if (key) return t(key);
     if (entry.title && entry.title !== entry.label) return entry.title;
     return null;

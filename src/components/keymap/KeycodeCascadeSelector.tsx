@@ -7,14 +7,19 @@ import {
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
 import type { MacroAction } from "../../protocol/macro.ts";
-import { CATEGORY_KEYS, CLEAR_LABELS, deviceCategories } from "../common/KeycodePicker.tsx";
 import {
+  BASIC_GROUPS,
+  CATEGORY_DESC,
+  CATEGORY_KEYS,
+  CLEAR_LABELS,
+  KEYCODE_HELP,
   LAYER_GROUPS,
   LAYER_GROUP_OTHER,
   QUANTUM_GROUPS,
   QUANTUM_GROUP_MISC,
+  deviceCategories,
   type KeycodeGroupMeta,
-} from "./keycodeGroupMeta.ts";
+} from "./keycodeMeta.ts";
 
 interface Props {
   /**
@@ -31,30 +36,6 @@ interface Category {
   name: string;
   entries: KeycodeDef[];
 }
-
-/**
- * Per-entry function descriptions for the two Basic-category "clear" keycodes,
- * shown in the third info panel (reusing the picker's tooltip copy).
- */
-const CLEAR_DESC: Record<string, MessageKey> = {
-  KC_NO: "clearNoTitle",
-  KC_TRNS: "clearTransTitle",
-};
-
-/**
- * Category-level function descriptions shown in the info panel when a keycode in
- * one of these categories is active (Basic's clear keys and Custom keycodes get
- * their own per-entry copy instead; the rest fall back to the category blurb).
- */
-const CATEGORY_DESC: Record<string, MessageKey> = {
-  "ISO/International": "cascadeDescIso",
-  Layers: "cascadeDescLayers",
-  Quantum: "cascadeDescQuantum",
-  Media: "cascadeDescMedia",
-  Mouse: "cascadeDescMouse",
-  Lighting: "cascadeDescLighting",
-  Custom: "cascadeDescCustom",
-};
 
 /** Tap-dance action fields, in the order the preview lists them. */
 const TD_FIELDS: { key: MessageKey; field: keyof TapDanceEntry }[] = [
@@ -86,24 +67,18 @@ const tapDanceConfigured = (e: TapDanceEntry | undefined): boolean =>
 /** Readable one-line label for a keycode (collapsing the two-line keycap form). */
 const kcText = (qmkId: string): string => kcLabel(qmkId).split("\n").join(" ");
 
-/** A bilingual display label for a project-owned group (kept out of the global
- *  i18n dictionary since these are cascade-selector-only). */
-type Bilingual = { zh: string; en: string };
-
 /**
  * A middle-column item: either a keycode committed directly, or a group that
  * expands into a sub-column, pushing the info panel to the 4th level. Groups
- * carry a display label (an inline {@link Bilingual} for Basic's sub-areas, or
- * a `titleKey` for Layers/Quantum sourced from {@link ./keycodeGroupMeta}) plus
- * an optional description key; layer groups additionally set each entry's `arg`
- * (the target layer index) for the sub-column label.
+ * carry a `titleKey` (sourced from {@link ./keycodeMeta}) plus an optional
+ * description key; layer groups additionally set each entry's `arg` (the target
+ * layer index) for the sub-column label.
  */
 type MiddleItem =
   | { kind: "leaf"; entry: KeycodeDef }
   | {
       kind: "group";
       key: string;
-      label?: Bilingual;
       titleKey?: MessageKey;
       /** i18n key for the group's description, shown as the info panel's
        *  per-key blurb (e.g. a layer/quantum group's help copy). */
@@ -115,42 +90,17 @@ type MiddleGroup = Extract<MiddleItem, { kind: "group" }>;
 
 /**
  * A cascade sub-category of a top-level category. `match` decides which keycodes
- * fall under it; list order is the render order. The label comes from either an
- * inline {@link Bilingual} (`label`) or an i18n `titleKey`. `layerArg` marks
- * groups whose sub-entries are labelled by their `FN(n)` layer index.
+ * fall under it; list order is the render order. The label + description come
+ * from the group's i18n keys. `layerArg` marks groups whose sub-entries are
+ * labelled by their `FN(n)` layer index.
  */
 interface SubGrouping {
   key: string;
-  label?: Bilingual;
   titleKey?: MessageKey;
   descKey?: MessageKey;
   match: (qmkId: string) => boolean;
   layerArg?: boolean;
 }
-
-const BASIC_SYMBOL_IDS = new Set([
-  "KC_MINUS", "KC_EQUAL", "KC_LBRACKET", "KC_RBRACKET", "KC_BSLASH",
-  "KC_SCOLON", "KC_QUOTE", "KC_GRAVE", "KC_COMMA", "KC_DOT", "KC_SLASH",
-]);
-const BASIC_EDIT_IDS = new Set([
-  "KC_ENTER", "KC_ESCAPE", "KC_BSPACE", "KC_TAB", "KC_SPACE",
-  "KC_CAPSLOCK", "KC_APPLICATION",
-]);
-const BASIC_MOD_IDS = new Set([
-  "KC_LCTRL", "KC_LSHIFT", "KC_LALT", "KC_LGUI",
-  "KC_RCTRL", "KC_RSHIFT", "KC_RALT", "KC_RGUI",
-]);
-
-/** Basic split into 6 areas; unmatched keycodes (KC_NO/KC_TRNS) stay as leaves
- *  pinned above the groups. Labels are inline (no shared help copy). */
-const BASIC_SUBCATS: SubGrouping[] = [
-  { key: "letters", label: { zh: "字母", en: "Letters" }, match: (id) => /^KC_[A-Z]$/.test(id) },
-  { key: "numbers", label: { zh: "数字", en: "Numbers" }, match: (id) => /^KC_[0-9]$/.test(id) },
-  { key: "symbols", label: { zh: "符号", en: "Symbols" }, match: (id) => BASIC_SYMBOL_IDS.has(id) },
-  { key: "fkeys", label: { zh: "F 功能键", en: "F-keys" }, match: (id) => /^KC_F([1-9]|1[0-2])$/.test(id) },
-  { key: "editing", label: { zh: "编辑/导航", en: "Editing" }, match: (id) => BASIC_EDIT_IDS.has(id) },
-  { key: "mods", label: { zh: "修饰键", en: "Modifiers" }, match: (id) => BASIC_MOD_IDS.has(id) },
-];
 
 /** Map shared group metadata to a cascade sub-grouping (label + description from
  *  the same i18n keys the quick-config tabs use). */
@@ -162,6 +112,9 @@ const fromMeta = (m: KeycodeGroupMeta, layerArg = false): SubGrouping => ({
   layerArg,
 });
 
+/** Basic → letters / numbers / symbols / F-keys / editing / mods. Unmatched
+ *  keycodes (KC_NO/KC_TRNS) stay as leaves pinned above the groups. */
+const BASIC_SUBCATS: SubGrouping[] = BASIC_GROUPS.map((m) => fromMeta(m));
 /** Layers → MO/TG/… groups (+ Other catch-all); sub-entries are layer indices. */
 const LAYER_SUBCATS: SubGrouping[] = [...LAYER_GROUPS, LAYER_GROUP_OTHER].map((m) =>
   fromMeta(m, true),
@@ -198,7 +151,6 @@ const groupBySubcats = (entries: KeycodeDef[], subs: SubGrouping[]): MiddleItem[
       g = {
         kind: "group",
         key: sub.key,
-        label: sub.label,
         titleKey: sub.titleKey,
         descKey: sub.descKey,
         entries: [],
@@ -384,14 +336,17 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
     setOpen(false);
   };
 
-  // Per-key description ("按键说明"): a Basic clear key's own copy, a custom
-  // keycode's device-provided title, or the active group's shared description
-  // (e.g. a layer group's MO/TG/… help). Describes the *selected keycode*, not
-  // its category — the category blurb is shown separately (see `catDesc`).
+  // Per-key description ("按键说明"): a Basic clear key's own copy, a per-keycode
+  // description from the shared registry (e.g. Lighting keys), a custom keycode's
+  // device-provided title, or the active group's shared description (e.g. a layer
+  // group's MO/TG/… help). Describes the *selected keycode*, not its category —
+  // the category blurb is shown separately (see `catDesc`).
   const keyDesc = (() => {
     if (!activeEntry) return null;
-    const clear = CLEAR_DESC[activeEntry.qmkId];
-    if (clear) return t(clear);
+    const clear = CLEAR_LABELS[activeEntry.qmkId];
+    if (clear) return t(clear.title);
+    const help = KEYCODE_HELP[activeEntry.qmkId];
+    if (help) return t(help);
     if (activeEntry.title && activeEntry.title !== activeEntry.label) return activeEntry.title;
     if (activeGroup?.descKey) return t(activeGroup.descKey);
     return null;
@@ -417,10 +372,8 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
     return a.keycodes.map(kcText).join(" + ");
   };
 
-  // Middle-column group label: an i18n title (Layers/Quantum), an inline
-  // bilingual name (Basic), or the raw key as a last resort.
-  const groupLabel = (g: MiddleGroup): string =>
-    g.titleKey ? t(g.titleKey) : g.label ? (zh ? g.label.zh : g.label.en) : g.key;
+  // Middle-column group label: its i18n title, or the raw key as a last resort.
+  const groupLabel = (g: MiddleGroup): string => (g.titleKey ? t(g.titleKey) : g.key);
   // Sub-column item label: a layer index for layer groups, else the key's label.
   const subItemLabel = (sub: { entry: KeycodeDef; arg?: string }): string =>
     sub.arg !== undefined

@@ -43,7 +43,8 @@ Open the printed localhost URL in Chrome/Edge, click Connect, and pick your Vial
 
 ## Project layout
 
-- `src/protocol/` — the framework-agnostic Vial/VIA HID protocol reimplementation (transport, keyboard client, keycode tables, KLE parser, `.vil` serialization, macros).
+- `src/protocol/` — the framework-agnostic Vial/VIA HID protocol reimplementation (transport, keyboard client, keycode tables, KLE parser, `.vil` serialization, macros). `keycodes.ts` holds the raw keycode tables (`KEYCODE_CATEGORIES`, `label()`).
+- `src/components/keymap/keycodeMeta.ts` — the single source of truth for keycode **UI metadata**: the category/sub-group hierarchy (`BASIC_GROUPS`, `LAYER_GROUPS`, `QUANTUM_GROUPS`, …), category/group/per-key description keys (`CATEGORY_KEYS`, `CATEGORY_DESC`, `CLEAR_LABELS`, `KEYCODE_HELP`), and the connected device's live categories (`deviceCategories()`). Every view that shows a key, its label, its description, or a category heading reads from here (with description text resolved through `src/contexts/i18n.tsx`) — never from a table inlined in a component.
 - `src/components/` — React UI, organized one directory per concern (`keymap`, `layout`, `macro`, `tapdance`, `combo`, `color`, `qmk`, `matrix`, `io`, `connect`, `shell`, `site`, `common`).
 - `src/contexts/` — React contexts for i18n, theming, key-display and preview-appearance settings, and toasts.
 - `src/App.tsx` — top-level state and wiring (no external state library).

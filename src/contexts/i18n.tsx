@@ -621,6 +621,14 @@ const MESSAGES = {
   categoryTapDance: { en: "Tap Dance", zh: "Tap Dance" },
   categoryMacrosTapDance: { en: "Combo Keys", zh: "组合按键" },
 
+  // Basic-category sub-groups (cascade selector middle column)
+  groupBasicLetters: { en: "Letters", zh: "字母" },
+  groupBasicNumbers: { en: "Numbers", zh: "数字" },
+  groupBasicSymbols: { en: "Symbols", zh: "符号" },
+  groupBasicFKeys: { en: "F-keys", zh: "F 功能键" },
+  groupBasicEditing: { en: "Editing", zh: "编辑/导航" },
+  groupBasicMods: { en: "Modifiers", zh: "修饰键" },
+
   // Sub-groups within the "Function" tab
   groupFnKeys: { en: "F13–F24", zh: "F13–F24" },
   groupMouse: { en: "Mouse", zh: "鼠标按键" },

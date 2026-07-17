@@ -2,67 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   KEYCODE_CATEGORIES,
-  customKeycodeDefs,
   deserialize,
   isBasicQmkId,
   label as kcLabel,
   serialize,
-  tapDanceKeycodeDefs,
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
-import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
+import { useI18n } from "../../contexts/i18n.tsx";
 import { EVENT_CODE_TO_QMK } from "../keymap/keyEventMap.ts";
 import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "../keymap/QuickConfig104.tsx";
-
-/** Maps KEYCODE_CATEGORIES names (defined in keycodes.ts) to translation keys. */
-export const CATEGORY_KEYS: Record<string, MessageKey> = {
-  Basic: "categoryBasic",
-  Numpad: "categoryNumpad",
-  Navigation: "categoryNavigation",
-  Shifted: "categoryShifted",
-  "ISO/International": "categoryIso",
-  "Fn keys": "categoryFn",
-  Layers: "categoryLayers",
-  Quantum: "categoryQuantum",
-  Macros: "categoryMacros",
-  Media: "categoryMedia",
-  Mouse: "categoryMouse",
-  Lighting: "categoryLighting",
-  "Fn/Media/Mouse": "categoryFnMediaMouse",
-  Custom: "categoryCustom",
-  "Keyboard Function": "categoryKeyboardFunction",
-  "Tap Dance": "categoryTapDance",
-  "Macros/Tap Dance": "categoryMacrosTapDance",
-};
-
-/**
- * The two "clear" keycodes in the Basic category, shown as plain labelled
- * buttons: KC_NO wipes the key entirely, KC_TRNS makes it transparent (falls
- * through to the layer below).
- */
-export const CLEAR_LABELS: Record<string, { label: MessageKey; title: MessageKey }> = {
-  KC_NO: { label: "clearNoLabel", title: "clearNoTitle" },
-  KC_TRNS: { label: "clearTransLabel", title: "clearTransTitle" },
-};
+import { CATEGORY_KEYS, CLEAR_LABELS, deviceCategories } from "../keymap/keycodeMeta.ts";
 
 /** Categories hidden from the advanced picker (both browse and search). */
 const HIDDEN_CATEGORIES: ReadonlySet<string> = new Set(["ISO/International", "Numpad", "Shifted"]);
 const VISIBLE_CATEGORIES = KEYCODE_CATEGORIES.filter((c) => !HIDDEN_CATEGORIES.has(c.name));
-
-/**
- * Categories that only exist once a keyboard is connected: its custom keycodes
- * (Bluetooth switches, etc.) and tap-dance slots. Read live from the keycode
- * registry so they reflect whichever device is attached, and omitted entirely
- * when the device defines none.
- */
-export function deviceCategories(): { name: string; entries: KeycodeDef[] }[] {
-  const out: { name: string; entries: KeycodeDef[] }[] = [];
-  const custom = customKeycodeDefs();
-  if (custom.length > 0) out.push({ name: "Custom", entries: [...custom] });
-  const tapDance = tapDanceKeycodeDefs();
-  if (tapDance.length > 0) out.push({ name: "Tap Dance", entries: [...tapDance] });
-  return out;
-}
 
 interface Props {
   onPick: (qmkId: string) => void;

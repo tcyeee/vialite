@@ -43,7 +43,8 @@ pnpm preview         # 预览生产构建
 
 ## 项目结构
 
-- `src/protocol/` —— 与框架无关的 Vial/VIA HID 协议重新实现(传输层、键盘客户端、键码表、KLE 解析器、`.vil` 序列化、宏)。
+- `src/protocol/` —— 与框架无关的 Vial/VIA HID 协议重新实现(传输层、键盘客户端、键码表、KLE 解析器、`.vil` 序列化、宏)。`keycodes.ts` 保存原始键码表(`KEYCODE_CATEGORIES`、`label()`)。
+- `src/components/keymap/keycodeMeta.ts` —— 键码 **UI 元数据的唯一真源**:分类/子分组层级(`BASIC_GROUPS`、`LAYER_GROUPS`、`QUANTUM_GROUPS` 等)、分类/分组/单键说明的翻译 key(`CATEGORY_KEYS`、`CATEGORY_DESC`、`CLEAR_LABELS`、`KEYCODE_HELP`),以及连接设备的实时分类(`deviceCategories()`)。凡是展示按键、按键标签、按键说明或分类标题的界面都从这里读取(说明文案经 `src/contexts/i18n.tsx` 解析),不再在组件里内联任何表。
 - `src/components/` —— React 界面,按关注点每个目录一个(`keymap`、`layout`、`macro`、`tapdance`、`combo`、`color`、`qmk`、`matrix`、`io`、`connect`、`shell`、`site`、`common`)。
 - `src/contexts/` —— i18n、主题、键位显示与预览外观设置、消息提示等 React context。
 - `src/App.tsx` —— 顶层状态与组件装配(不使用外部状态库)。
