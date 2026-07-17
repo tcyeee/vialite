@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { Icon } from "@iconify/react";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 
@@ -35,7 +35,7 @@ export function LayoutOptions({ keyboard, onChange }: Props) {
         typeof item === "string" ? (
           <SettingsRow
             key={i}
-            icon={<LayoutOptionIcon className="h-4.5 w-4.5" />}
+            icon={<Icon icon="mdi:view-list-outline" className="h-4.5 w-4.5" />}
             label={item}
             control={
               <input
@@ -50,7 +50,7 @@ export function LayoutOptions({ keyboard, onChange }: Props) {
         ) : (
           <SettingsRow
             key={i}
-            icon={<LayoutOptionIcon className="h-4.5 w-4.5" />}
+            icon={<Icon icon="mdi:view-list-outline" className="h-4.5 w-4.5" />}
             label={item[0]}
             control={
               <select
@@ -73,11 +73,3 @@ export function LayoutOptions({ keyboard, onChange }: Props) {
   );
 }
 
-function LayoutOptionIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <rect x="3.5" y="6" width="17" height="12" rx="2" />
-      <path strokeLinecap="round" d="M7.5 10h3M7.5 14h9" />
-    </svg>
-  );
-}

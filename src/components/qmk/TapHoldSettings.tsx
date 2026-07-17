@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { Icon } from "@iconify/react";
 import {
   QMK_SETTINGS_QSID_CHORDAL_HOLD,
   QMK_SETTINGS_QSID_FLOW_TAP,
@@ -99,16 +99,8 @@ export function TapHoldSettings({ keyboard }: Props) {
       keyboard={keyboard}
       titleKey="tapHoldSettingsTitle"
       fields={FIELDS}
-      icon={<TapHoldIcon className="h-4.5 w-4.5" />}
+      icon={<Icon icon="mdi:gesture-tap-hold" className="h-4.5 w-4.5" />}
     />
   );
 }
 
-function TapHoldIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <circle cx="8" cy="12" r="3" />
-      <path strokeLinecap="round" d="M14.5 9.5h5M14.5 14.5h3.5" />
-    </svg>
-  );
-}

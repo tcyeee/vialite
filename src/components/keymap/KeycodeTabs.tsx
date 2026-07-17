@@ -7,10 +7,11 @@ import {
 } from "../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
-import { CATEGORY_KEYS, deviceCategories } from "../common/KeycodePicker.tsx";
+import { CATEGORY_KEYS, CLEAR_LABELS, deviceCategories } from "../common/KeycodePicker.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "./QuickConfig104.tsx";
 import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
+import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
 import { LayerCategoryCards } from "./LayerCategoryCards.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
 import { QuantumCards } from "./QuantumCards.tsx";
@@ -324,7 +325,9 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
   const activeCat = allCategories.find((c) => c.name === active) ?? allCategories[0];
   const isBasic = activeCat.name === "Basic";
   const entries = isBasic
-    ? activeCat.entries.filter((e) => !QUICK_CONFIG_QMK_IDS.has(e.qmkId))
+    ? activeCat.entries.filter(
+        (e) => !QUICK_CONFIG_QMK_IDS.has(e.qmkId) && !CLEAR_LABELS[e.qmkId],
+      )
     : activeCat.entries;
 
   const keyButton = (entry: KeycodeDef) => (
@@ -427,7 +430,26 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
           />
         </div>
       )}
+      {isBasic && (
+        // KC_NO / KC_TRNS aren't physical keys on the 104 board; surface them as
+        // two plainly-labelled buttons (清空按键 / 设置为穿透) with explanatory
+        // tooltips instead of the raw id / "▽" glyph the flat list would show.
+        <div className="mt-3 flex flex-wrap gap-2">
+          {Object.entries(CLEAR_LABELS).map(([qmkId, { label, title }]) => (
+            <button
+              key={qmkId}
+              className="btn btn-sm h-auto min-h-8 min-w-12 py-1 font-normal normal-case leading-tight"
+              title={t(title)}
+              onClick={() => pick({ qmkId, label: kcLabel(qmkId) })}
+            >
+              {t(label)}
+            </button>
+          ))}
+        </div>
+      )}
       {activeCat.name === MACRO_TD_NAME && activeCat.groups ? (
+        <>
+        <KeycodeCascadeSelector onPick={pick} keyboard={keyboard} />
         <MacroTapDanceCards
           groups={[
             ...activeCat.groups.map((g) => ({
@@ -455,6 +477,7 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
           ]}
           onPick={pick}
         />
+        </>
       ) : activeCat.name === "Layers" && activeCat.groups ? (
         <LayerCategoryCards
           groups={activeCat.groups.map((g) => ({

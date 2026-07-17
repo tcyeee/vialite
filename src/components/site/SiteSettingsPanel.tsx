@@ -1,4 +1,5 @@
-import { useState, type SVGProps } from "react";
+import { useState } from "react";
+import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
@@ -38,7 +39,7 @@ export function SiteSettingsPanel() {
         <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">{t("siteGeneralTitle")}</h2>
         <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
-            icon={<GlobeIcon className="h-4.5 w-4.5" />}
+            icon={<Icon icon="mdi:web" className="h-4.5 w-4.5" />}
             label={t("languageTitle")}
             description={t("languageDesc")}
             control={
@@ -54,7 +55,7 @@ export function SiteSettingsPanel() {
             }
           />
           <SettingsRow
-            icon={<AppearanceIcon className="h-4.5 w-4.5" />}
+            icon={<Icon icon="mdi:theme-light-dark" className="h-4.5 w-4.5" />}
             label={t("themeTitle")}
             description={t("themeDesc")}
             control={
@@ -76,7 +77,7 @@ export function SiteSettingsPanel() {
         <h2 className="mb-2 text-sm font-semibold text-error">{t("siteDangerTitle")}</h2>
         <ul className="list rounded-box border border-error/40">
           <SettingsRow
-            icon={<WarningIcon className="h-4.5 w-4.5 text-error" />}
+            icon={<Icon icon="mdi:alert-outline" className="h-4.5 w-4.5 text-error" />}
             label={t("clearCacheTitle")}
             description={t("clearCacheDesc")}
             control={
@@ -118,31 +119,3 @@ export function SiteSettingsPanel() {
   );
 }
 
-function WarningIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4 2.5 20h19L12 4Z" />
-      <path strokeLinecap="round" d="M12 10v4" />
-      <circle cx="12" cy="17.5" r=".6" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function GlobeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <ellipse cx="12" cy="12" rx="4" ry="9" />
-      <path strokeLinecap="round" d="M3.5 9h17M3.5 15h17" />
-    </svg>
-  );
-}
-
-function AppearanceIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3a9 9 0 0 0 0 18Z" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}

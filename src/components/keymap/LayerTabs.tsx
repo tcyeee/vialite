@@ -17,15 +17,22 @@ export function LayerTabs({ layers, active, onSelect, isConfigured, children }: 
     <div role="tablist" className="tabs tabs-lift mb-5">
       {Array.from({ length: layers }, (_, i) => (
         <Fragment key={i}>
-          <input
-            type="radio"
-            name="layer_tabs"
-            role="tab"
-            className="tab"
-            aria-label={`${isConfigured?.(i) ? "● " : ""}${t("layerN", { n: i })}`}
-            checked={i === active}
-            onChange={() => onSelect(i)}
-          />
+          {/* Label-wrapped radio (rather than a bare `input.tab`) so the "edited"
+              marker can be a real, secondary-colored dot instead of a glyph baked
+              into the tab's ::after label text (which can't be colored separately). */}
+          <label role="tab" className="tab gap-1.5" aria-label={t("layerN", { n: i })}>
+            <input
+              type="radio"
+              name="layer_tabs"
+              className="sr-only"
+              checked={i === active}
+              onChange={() => onSelect(i)}
+            />
+            {isConfigured?.(i) && (
+              <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-secondary" />
+            )}
+            {t("layerN", { n: i })}
+          </label>
           <div className="tab-content bg-base-100 border-base-300 w-fit p-6">{i === active && children}</div>
         </Fragment>
       ))}

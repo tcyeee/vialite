@@ -40,7 +40,7 @@ export const CATEGORY_KEYS: Record<string, MessageKey> = {
  * buttons: KC_NO wipes the key entirely, KC_TRNS makes it transparent (falls
  * through to the layer below).
  */
-const CLEAR_LABELS: Record<string, { label: MessageKey; title: MessageKey }> = {
+export const CLEAR_LABELS: Record<string, { label: MessageKey; title: MessageKey }> = {
   KC_NO: { label: "clearNoLabel", title: "clearNoTitle" },
   KC_TRNS: { label: "clearTransLabel", title: "clearTransTitle" },
 };

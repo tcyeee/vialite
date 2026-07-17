@@ -1,5 +1,5 @@
-import type { SVGProps } from "react";
 import { useMemo, useRef, useState } from "react";
+import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { composeLayers, downloadCanvas, frameBoard, nodeToCanvas } from "./layoutImage.ts";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
@@ -273,7 +273,7 @@ export function KeyboardColorPanel({
           onClick={() => void saveCurrentLayer()}
           disabled={saving}
         >
-          <DownloadIcon className="h-4 w-4" />
+          <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
           {saving ? t("colorSaving") : t("colorSaveCurrentLayer")}
         </button>
         <button
@@ -282,7 +282,7 @@ export function KeyboardColorPanel({
           onClick={() => void saveAllLayers()}
           disabled={saving || configuredLayers.length === 0}
         >
-          <DownloadIcon className="h-4 w-4" />
+          <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
           {saving ? t("colorSaving") : t("colorSaveAllLayers")}
         </button>
       </div>
@@ -315,7 +315,7 @@ export function KeyboardColorPanel({
         </h2>
         <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
-            icon={<SizeIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:arrow-expand-all" className="h-5 w-5" />}
             label={t("displaySizeTitle")}
             control={
               <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export function KeyboardColorPanel({
             }
           />
           <SettingsRow
-            icon={<DepthIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:cube-outline" className="h-5 w-5" />}
             label={t("depthTitle")}
             description={t("depthDesc")}
             control={
@@ -358,7 +358,7 @@ export function KeyboardColorPanel({
         </h2>
         <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
-            icon={<KeyboardIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:keyboard-outline" className="h-5 w-5" />}
             label={t("keyDisplayTitle")}
             control={
               <div className="join">
@@ -380,7 +380,7 @@ export function KeyboardColorPanel({
             }
           />
           <SettingsRow
-            icon={<FontSizeIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:format-size" className="h-5 w-5" />}
             label={t("fontSizeTitle")}
             control={
               <div className="flex items-center gap-2">
@@ -401,7 +401,7 @@ export function KeyboardColorPanel({
             }
           />
           <SettingsRow
-            icon={<FontColorIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:format-color-text" className="h-5 w-5" />}
             label={t("fontColorTitle")}
             control={
               <div className="flex items-center gap-2">
@@ -422,7 +422,7 @@ export function KeyboardColorPanel({
             }
           />
           <SettingsRow
-            icon={<FontPositionIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:format-textbox" className="h-5 w-5" />}
             label={t("fontPositionTitle")}
             control={
               <div className="join">
@@ -457,7 +457,7 @@ export function KeyboardColorPanel({
         </h2>
         <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
-            icon={<SpacingIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:arrow-expand-horizontal" className="h-5 w-5" />}
             label={t("keySpacingTitle")}
             control={
               <div className="flex items-center gap-2">
@@ -478,7 +478,7 @@ export function KeyboardColorPanel({
             }
           />
           <SettingsRow
-            icon={<KeycapIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:square-rounded-outline" className="h-5 w-5" />}
             label={t("keycapWidthTitle")}
             control={
               <div className="flex items-center gap-2">
@@ -499,7 +499,7 @@ export function KeyboardColorPanel({
             }
           />
           <SettingsRow
-            icon={<KeycapIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:square-rounded-outline" className="h-5 w-5" />}
             label={t("keycapBorderTitle")}
             control={
               <input
@@ -520,7 +520,7 @@ export function KeyboardColorPanel({
         </h2>
         <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
-            icon={<RadiusIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:rounded-corner" className="h-5 w-5" />}
             label={t("caseRadiusTitle")}
             control={
               <div className="flex items-center gap-2">
@@ -541,7 +541,7 @@ export function KeyboardColorPanel({
             }
           />
           <SettingsRow
-            icon={<CaseIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:card-outline" className="h-5 w-5" />}
             label={t("caseThicknessTitle")}
             control={
               <div className="flex items-center gap-2">
@@ -564,7 +564,7 @@ export function KeyboardColorPanel({
             }
           />
           <SettingsRow
-            icon={<CaseIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:card-outline" className="h-5 w-5" />}
             label={t("caseColorTitle")}
             disabled={caseHidden}
             control={
@@ -589,7 +589,7 @@ export function KeyboardColorPanel({
             }
           />
           <SettingsRow
-            icon={<PlateIcon className="h-5 w-5" />}
+            icon={<Icon icon="mdi:layers-outline" className="h-5 w-5" />}
             label={t("plateColorTitle")}
             control={
               <div className="flex items-center gap-2">
@@ -652,186 +652,5 @@ function RecentColorSwatches({
         />
       ))}
     </div>
-  );
-}
-
-function DownloadIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
-      />
-    </svg>
-  );
-}
-
-function KeyboardIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <rect x="2.5" y="6" width="19" height="12" rx="2" />
-      <path strokeLinecap="round" d="M6 9.5h.01M9.5 9.5h.01M13 9.5h.01M16.5 9.5h.01M8 14h8" />
-    </svg>
-  );
-}
-
-function SizeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      {...props}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
-      />
-    </svg>
-  );
-}
-
-function FontSizeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      {...props}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3 17l4-11 4 11M4 13.5h6M14 17l3-8 3 8M14.8 14.5h4.4"
-      />
-    </svg>
-  );
-}
-
-function FontColorIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      {...props}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M5 14l4-9 4 9M6 11h6"
-      />
-      <path strokeLinecap="round" d="M4 20h16" strokeWidth="3" />
-    </svg>
-  );
-}
-
-function FontPositionIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      {...props}
-    >
-      <rect x="3.5" y="4" width="17" height="16" rx="2" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h5M7 11h3" />
-    </svg>
-  );
-}
-
-function SpacingIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      {...props}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M8 6L4 12l4 6M16 6l4 6-4 6M12 4v16"
-      />
-    </svg>
-  );
-}
-
-function DepthIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <path
-        strokeLinejoin="round"
-        d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"
-      />
-      <path strokeLinejoin="round" d="M12 3v18M12 12l8-4.5M12 12l-8-4.5" opacity="0.5" />
-    </svg>
-  );
-}
-
-function KeycapIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <rect x="4" y="4" width="16" height="16" rx="3" />
-      <rect x="7.5" y="7.5" width="9" height="9" rx="1.5" opacity="0.5" />
-    </svg>
-  );
-}
-
-function RadiusIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      {...props}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4 20v-6a10 10 0 0 1 10-10h6"
-      />
-    </svg>
-  );
-}
-
-function CaseIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      {...props}
-    >
-      <rect x="3" y="6" width="18" height="12" rx="2" />
-      <rect x="6.5" y="9.5" width="11" height="5" rx="1" opacity="0.5" />
-    </svg>
-  );
-}
-
-function PlateIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      {...props}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5"
-      />
-    </svg>
   );
 }

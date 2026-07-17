@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { Icon } from "@iconify/react";
 import { QMK_SETTINGS_QSID_MAGIC, type Keyboard } from "../../protocol/keyboard.ts";
 import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
 
@@ -27,16 +27,8 @@ export function MagicSettings({ keyboard }: Props) {
       keyboard={keyboard}
       titleKey="magicSettingsTitle"
       fields={FIELDS}
-      icon={<MagicIcon className="h-4.5 w-4.5" />}
+      icon={<Icon icon="mdi:auto-fix" className="h-4.5 w-4.5" />}
     />
   );
 }
 
-function MagicIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.5 13.6 8.4 18.5 10 13.6 11.6 12 16.5 10.4 11.6 5.5 10 10.4 8.4Z" />
-      <path strokeLinecap="round" d="M18.5 15.5v3M17 17h3" />
-    </svg>
-  );
-}

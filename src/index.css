@@ -193,7 +193,14 @@ body {
 }
 
 .page-transition {
-  animation: page-transition 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Fill mode is intentionally `backwards`, not `both`: keeping the `to` state
+     (`forwards`) would leave `transform: translateY(0)` applied forever, and a
+     non-`none` transform turns this element into a containing block + stacking
+     context for its descendants. That traps `position: fixed` daisyUI modals
+     (and their backdrops) inside the page area instead of the viewport, mis-
+     layering them against the navbar. `backwards` still shows the `from` state
+     before the first frame but leaves no lingering transform once it ends. */
+  animation: page-transition 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

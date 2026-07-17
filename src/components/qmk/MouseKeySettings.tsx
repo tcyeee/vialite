@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { Icon } from "@iconify/react";
 import {
   QMK_SETTINGS_QSID_MOUSEKEY_DELAY,
   QMK_SETTINGS_QSID_MOUSEKEY_INTERVAL,
@@ -109,16 +109,8 @@ export function MouseKeySettings({ keyboard }: Props) {
       keyboard={keyboard}
       titleKey="mouseKeySettingsTitle"
       fields={FIELDS}
-      icon={<MouseKeyIcon className="h-4.5 w-4.5" />}
+      icon={<Icon icon="mdi:mouse-outline" className="h-4.5 w-4.5" />}
     />
   );
 }
 
-function MouseKeyIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <rect x="7.5" y="3.5" width="9" height="17" rx="4.5" />
-      <path strokeLinecap="round" d="M12 3.5v6" />
-    </svg>
-  );
-}

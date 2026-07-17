@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type SVGProps } from "react";
+import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { Icon } from "@iconify/react";
 import { type MessageKey, useI18n } from "../../contexts/i18n.tsx";
 import { KeycapFace } from "../keymap/KeycapFace.tsx";
 import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
@@ -77,7 +78,7 @@ function TapDancePreviewCard({
             title={t("edit")}
             onClick={() => onEdit?.()}
           >
-            <PencilIcon className="h-3.5 w-3.5" />
+            <Icon icon="mdi:pencil" className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
@@ -85,7 +86,7 @@ function TapDancePreviewCard({
             title={t("delete")}
             onClick={() => onDelete?.()}
           >
-            <TrashIcon className="h-3.5 w-3.5" />
+            <Icon icon="mdi:trash-can-outline" className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
@@ -193,21 +194,6 @@ function TapDancePreviewCard({
   );
 }
 
-function PencilIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="m16.5 3.5 4 4L7 21l-4.5 1L3.5 17.5 16.5 3.5Z" />
-    </svg>
-  );
-}
-
-function TrashIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M9 7V4h6v3m-8 0 .8 12.4A2 2 0 0 0 9.8 21h4.4a2 2 0 0 0 2-1.6L17 7" />
-    </svg>
-  );
-}
 
 interface Props {
   keyboard: Keyboard;

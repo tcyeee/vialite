@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { Icon } from "@iconify/react";
 import { QMK_SETTINGS_QSID_COMBO_TERM, type Keyboard } from "../../protocol/keyboard.ts";
 import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
 
@@ -18,16 +18,8 @@ export function ComboSettings({ keyboard }: Props) {
       keyboard={keyboard}
       titleKey="comboSettingsTitle"
       fields={FIELDS}
-      icon={<ComboIcon className="h-4.5 w-4.5" />}
+      icon={<Icon icon="mdi:vector-combine" className="h-4.5 w-4.5" />}
     />
   );
 }
 
-function ComboIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <circle cx="8.5" cy="12" r="3" />
-      <circle cx="15.5" cy="12" r="3" />
-    </svg>
-  );
-}

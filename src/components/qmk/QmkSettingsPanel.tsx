@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SVGProps } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey, type Translate } from "../../contexts/i18n.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
@@ -401,7 +402,7 @@ export function QmkSettingsPanel({
         <MouseKeySettings keyboard={keyboard} />
         <div className="flex justify-end">
           <button type="button" className="btn btn-outline btn-sm gap-1.5" onClick={() => setResetConfirmOpen(true)}>
-            <ResetIcon className="h-4 w-4" />
+            <Icon icon="mdi:restore" className="h-4 w-4" />
             {t("resetAllSettings")}
           </button>
         </div>
@@ -473,11 +474,3 @@ export function QmkSettingsPanel({
   );
 }
 
-function ResetIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 1 1 2.4 5.5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 17.5v-4.5h4.5" />
-    </svg>
-  );
-}

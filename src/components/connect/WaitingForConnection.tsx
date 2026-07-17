@@ -1,4 +1,5 @@
-import { Component, lazy, Suspense, useState, type ReactNode, type SVGProps } from "react";
+import { Component, lazy, Suspense, useState, type ReactNode } from "react";
+import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
 import type { ConnectionStatus } from "./DeviceConnect.tsx";
@@ -73,7 +74,7 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
           aria-label={t("toggleLanguage")}
           title={t("toggleLanguage")}
         >
-          <GlobeIcon className="h-7 w-7" />
+          <Icon icon="mdi:web" className="h-7 w-7" />
         </button>
         <button
           type="button"
@@ -82,7 +83,7 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
           aria-label={t("toggleTheme")}
           title={t("toggleTheme")}
         >
-          {theme === "dark" ? <SunIcon className="h-7 w-7" /> : <MoonIcon className="h-7 w-7" />}
+          {theme === "dark" ? <Icon icon="mdi:white-balance-sunny" className="h-7 w-7" /> : <Icon icon="mdi:weather-night" className="h-7 w-7" />}
         </button>
       </div>
 
@@ -103,7 +104,7 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
             className="absolute inset-0 flex items-center justify-center transition-opacity duration-300"
             style={{ opacity: modelReady && !modelFailed ? 0 : 1 }}
           >
-            <KeyboardIcon className="h-36 w-36 text-brand-primary md:h-52 md:w-52" />
+            <Icon icon="mdi:keyboard-outline" className="h-36 w-36 text-brand-primary md:h-52 md:w-52" />
           </div>
           {!modelFailed && (
             <div className="absolute inset-0">
@@ -127,9 +128,9 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
               disabled={connecting}
             >
               {connecting ? (
-                <SpinnerIcon className="h-6 w-6 animate-spin" />
+                <Icon icon="mdi:loading" className="h-6 w-6 animate-spin" />
               ) : (
-                <SearchIcon className="h-6 w-6" />
+                <Icon icon="mdi:magnify" className="h-6 w-6" />
               )}
               <span>{connecting ? t("connecting") : t("detectDevice")}</span>
             </button>
@@ -151,67 +152,7 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
   );
 }
 
-function KeyboardIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <rect x="2" y="6" width="20" height="12" rx="2" />
-      <path
-        strokeLinecap="round"
-        d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M6 14h.01M18 14h.01"
-      />
-      <path strokeLinecap="round" d="M9 14h6" />
-    </svg>
-  );
-}
-
-function SearchIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
-      <circle cx="11" cy="11" r="7" />
-      <path strokeLinecap="round" d="m21 21-4.3-4.3" />
-    </svg>
-  );
-}
-
-function GlobeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <ellipse cx="12" cy="12" rx="4" ry="9" />
-      <path strokeLinecap="round" d="M3.5 9h17M3.5 15h17" />
-    </svg>
-  );
-}
-
-function SunIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <circle cx="12" cy="12" r="4.5" />
-      <path
-        strokeLinecap="round"
-        d="M12 2.5v2.25M12 19.25v2.25M4.4 4.4l1.6 1.6M18 18l1.6 1.6M2.5 12h2.25M19.25 12h2.25M4.4 19.6 6 18M18 6l1.6-1.6"
-      />
-    </svg>
-  );
-}
-
-function MoonIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"
-      />
-    </svg>
-  );
-}
-
-export function SpinnerIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" {...props}>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity="0.25" />
-      <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M21 12a9 9 0 0 0-9-9" />
-    </svg>
-  );
+/** Loading spinner, reused by App.tsx. `mdi:loading` is an arc; add `animate-spin` to rotate it. */
+export function SpinnerIcon({ className }: { className?: string }) {
+  return <Icon icon="mdi:loading" className={className} />;
 }

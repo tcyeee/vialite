@@ -6,8 +6,8 @@ import {
   useState,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
-  type SVGProps,
 } from "react";
+import { Icon } from "@iconify/react";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { dualRole } from "../../protocol/keycodes.ts";
 import { useI18n } from "../../contexts/i18n.tsx";
@@ -23,23 +23,8 @@ import {
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
 
 /** Circle-slash: "no key / disabled" for the KC_NO context action. */
-function NoKeyIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path strokeLinecap="round" d="m6 6 12 12" />
-    </svg>
-  );
-}
 
 /** Down triangle (▽): "transparent / pass-through" for the KC_TRNS action. */
-function TransparentIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <path strokeLinejoin="round" d="M5 7h14l-7 11z" />
-    </svg>
-  );
-}
 
 /** Which half of a dual-role (tap/hold) cap a click targets. */
 export type KeyPart = "tap" | "hold";
@@ -300,7 +285,7 @@ export function KeyboardLayout({
           onContextMenu={(e) => e.preventDefault()}
         >
           {(["KC_NO", "KC_TRNS"] as const).map((qmkId) => {
-            const Icon = qmkId === "KC_NO" ? NoKeyIcon : TransparentIcon;
+            const iconName = qmkId === "KC_NO" ? "mdi:cancel" : "mdi:triangle-down-outline";
             return (
               <li key={qmkId}>
                 <button
@@ -311,7 +296,7 @@ export function KeyboardLayout({
                     setMenu(null);
                   }}
                 >
-                  <Icon className="h-[1.15em] w-[1.15em] shrink-0" />
+                  <Icon icon={iconName} className="h-[1.15em] w-[1.15em] shrink-0" />
                   {qmkId === "KC_NO" ? t("ctxSetKcNo") : t("ctxSetKcTrns")}
                 </button>
               </li>

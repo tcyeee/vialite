@@ -1,11 +1,13 @@
 # Vialite
 
+**English** · [简体中文](README.zh-CN.md)
+
 A native web configurator for [Vial](https://get.vial.today/)-protocol keyboards, talking to the keyboard directly over [WebHID](https://developer.mozilla.org/en-US/docs/Web/API/WebHID_API) — no Qt, no WebAssembly, no driver install.
 
-This is a from-scratch web frontend, not a build wrapper around the official `vial-gui`/`vial-web` (which compiles a PyQt5 desktop app to WebAssembly). The Vial HID protocol itself is reimplemented in TypeScript under `src/protocol/`, ported from [`vial-gui`](https://github.com/vial-kb/vial-gui)'s Python implementation. See `note.md` for the background and rationale.
+This is a from-scratch web frontend, not a build wrapper around the official `vial-gui`/`vial-web` (which compiles a PyQt5 desktop app to WebAssembly). The Vial HID protocol itself is reimplemented in TypeScript under `src/protocol/`, ported from [`vial-gui`](https://github.com/vial-kb/vial-gui)'s Python implementation.
 
 ## Features
-
+    
 - **Keymap editing** — assign keycodes per layer with a searchable picker, a full physical-layout renderer (including ISO-Enter and encoders), layout-options support, and a 3D keyboard preview.
 - **Dual-role & tap-hold keys** — dedicated editor for layer-tap / mod-tap and other dual-role keycodes.
 - **Macros** — record and edit macro sequences (gated on device support).
@@ -42,7 +44,7 @@ Open the printed localhost URL in Chrome/Edge, click Connect, and pick your Vial
 ## Project layout
 
 - `src/protocol/` — the framework-agnostic Vial/VIA HID protocol reimplementation (transport, keyboard client, keycode tables, KLE parser, `.vil` serialization, macros).
-- `src/components/` — React UI, organized one directory per concern (`keymap`, `macro`, `tapdance`, `combo`, `color`, `qmk`, `matrix`, `io`, `connect`, `shell`, `site`, `common`).
+- `src/components/` — React UI, organized one directory per concern (`keymap`, `layout`, `macro`, `tapdance`, `combo`, `color`, `qmk`, `matrix`, `io`, `connect`, `shell`, `site`, `common`).
 - `src/contexts/` — React contexts for i18n, theming, key-display and preview-appearance settings, and toasts.
 - `src/App.tsx` — top-level state and wiring (no external state library).
 

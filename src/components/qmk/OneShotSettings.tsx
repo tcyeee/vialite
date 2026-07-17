@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { Icon } from "@iconify/react";
 import { QMK_SETTINGS_QSID_ONESHOT_TAP_TOGGLE, QMK_SETTINGS_QSID_ONESHOT_TIMEOUT, type Keyboard } from "../../protocol/keyboard.ts";
 import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
 
@@ -35,16 +35,8 @@ export function OneShotSettings({ keyboard }: Props) {
       keyboard={keyboard}
       titleKey="oneShotSettingsTitle"
       fields={FIELDS}
-      icon={<OneShotIcon className="h-4.5 w-4.5" />}
+      icon={<Icon icon="mdi:numeric-1-circle-outline" className="h-4.5 w-4.5" />}
     />
   );
 }
 
-function OneShotIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <circle cx="12" cy="12" r="7.5" />
-      <path strokeLinecap="round" d="M12 8v4l2.5 2.5" />
-    </svg>
-  );
-}

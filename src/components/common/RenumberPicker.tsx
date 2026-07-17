@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type SVGProps } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Icon } from "@iconify/react";
 
 interface Props {
   /** Currently selected slot number. */
@@ -71,7 +72,7 @@ export function RenumberPicker({ index, count, usedIndices, prefix, title, onMov
         onClick={() => setOpen((o) => !o)}
       >
         {prefix}-{index}
-        <ChevronDownIcon className="h-4 w-4 opacity-60" />
+        <Icon icon="mdi:chevron-down" className="h-4 w-4 opacity-60" />
       </button>
       {open &&
         createPortal(
@@ -107,10 +108,3 @@ export function RenumberPicker({ index, count, usedIndices, prefix, title, onMov
   );
 }
 
-function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}

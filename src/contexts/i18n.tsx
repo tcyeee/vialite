@@ -2,13 +2,30 @@
 // with `{param}` interpolation, and a React context. Keycap labels (Enter,
 // LShift, ...) deliberately stay English, matching vial-gui.
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 export type Lang = "en" | "zh";
 
 const STORAGE_KEY = "vialite-lang";
 
 const MESSAGES = {
+  // SEO — document <title> and meta description, swapped per language at runtime.
+  seoTitle: {
+    en: "Vialite — Web Configurator for Vial Keyboards (WebHID, no install)",
+    zh: "Vialite — Vial 键盘在线配置器（WebHID，免安装）",
+  },
+  seoDescription: {
+    en: "Configure your Vial-protocol keyboard right in the browser over WebHID — remap keys, layers, macros, tap dance, combos, RGB, and QMK settings. No Qt, no WebAssembly, no driver install. Works in Chrome and Edge.",
+    zh: "在浏览器中通过 WebHID 直接配置 Vial 协议键盘：改键、分层、宏、Tap Dance、组合键、RGB 灯光与 QMK 高级设置。无需 Qt、无需 WebAssembly、无需安装驱动，支持 Chrome 与 Edge。",
+  },
   // App
   exportLayout: { en: "Export layout", zh: "导出配置" },
   importLayout: { en: "Import layout", zh: "导入配置" },
@@ -511,12 +528,12 @@ const MESSAGES = {
   noMatch: { en: "No keycodes match “{query}”.", zh: "没有匹配 “{query}” 的键码。" },
 
   // Basic-category "clear" keys (KC_NO / KC_TRNS) — two different kinds of clear
-  clearNoLabel: { en: "Clear", zh: "清空" },
+  clearNoLabel: { en: "Clear", zh: "清空按键" },
   clearNoTitle: {
     en: "KC_NO — key does nothing (no function on any layer)",
     zh: "KC_NO — 清空为空键,该位置无任何功能",
   },
-  clearTransLabel: { en: "Transparent", zh: "透明" },
+  clearTransLabel: { en: "Transparent", zh: "设置为穿透" },
   clearTransTitle: {
     en: "KC_TRNS — transparent: falls through to the same key on a lower layer",
     zh: "KC_TRNS — 透明清空,沿用下层同一位置的按键",
@@ -538,6 +555,40 @@ const MESSAGES = {
   categoryLighting: { en: "Lighting", zh: "灯光" },
   categoryCustom: { en: "Custom", zh: "自定义" },
   categoryKeyboardFunction: { en: "Keyboard Function", zh: "键盘功能" },
+
+  // Category-level function descriptions shown in the cascade selector's info panel.
+  cascadeDescIso: {
+    en: "Extra keys for ISO/JIS layouts and international input (non-US symbols, Kana, etc.).",
+    zh: "ISO/JIS 布局及国际输入所需的额外按键（非美式符号、假名等）。",
+  },
+  cascadeDescLayers: {
+    en: "Switch, toggle, or momentarily activate keymap layers.",
+    zh: "切换、锁定或临时激活键盘层。",
+  },
+  cascadeDescQuantum: {
+    en: "QMK advanced keys: one-shot mods, held modifiers, and mod-tap / layer-tap combinations.",
+    zh: "QMK 高级按键:一次性修饰键、组合修饰键、按住/点击双功能等。",
+  },
+  cascadeDescMedia: {
+    en: "Media playback, volume, brightness, and system control keys.",
+    zh: "媒体播放、音量、亮度与系统控制按键。",
+  },
+  cascadeDescMouse: {
+    en: "Move the pointer, click mouse buttons, and scroll the wheel from the keyboard.",
+    zh: "用键盘移动指针、点击鼠标按键和滚动滚轮。",
+  },
+  cascadeDescLighting: {
+    en: "Control backlight and RGB lighting: brightness, hue, effects, and modes.",
+    zh: "控制背光与 RGB 灯光:亮度、色相、灯效与模式。",
+  },
+  cascadeDescCustom: {
+    en: "Keyboard-specific custom keycodes defined by this device's firmware.",
+    zh: "本键盘固件定义的专属自定义键码。",
+  },
+  // Macro / tap-dance preview inside the cascade selector's info panel.
+  cascadeMacroContents: { en: "Macro contents", zh: "宏内容" },
+  cascadeTapDanceActions: { en: "Tap dance actions", zh: "多击动作" },
+  cascadeNotConfigured: { en: "Not configured yet.", zh: "尚未配置。" },
 
   // Per-key help for the Lighting keys in the "Keyboard Function" tab.
   lightBlTogg: { en: "Toggle single-color backlight on/off.", zh: "开关单色背光。" },
@@ -730,6 +781,16 @@ const MESSAGES = {
 export type MessageKey = keyof typeof MESSAGES;
 
 export function detectLang(): Lang {
+  // An explicit ?lang= wins so the SEO hreflang variants (?lang=en / ?lang=zh)
+  // deliver the advertised language to crawlers and shared links.
+  try {
+    const param = new URLSearchParams(window.location.search).get("lang");
+    if (param === "en" || param === "zh") {
+      return param;
+    }
+  } catch {
+    // No URL / params available — fall through.
+  }
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "en" || stored === "zh") {
@@ -739,6 +800,13 @@ export function detectLang(): Lang {
     // Storage may be unavailable (private mode etc.) — fall through.
   }
   return navigator.language?.toLowerCase().startsWith("zh") ? "zh" : "en";
+}
+
+function setMetaContent(selector: string, content: string): void {
+  const el = document.head.querySelector(selector);
+  if (el) {
+    el.setAttribute("content", content);
+  }
 }
 
 function format(template: string, params?: Record<string, string | number>): string {
@@ -773,6 +841,21 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback<Translate>((key, params) => format(MESSAGES[key][lang], params), [lang]);
+
+  // Keep SEO-relevant document metadata in sync with the active language. This
+  // is a client-rendered SPA on a single URL, so the crawler-visible title,
+  // description, <html lang>, and og:locale must be updated at runtime rather
+  // than baked statically into index.html.
+  useEffect(() => {
+    document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+    document.title = MESSAGES.seoTitle[lang];
+    setMetaContent("meta[name='description']", MESSAGES.seoDescription[lang]);
+    setMetaContent("meta[property='og:title']", MESSAGES.seoTitle[lang]);
+    setMetaContent("meta[property='og:description']", MESSAGES.seoDescription[lang]);
+    setMetaContent("meta[property='og:locale']", lang === "zh" ? "zh_CN" : "en_US");
+    setMetaContent("meta[name='twitter:title']", MESSAGES.seoTitle[lang]);
+    setMetaContent("meta[name='twitter:description']", MESSAGES.seoDescription[lang]);
+  }, [lang]);
 
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

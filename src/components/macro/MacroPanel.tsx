@@ -296,14 +296,25 @@ export function MacroPanel({ keyboard, onChange }: Props) {
       <div className="tabs tabs-lift">
         {edited.map((macro, i) => (
           <Fragment key={i}>
-            <input
-              type="radio"
-              name="macro_tabs"
-              className="tab"
+            {/* Label-wrapped radio so the "edited" marker is a real, secondary-
+                colored dot rather than a glyph baked into the ::after label text. */}
+            <label
+              role="tab"
+              className="tab gap-1.5"
               aria-label={`${macro.length > 0 ? "● " : ""}M${i}${slotChanged && i === active ? "*" : ""}`}
-              checked={i === active}
-              onChange={() => setActive(i)}
-            />
+            >
+              <input
+                type="radio"
+                name="macro_tabs"
+                className="sr-only"
+                checked={i === active}
+                onChange={() => setActive(i)}
+              />
+              {macro.length > 0 && (
+                <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-secondary" />
+              )}
+              {`M${i}${slotChanged && i === active ? "*" : ""}`}
+            </label>
             <div className="tab-content bg-base-100 border-base-300 p-6 min-h-90">
               {i === active && (
                 <div className="flex flex-col gap-4">

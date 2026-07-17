@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { Icon } from "@iconify/react";
 import { QMK_SETTINGS_QSID_GRAVE_ESCAPE, type Keyboard } from "../../protocol/keyboard.ts";
 import { QmkSettingsSection, type QmkSettingField } from "./QmkSettingsPanel.tsx";
 
@@ -21,18 +21,8 @@ export function GraveEscapeSettings({ keyboard }: Props) {
       keyboard={keyboard}
       titleKey="graveEscapeSettingsTitle"
       fields={FIELDS}
-      icon={<GraveEscapeIcon className="h-4.5 w-4.5" />}
+      icon={<Icon icon="mdi:keyboard-esc" className="h-4.5 w-4.5" />}
     />
   );
 }
 
-function GraveEscapeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <rect x="3.5" y="6" width="17" height="12" rx="2" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 9.5 6.5 11l1.5 1.5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.5 10.5 13.5 12.5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5 15.5 12.5" />
-    </svg>
-  );
-}

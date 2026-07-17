@@ -3,9 +3,8 @@ import {
   useState,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
-  type ReactNode,
-  type SVGProps,
 } from "react";
+import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 
 type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
@@ -101,16 +100,16 @@ function useScrollSpy(sectionIds: string[], active: boolean): string | null {
 
 type NavKind = "home" | "matrixTest" | "macro" | "tapDance" | "combo" | "keyboardColor" | "advanced" | "site" | "importExport";
 
-const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; Icon: (props: SVGProps<SVGSVGElement>) => ReactNode }[] = [
-  { kind: "home", mode: "keymap", labelKey: "navHome", Icon: HomeIcon },
-  { kind: "macro", mode: "macro", labelKey: "navMacro", Icon: MacroIcon },
-  { kind: "tapDance", mode: "tapdance", labelKey: "navTapDance", Icon: TapDanceIcon },
-  { kind: "combo", mode: "combo", labelKey: "navCombo", Icon: ComboIcon },
-  { kind: "keyboardColor", mode: "color", labelKey: "navKeyboardColor", Icon: KeyboardColorIcon },
-  { kind: "importExport", mode: "io", labelKey: "navImportExport", Icon: ImportExportIcon },
-  { kind: "matrixTest", mode: "matrix", labelKey: "navMatrixTest", Icon: MatrixIcon },
-  { kind: "advanced", mode: "advanced", labelKey: "navAdvanced", Icon: AdvancedIcon },
-  { kind: "site", mode: "site", labelKey: "navSiteSettings", Icon: SiteSettingsIcon },
+const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; icon: string }[] = [
+  { kind: "home", mode: "keymap", labelKey: "navHome", icon: "mdi:home-outline" },
+  { kind: "macro", mode: "macro", labelKey: "navMacro", icon: "mdi:script-text-outline" },
+  { kind: "tapDance", mode: "tapdance", labelKey: "navTapDance", icon: "mdi:gesture-double-tap" },
+  { kind: "combo", mode: "combo", labelKey: "navCombo", icon: "mdi:vector-combine" },
+  { kind: "keyboardColor", mode: "color", labelKey: "navKeyboardColor", icon: "mdi:palette-outline" },
+  { kind: "importExport", mode: "io", labelKey: "navImportExport", icon: "mdi:swap-horizontal" },
+  { kind: "matrixTest", mode: "matrix", labelKey: "navMatrixTest", icon: "mdi:view-grid-outline" },
+  { kind: "advanced", mode: "advanced", labelKey: "navAdvanced", icon: "mdi:tune-variant" },
+  { kind: "site", mode: "site", labelKey: "navSiteSettings", icon: "mdi:web" },
 ];
 
 export function Sidebar({
@@ -195,7 +194,7 @@ export function Sidebar({
               aria-pressed={collapsed}
               className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-none bg-transparent text-brand-on-surface-variant transition hover:bg-brand-surface-container-highest/60"
             >
-              <CollapseIcon className={"h-5 w-5 transition-transform duration-300 " + (collapsed ? "rotate-180" : "")} />
+              <Icon icon="mdi:menu-open" className={"h-5 w-5 transition-transform duration-300 " + (collapsed ? "rotate-180" : "")} />
             </button>
           </div>
         </div>
@@ -255,7 +254,7 @@ function SidebarNav({
   const { t } = useI18n();
   return (
     <nav className="flex flex-col gap-2">
-      {NAV_ITEMS.map(({ kind, mode: itemMode, labelKey, Icon }, index) => {
+      {NAV_ITEMS.map(({ kind, mode: itemMode, labelKey, icon }, index) => {
         const labelDelay = { "--nav-delay": `${index * 40}ms` } as CSSProperties;
         if (supportedByKind[kind] === false) {
           return (
@@ -268,7 +267,7 @@ function SidebarNav({
               data-tip={collapsed ? t("comingSoon") : undefined}
               title={collapsed ? undefined : t("comingSoon")}
             >
-              <Icon className="h-5 w-5 shrink-0" />
+              <Icon icon={icon} className="h-5 w-5 shrink-0" />
               {!collapsed && (
                 <span className={appear ? "nav-label-appear" : undefined} style={labelDelay}>
                   {t(labelKey)}
@@ -294,7 +293,7 @@ function SidebarNav({
                   : "bg-transparent text-brand-on-surface-variant hover:bg-brand-surface-container-highest/60")
               }
             >
-              <Icon className="h-5 w-5 shrink-0" />
+              <Icon icon={icon} className="h-5 w-5 shrink-0" />
               {!collapsed && (
                 <span className={appear ? "nav-label-appear" : undefined} style={labelDelay}>
                   {t(labelKey)}
@@ -357,7 +356,7 @@ function SidebarFooter({ collapsed, productName, onDisconnect }: SidebarFooterPr
           aria-label={t("disconnect")}
           className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-none bg-transparent text-brand-on-surface-variant transition hover:bg-red-600 hover:text-white"
         >
-          <PowerIcon className="h-5 w-5 shrink-0" />
+          <Icon icon="mdi:power" className="h-5 w-5 shrink-0" />
         </button>
       </div>
     );
@@ -375,7 +374,7 @@ function SidebarFooter({ collapsed, productName, onDisconnect }: SidebarFooterPr
           aria-label={t("disconnect")}
           className="flex h-8 w-8 translate-x-2 items-center justify-center rounded-full border-none bg-red-600 text-white opacity-0 shadow-sm transition-all duration-200 hover:bg-red-700 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100"
         >
-          <PowerIcon className="h-4 w-4" />
+          <Icon icon="mdi:power" className="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -461,7 +460,7 @@ export function SidebarDrawer({
             aria-label={t("closeMenu")}
             className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-none bg-transparent text-brand-on-surface-variant transition hover:bg-brand-surface-container-highest/60"
           >
-            <CloseIcon className="h-5 w-5" />
+            <Icon icon="mdi:close" className="h-5 w-5" />
           </button>
         </div>
         <SidebarNav
@@ -478,123 +477,5 @@ export function SidebarDrawer({
         <SidebarFooter collapsed={false} productName={productName} onDisconnect={onDisconnect} />
       </aside>
     </div>
-  );
-}
-
-function CloseIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <path strokeLinecap="round" d="M6 6l12 12M18 6 6 18" />
-    </svg>
-  );
-}
-
-function CollapseIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
-      <path strokeLinecap="round" d="M9.5 4.5v15" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 9.5 14 12l2.5 2.5" />
-    </svg>
-  );
-}
-
-function HomeIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 11.5 12 4l8 7.5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 10v9h12v-9" />
-    </svg>
-  );
-}
-
-function MatrixIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
-      <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
-      <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
-      <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
-    </svg>
-  );
-}
-
-function MacroIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <rect x="3.5" y="3.5" width="17" height="17" rx="3" />
-      <path d="M9.5 8.5v7l6-3.5-6-3.5Z" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function TapDanceIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <circle cx="7.5" cy="12" r="2.5" />
-      <circle cx="17" cy="7" r="1.4" opacity="0.5" />
-      <circle cx="17" cy="17" r="1.4" opacity="0.5" />
-      <path strokeLinecap="round" d="M9.8 10.7 15 8M9.8 13.3 15 16" />
-    </svg>
-  );
-}
-
-function ComboIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <circle cx="9.5" cy="12" r="6" />
-      <circle cx="14.5" cy="12" r="6" />
-    </svg>
-  );
-}
-
-function KeyboardColorIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <path d="M12 3a9 9 0 0 0 0 18c1.1 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.6 1.7-1.6H16a5 5 0 0 0 5-5c0-3.9-4-7.2-9-7.2Z" />
-      <circle cx="7.5" cy="12" r="1" fill="currentColor" stroke="none" />
-      <circle cx="10" cy="8" r="1" fill="currentColor" stroke="none" />
-      <circle cx="14.5" cy="8" r="1" fill="currentColor" stroke="none" />
-      <circle cx="17" cy="11.5" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function AdvancedIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <circle cx="12" cy="12" r="3" />
-      <path
-        strokeLinecap="round"
-        d="M19.4 13.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19.5a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H4.5a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H10a1.65 1.65 0 0 0 1-1.51V4.5a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V10a1.65 1.65 0 0 0 1.51 1h.09a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"
-      />
-    </svg>
-  );
-}
-
-function SiteSettingsIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path strokeLinecap="round" d="M3.5 12h17M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-    </svg>
-  );
-}
-
-function ImportExportIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 8 5 11l3 3M16 8l3 3-3 3" />
-      <path strokeLinecap="round" d="M5 11h6M13 11h6" />
-    </svg>
-  );
-}
-
-function PowerIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
-      <path strokeLinecap="round" d="M12 3v8" />
-      <path strokeLinecap="round" d="M6.5 6.5a8 8 0 1 0 11 0" />
-    </svg>
   );
 }
