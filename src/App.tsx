@@ -133,6 +133,7 @@ function App() {
       const transport = await HidTransport.requestDevice();
       await attachTransport(transport, true);
     } catch (err) {
+      console.error("[vialite] manual connect failed:", err);
       await teardown();
       setError(err instanceof Error ? err.message : String(err));
       setStatus("error");
@@ -208,8 +209,9 @@ function App() {
         connectInFlightRef.current = true;
         const transport = await HidTransport.fromDevice(device);
         await attachTransport(transport);
-      } catch {
+      } catch (err) {
         // Best effort — fall back to the manual Connect button.
+        console.error("[vialite] auto-reconnect failed:", err);
         await teardown();
         setStatus("idle");
       } finally {

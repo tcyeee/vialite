@@ -266,19 +266,56 @@ export class Keyboard {
   }
 
   async reload(): Promise<void> {
-    await this.reloadLayout();
-    await this.reloadLayers();
-    await this.reloadKeymap();
-    await this.reloadLayoutOptions();
-    await this.reloadDynamic();
-    await this.reloadMacros();
-    await this.reloadQmkSettings();
+    console.log("[vialite] Keyboard.reload() start");
+    // Runs one reload step, logging its name, timing, and any error so a
+    // connection failure points at the exact stage (and protocol version) that
+    // broke instead of surfacing only the final exception message.
+    const step = async (name: string, fn: () => Promise<void>): Promise<void> => {
+      const t0 = performance.now();
+      try {
+        await fn();
+        console.log(`[vialite]   ✓ ${name} (${(performance.now() - t0).toFixed(0)}ms)`);
+      } catch (err) {
+        console.error(`[vialite]   ✗ ${name} failed after ${(performance.now() - t0).toFixed(0)}ms:`, err);
+        throw err;
+      }
+    };
+
+    try {
+      await step("reloadLayout", () => this.reloadLayout());
+      console.log(
+        "[vialite]   device info:",
+        JSON.stringify({
+          viaProtocol: this.viaProtocol,
+          vialProtocol: this.vialProtocol,
+          uid: this.uid.toString(),
+          rows: this.rows,
+          cols: this.cols,
+          keys: this.keys.length,
+          encoders: this.encoders.length,
+          hasLayoutLabels: !!this.layoutLabels,
+        }),
+      );
+      await step("reloadLayers", () => this.reloadLayers());
+      console.log(`[vialite]   layers: ${this.layers}`);
+      await step("reloadKeymap", () => this.reloadKeymap());
+      await step("reloadLayoutOptions", () => this.reloadLayoutOptions());
+      await step("reloadDynamic", () => this.reloadDynamic());
+      console.log(`[vialite]   tapDanceCount: ${this.tapDanceCount}, comboCount: ${this.comboCount}`);
+      await step("reloadMacros", () => this.reloadMacros());
+      console.log(`[vialite]   macroCount: ${this.macroCount}, macroMemory: ${this.macroMemory}`);
+      await step("reloadQmkSettings", () => this.reloadQmkSettings());
+    } catch (err) {
+      console.error("[vialite] Keyboard.reload() aborted:", err);
+      throw err;
+    }
 
     if (!this.settingsBaselineCaptured) {
       this.layoutOptionsBaseline = this.layoutOptions;
       this.qmkSettingsBaseline = new Map(this.qmkSettings);
       this.settingsBaselineCaptured = true;
     }
+    console.log("[vialite] Keyboard.reload() done");
   }
 
   /** Parsed per-slot macro action lists, decoded from the raw device buffer. */
@@ -488,8 +525,12 @@ export class Keyboard {
     this.uid = idView.getBigUint64(4, true);
     setKeycodeVersion(this.vialProtocol);
 
+    console.log(`[vialite]   protocol: via=${this.viaProtocol}, vial=${this.vialProtocol}, uid=${this.uid}`);
+
     data = await this.transport.send(new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_GET_SIZE]), 20);
     let size = new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(0, true);
+    const compressedSize = size;
+    console.log(`[vialite]   vial.json compressed size: ${size} bytes`);
 
     const chunks: Uint8Array<ArrayBuffer>[] = [];
     let block = 0;
@@ -509,8 +550,23 @@ export class Keyboard {
       size -= C.MSG_LEN;
     }
 
-    const json = await decompressXz(concatUint8Arrays(chunks));
-    const definition = JSON.parse(json) as VialDefinition;
+    let json: string;
+    try {
+      json = await decompressXz(concatUint8Arrays(chunks));
+    } catch (err) {
+      console.error(
+        `[vialite]   xz decompress of vial.json failed (compressedSize=${compressedSize}, blocks=${block}):`,
+        err,
+      );
+      throw err;
+    }
+    let definition: VialDefinition;
+    try {
+      definition = JSON.parse(json) as VialDefinition;
+    } catch (err) {
+      console.error("[vialite]   vial.json JSON.parse failed; raw text follows:", err, json);
+      throw err;
+    }
 
     this.checkProtocolVersion();
 

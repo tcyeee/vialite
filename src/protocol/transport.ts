@@ -54,9 +54,29 @@ export class HidTransport {
 
   /** Wraps an already-authorized device (e.g. from navigator.hid.getDevices()). */
   static async fromDevice(device: HIDDevice): Promise<HidTransport> {
+    console.log(
+      "[vialite] opening device:",
+      JSON.stringify({
+        productName: device.productName,
+        vendorId: `0x${device.vendorId.toString(16).padStart(4, "0")}`,
+        productId: `0x${device.productId.toString(16).padStart(4, "0")}`,
+        alreadyOpened: device.opened,
+        isVialDevice: HidTransport.isVialDevice(device),
+        collections: device.collections.map((c) => ({
+          usagePage: c.usagePage,
+          usage: c.usage,
+        })),
+      }),
+    );
     if (!device.opened) {
-      await device.open();
+      try {
+        await device.open();
+      } catch (err) {
+        console.error("[vialite] device.open() failed:", err);
+        throw err;
+      }
     }
+    console.log("[vialite] device opened successfully");
     return new HidTransport(device);
   }
 
