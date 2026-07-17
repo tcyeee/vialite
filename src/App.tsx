@@ -23,6 +23,7 @@ import { dualRole, withTap } from "./protocol/keycodes.ts";
 import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./contexts/toast.tsx";
+import { track } from "./analytics.ts";
 
 type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
 
@@ -112,6 +113,7 @@ function App() {
       qmkPendingNavigationRef.current = null;
       setError(null);
       setStatus("connected");
+      track("connect/success", transport.productName ?? "Unknown keyboard");
       // Only the manual connect flow (from the visible waiting page) plays the
       // zoom-and-rise transition; silent auto-reconnect skips straight in.
       if (withTransition) {
@@ -169,6 +171,7 @@ function App() {
         setQmkLeaveRequested(true);
         return;
       }
+      track(`view/${next}`);
       setMode(next);
       setSelected(null);
     },
@@ -180,6 +183,7 @@ function App() {
     const next = qmkPendingNavigationRef.current;
     qmkPendingNavigationRef.current = null;
     if (shouldLeave && next !== null) {
+      track(`view/${next}`);
       setMode(next);
       setSelected(null);
     }
@@ -334,6 +338,7 @@ function App() {
     a.download = `${name}.vil`;
     a.click();
     URL.revokeObjectURL(url);
+    track("vil/export");
   }, [keyboard, productName]);
 
   const handleImportFile = useCallback(
@@ -348,6 +353,7 @@ function App() {
         }
         setImporting(true);
         const report = await keyboard.restoreLayout(parsed);
+        track("vil/import");
         const notes: string[] = [t("importWritten", { n: report.written })];
         if (report.unknownKeycodes.length > 0) {
           notes.push(t("importSkippedKeycodes", { list: report.unknownKeycodes.join(", ") }));

@@ -166,8 +166,11 @@ export function appearanceMetrics(
 /**
  * Read-only rendering of the connected board's physical layout — same geometry
  * pipeline as {@link KeyboardLayout}, but non-interactive (`pointer-events:none`)
- * and captioned with layer-0 labels so the board is recognizable. Used by the
- * 键盘配色 section as a display-only preview; no per-key action wired up yet.
+ * and captioned with the given layer's labels so the board is recognizable. Used
+ * by the 键盘配色 section as a display-only preview; no per-key action wired up yet.
+ *
+ * `layer` selects which layer's keycaps to caption (default 0); the 键盘配色 page
+ * wraps this in layer tabs so the whole board's labels switch per layer.
  *
  * Every appearance knob defaults to the shared {@link usePreviewAppearance}
  * context, so any call site — `<KeyboardLayoutPreview keyboard={kb} />` — renders
@@ -176,8 +179,9 @@ export function appearanceMetrics(
  */
 export function KeyboardLayoutPreview({
   keyboard,
+  layer = 0,
   ...overrides
-}: { keyboard: Keyboard; size?: PreviewSize } & PreviewAppearance) {
+}: { keyboard: Keyboard; size?: PreviewSize; layer?: number } & PreviewAppearance) {
   const appearance = usePreviewAppearance();
   // Context supplies every value; an explicitly-passed prop overrides just that
   // one field (rest capture omits props the caller didn't pass, so `undefined`
@@ -256,7 +260,7 @@ export function KeyboardLayoutPreview({
                   }}
                 />
               )}
-              <KeycapFace qmkId={keyboard.getKey(0, key.row, key.col)} />
+              <KeycapFace qmkId={keyboard.getKey(layer, key.row, key.col)} />
             </div>
           ))}
         {placed.encoders.map(({ encoder, shiftX, shiftY }) => (

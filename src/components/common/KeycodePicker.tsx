@@ -35,6 +35,16 @@ export const CATEGORY_KEYS: Record<string, MessageKey> = {
   "Macros/Tap Dance": "categoryMacrosTapDance",
 };
 
+/**
+ * The two "clear" keycodes in the Basic category, shown as plain labelled
+ * buttons: KC_NO wipes the key entirely, KC_TRNS makes it transparent (falls
+ * through to the layer below).
+ */
+const CLEAR_LABELS: Record<string, { label: MessageKey; title: MessageKey }> = {
+  KC_NO: { label: "clearNoLabel", title: "clearNoTitle" },
+  KC_TRNS: { label: "clearTransLabel", title: "clearTransTitle" },
+};
+
 /** Categories hidden from the advanced picker (both browse and search). */
 const HIDDEN_CATEGORIES: ReadonlySet<string> = new Set(["ISO/International", "Numpad", "Shifted"]);
 const VISIBLE_CATEGORIES = KEYCODE_CATEGORIES.filter((c) => !HIDDEN_CATEGORIES.has(c.name));
@@ -176,7 +186,6 @@ export function KeycodePicker({ onPick, onClose }: Props) {
             className="input input-sm flex-1"
             placeholder={t("searchPlaceholder")}
             value={query}
-            autoFocus
             onChange={(e) => setQuery(e.target.value)}
           />
           <button
@@ -245,18 +254,35 @@ export function KeycodePicker({ onPick, onClose }: Props) {
               {CATEGORY_KEYS[category.name] ? t(CATEGORY_KEYS[category.name]) : category.name}
             </h4>
             <div className="flex flex-wrap gap-1">
-              {category.entries.map((entry) => (
-                <button
-                  key={entry.qmkId}
-                  className={`btn btn-sm btn-outline h-auto min-h-8 min-w-12 whitespace-pre-line py-1 font-normal normal-case leading-tight${
-                    entry.masked ? " italic" : ""
-                  }`}
-                  title={entry.title ?? entry.qmkId}
-                  onClick={() => pick(entry)}
-                >
-                  {entry.label || entry.qmkId}
-                </button>
-              ))}
+              {category.entries.map((entry) => {
+                // KC_NO and KC_TRNS are the two "clear" actions; give them plain
+                // labels + explanatory tooltips instead of the raw id / "▽" glyph.
+                const clear = CLEAR_LABELS[entry.qmkId];
+                if (clear) {
+                  return (
+                    <button
+                      key={entry.qmkId}
+                      className="btn btn-sm h-auto min-h-8 min-w-12 py-1 font-normal normal-case leading-tight"
+                      title={t(clear.title)}
+                      onClick={() => pick(entry)}
+                    >
+                      {t(clear.label)}
+                    </button>
+                  );
+                }
+                return (
+                  <button
+                    key={entry.qmkId}
+                    className={`btn btn-sm btn-outline h-auto min-h-8 min-w-12 whitespace-pre-line py-1 font-normal normal-case leading-tight${
+                      entry.masked ? " italic" : ""
+                    }`}
+                    title={entry.title ?? entry.qmkId}
+                    onClick={() => pick(entry)}
+                  >
+                    {entry.label || entry.qmkId}
+                  </button>
+                );
+              })}
             </div>
           </section>
         ))}

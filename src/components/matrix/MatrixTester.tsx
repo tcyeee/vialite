@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { UnlockDialog } from "../common/UnlockDialog.tsx";
+import { track } from "../../analytics.ts";
 
 const UNIT = 54; // same scale as KeyboardLayout
 
@@ -50,6 +51,7 @@ export function MatrixTester({ keyboard }: Props) {
     if (!unlocked) {
       return;
     }
+    track("matrix/test");
     let cancelled = false;
 
     const loop = async () => {

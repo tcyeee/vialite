@@ -1,10 +1,12 @@
 import type { SVGProps } from "react";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
+import { composeLayers, downloadCanvas, frameBoard, nodeToCanvas } from "./layoutImage.ts";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
+import { LayerTabs } from "../keymap/LayerTabs.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
   KeyboardLayoutPreview,
@@ -95,6 +97,59 @@ export function KeyboardColorPanel({
     setFontColor,
     setFontPosition,
   } = usePreviewAppearance();
+  // Which layer's keycaps the preview labels; the layer tabs above the board
+  // switch it, mirroring the 键盘布局 page. Purely a preview concern — no write.
+  const [previewLayer, setPreviewLayer] = useState(0);
+  // Refs for image export: the visible board (current-layer save) and an
+  // offscreen board per configured layer (all-layers save, stitched together).
+  const currentBoardRef = useRef<HTMLDivElement>(null);
+  const hiddenBoardRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [saving, setSaving] = useState(false);
+  // Only layers the user has actually configured get exported in the all-layers
+  // image; recomputed each render since Keyboard mutates its keymap in place.
+  const configuredLayers = useMemo(
+    () =>
+      Array.from({ length: keyboard.layers }, (_, i) => i).filter((l) =>
+        keyboard.isLayerConfigured(l),
+      ),
+    [keyboard, keyboard.layoutOptions],
+  );
+
+  const saveCurrentLayer = async () => {
+    if (!currentBoardRef.current || saving) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const canvas = await nodeToCanvas(currentBoardRef.current);
+      downloadCanvas(frameBoard(canvas), `keyboard-layer-${previewLayer}.png`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveAllLayers = async () => {
+    if (saving || configuredLayers.length === 0) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const cells = [];
+      for (const l of configuredLayers) {
+        const node = hiddenBoardRefs.current[l];
+        if (!node) {
+          continue;
+        }
+        cells.push({ canvas: await nodeToCanvas(node), label: t("layerN", { n: l }) });
+      }
+      if (cells.length > 0) {
+        downloadCanvas(composeLayers(cells), "keyboard-all-layers.png");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const [caseRecent, setCaseRecent] = useState<string[]>(() =>
     readStoredColors(CASE_RECENT_KEY),
   );
@@ -191,10 +246,67 @@ export function KeyboardColorPanel({
       <p className="text-xs text-brand-on-surface-variant/70">
         {t("colorDisplayNote")}
       </p>
-      <div className="overflow-x-auto p-4">
-        {/* Reads every appearance value from the shared context, so it stays in
-            sync with the controls below and identical to previews elsewhere. */}
-        <KeyboardLayoutPreview keyboard={keyboard} />
+      {/* Layer tabs wrap the preview like the 键盘布局 page, so the labels can
+          be viewed per layer. Negative margins offset the tab-content padding so
+          the board's shaded case shadow isn't clipped by overflow-x-auto. */}
+      <LayerTabs
+        layers={keyboard.layers}
+        active={previewLayer}
+        onSelect={setPreviewLayer}
+        isConfigured={(l) => keyboard.isLayerConfigured(l)}
+      >
+        <div className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2">
+          {/* Reads every appearance value from the shared context, so it stays in
+              sync with the controls below and identical to previews elsewhere.
+              The ref wrapper is the exact node rasterized for the current-layer
+              image (fit-content, so it hugs the board with no extra margin). */}
+          <div ref={currentBoardRef} style={{ width: "fit-content" }}>
+            <KeyboardLayoutPreview keyboard={keyboard} layer={previewLayer} />
+          </div>
+        </div>
+      </LayerTabs>
+
+      <div className="mb-4 flex flex-wrap justify-center gap-2">
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          onClick={() => void saveCurrentLayer()}
+          disabled={saving}
+        >
+          <DownloadIcon className="h-4 w-4" />
+          {saving ? t("colorSaving") : t("colorSaveCurrentLayer")}
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline"
+          onClick={() => void saveAllLayers()}
+          disabled={saving || configuredLayers.length === 0}
+        >
+          <DownloadIcon className="h-4 w-4" />
+          {saving ? t("colorSaving") : t("colorSaveAllLayers")}
+        </button>
+      </div>
+
+      {/* Offscreen boards, one per configured layer, kept mounted so the
+          all-layers export can rasterize each without flipping the visible tab.
+          Rendered with the same shared appearance context as the visible board.
+          `aria-hidden` + off-viewport positioning keeps them out of the a11y tree
+          and layout flow while still being real, measurable DOM for capture. */}
+      <div
+        aria-hidden
+        style={{ position: "absolute", left: -99999, top: 0, pointerEvents: "none" }}
+      >
+        {configuredLayers.map((l) => (
+          <div
+            key={l}
+            ref={(el) => {
+              hiddenBoardRefs.current[l] = el;
+            }}
+            style={{ width: "fit-content" }}
+          >
+            <KeyboardLayoutPreview keyboard={keyboard} layer={l} />
+          </div>
+        ))}
       </div>
 
       <section>
@@ -540,6 +652,18 @@ function RecentColorSwatches({
         />
       ))}
     </div>
+  );
+}
+
+function DownloadIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+      />
+    </svg>
   );
 }
 

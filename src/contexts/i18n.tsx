@@ -87,6 +87,160 @@ const MESSAGES = {
   mouseKeyWheelInterval: { en: "Time between wheel movements", zh: "滚轮每次滚动的间隔时间" },
   mouseKeyWheelMaxSpeed: { en: "Maximum number of scroll steps per scroll action", zh: "每次滚动的最大步数" },
   mouseKeyWheelTimeToMax: { en: "Time until maximum scroll speed is reached", zh: "达到最大滚动速度所需时间" },
+  // Help tooltips, sourced from the official QMK documentation linked by
+  // https://get.vial.today/manual/qmk-settings.html
+  magicSwapCapsLockControlHelp: {
+    en: "Exchanges the Caps Lock and Left Control keys.",
+    zh: "交换 Caps Lock 与左 Control 两个键的功能。",
+  },
+  magicCapsLockAsControlHelp: {
+    en: "Makes the Caps Lock key act as an additional Control key.",
+    zh: "让 Caps Lock 键作为额外的 Control 键使用。",
+  },
+  magicSwapLaltLguiHelp: {
+    en: "Exchanges the left Alt and left GUI (Win/Cmd) keys.",
+    zh: "交换左 Alt 与左 GUI(Win/Cmd)键。",
+  },
+  magicSwapRaltRguiHelp: {
+    en: "Exchanges the right Alt and right GUI (Win/Cmd) keys.",
+    zh: "交换右 Alt 与右 GUI(Win/Cmd)键。",
+  },
+  magicDisableGuiHelp: {
+    en: "Disables all GUI (Win/Cmd) keys — handy to avoid accidental presses while gaming.",
+    zh: "禁用所有 GUI(Win/Cmd)键,常用于游戏时防止误触。",
+  },
+  magicSwapGraveEscHelp: {
+    en: "Exchanges the ` (grave) and Escape keys.",
+    zh: "交换 `(反引号)与 Escape 键。",
+  },
+  magicSwapBackslashBackspaceHelp: {
+    en: "Exchanges the \\ (backslash) and Backspace keys.",
+    zh: "交换 \\(反斜杠)与 Backspace 键。",
+  },
+  magicNkroHelp: {
+    en: "Enables N-key rollover, so every pressed key registers at once without ghosting.",
+    zh: "启用 N 键无冲(NKRO),可同时识别所有按下的按键,避免冲突丢键。",
+  },
+  magicSwapLctlLguiHelp: {
+    en: "Exchanges the left Control and left GUI (Win/Cmd) keys.",
+    zh: "交换左 Control 与左 GUI(Win/Cmd)键。",
+  },
+  magicSwapRctlRguiHelp: {
+    en: "Exchanges the right Control and right GUI (Win/Cmd) keys.",
+    zh: "交换右 Control 与右 GUI(Win/Cmd)键。",
+  },
+  graveEscapeAltHelp: {
+    en: "When this Grave Escape key is pressed while Alt is held, always send Escape instead of `.",
+    zh: "按住 Alt 时按下反引号转义键,始终发送 Escape 而不是 `。",
+  },
+  graveEscapeControlHelp: {
+    en: "When this Grave Escape key is pressed while Control is held, always send Escape instead of `.",
+    zh: "按住 Control 时按下反引号转义键,始终发送 Escape 而不是 `。",
+  },
+  graveEscapeGuiHelp: {
+    en: "When this Grave Escape key is pressed while GUI (Win/Cmd) is held, always send Escape instead of `.",
+    zh: "按住 GUI(Win/Cmd)时按下反引号转义键,始终发送 Escape 而不是 `。",
+  },
+  graveEscapeShiftHelp: {
+    en: "When this Grave Escape key is pressed while Shift is held, always send Escape instead of ~.",
+    zh: "按住 Shift 时按下反引号转义键,始终发送 Escape 而不是 ~。",
+  },
+  tapHoldTappingTermHelp: {
+    en: "How long (ms) a dual-role key must be held before it counts as a hold rather than a tap. QMK default is 200 ms.",
+    zh: "双功能键需按住多久(毫秒)才判定为长按而非轻触。QMK 默认 200 毫秒。",
+  },
+  tapHoldPermissiveHoldHelp: {
+    en: "If another key is tapped (fully pressed and released) while a dual-role key is held, trigger its hold action immediately even before the tapping term elapses. Helps fast typists.",
+    zh: "在按住双功能键期间,若完整地轻触了另一个键,即使还没到判定时长也立即触发长按动作。适合打字较快的用户。",
+  },
+  tapHoldIgnoreModTapInterruptHelp: {
+    en: "For mod-tap keys, don't treat another key being pressed as a hold — wait out the tapping term instead, so quick key rolls stay taps.",
+    zh: "对 Mod-Tap 键,不因按下其他键就判定为长按,而是等待判定时长结束,使快速连击仍视为轻触。",
+  },
+  tapHoldTappingForceHoldHelp: {
+    en: "After tapping a dual-role key and then quickly holding it again, perform the hold action instead of repeating the tap.",
+    zh: "轻触双功能键后立刻再次按住时,执行长按动作而不是重复轻触。",
+  },
+  tapHoldRetroTappingHelp: {
+    en: "If a dual-role key is held past the tapping term but no other key was pressed, still send the tap keycode when released.",
+    zh: "若双功能键按住超过判定时长,但期间没有按下其他键,松开时仍发送轻触键码。",
+  },
+  tapHoldHoldOnOtherKeyPressHelp: {
+    en: "Trigger the hold action as soon as any other key is pressed while the dual-role key is held (fires earlier than Permissive Hold).",
+    zh: "在按住双功能键期间,只要按下其他任意键就立即触发长按动作(比宽松长按更早)。",
+  },
+  tapHoldQuickTapTermHelp: {
+    en: "Within this time (ms) after a tap, holding the key again repeats the tap; hold longer to get the hold action. Set to 0 to disable tap repeat.",
+    zh: "轻触后在此时间(毫秒)内再次按住会重复轻触;超过则触发长按。设为 0 可禁用连续轻触重复。",
+  },
+  tapHoldTapCodeDelayHelp: {
+    en: "Delay (ms) between press and release when a key sends a tap code, for hosts that miss very fast keypresses.",
+    zh: "发送 tap code 时按下与松开之间的延迟(毫秒),用于兼容会漏掉过快按键的主机。",
+  },
+  tapHoldTapHoldCapsDelayHelp: {
+    en: "Extra delay (ms) used specifically for the Caps Lock key, which some operating systems need in order to register it reliably.",
+    zh: "专门用于 Caps Lock 键的额外延迟(毫秒),部分操作系统需要更长延迟才能可靠识别。",
+  },
+  tapHoldTappingToggleHelp: {
+    en: "Number of taps required to toggle a layer or key on for tap-toggle keys (e.g. TT).",
+    zh: "连按切换类按键(如 TT)需要连续轻触的次数即可锁定开启。",
+  },
+  tapHoldChordalHoldHelp: {
+    en: "Applies an opposite-hands rule: same-hand combinations settle as taps, while opposite-hand combinations may settle as holds.",
+    zh: "采用左右手规则:同一只手的组合判定为轻触,不同手的组合才可能判定为长按。",
+  },
+  tapHoldFlowTapHelp: {
+    en: "Temporarily disables hold behaviour during fast continuous typing, so keys pressed in quick succession count as taps.",
+    zh: "在快速连续打字时暂时禁用长按判定,使紧密相连的按键都视为轻触。",
+  },
+  comboTermMsHelp: {
+    en: "The time window (ms) within which all of a combo's keys must be pressed to trigger it. QMK default is 50 ms.",
+    zh: "组合键的所有按键必须在此时间窗口(毫秒)内全部按下才会触发。QMK 默认 50 毫秒。",
+  },
+  oneShotTapToggleHelp: {
+    en: "Tapping a one-shot key this many times in a row locks it on until you tap it once more.",
+    zh: "连续轻触单次触发键达到此次数会将其锁定,直到再次轻触解除。",
+  },
+  oneShotTimeoutMsHelp: {
+    en: "How long (ms) a one-shot key stays active waiting for the next key before it is released automatically.",
+    zh: "单次触发键在等待下一个按键时保持激活的时长(毫秒),超时后自动释放。",
+  },
+  mouseKeyDelayHelp: {
+    en: "Delay (ms) between pressing a movement key and the cursor starting to move.",
+    zh: "按下移动键到光标开始移动之间的延迟(毫秒)。",
+  },
+  mouseKeyIntervalHelp: {
+    en: "Time (ms) between each cursor movement update — smaller values move the cursor more smoothly.",
+    zh: "光标每次移动更新之间的间隔时间(毫秒),数值越小移动越平滑。",
+  },
+  mouseKeyStepSizeHelp: {
+    en: "How many pixels the cursor moves on each update (step size).",
+    zh: "光标每次更新移动的像素数(移动步长)。",
+  },
+  mouseKeyMaxSpeedHelp: {
+    en: "The maximum cursor speed at which acceleration stops.",
+    zh: "光标加速停止时可达到的最大速度。",
+  },
+  mouseKeyTimeToMaxHelp: {
+    en: "Time (ms) taken to accelerate from start up to the maximum cursor speed.",
+    zh: "从开始移动加速到最大光标速度所需的时间(毫秒)。",
+  },
+  mouseKeyWheelDelayHelp: {
+    en: "Delay (ms) between pressing a wheel key and the wheel starting to scroll.",
+    zh: "按下滚轮键到滚轮开始滚动之间的延迟(毫秒)。",
+  },
+  mouseKeyWheelIntervalHelp: {
+    en: "Time (ms) between each scroll wheel movement.",
+    zh: "滚轮每次滚动之间的间隔时间(毫秒)。",
+  },
+  mouseKeyWheelMaxSpeedHelp: {
+    en: "The maximum number of scroll steps per scroll action.",
+    zh: "每次滚动动作的最大滚动步数。",
+  },
+  mouseKeyWheelTimeToMaxHelp: {
+    en: "Time (ms) taken to accelerate up to the maximum scroll speed.",
+    zh: "加速到最大滚动速度所需的时间(毫秒)。",
+  },
   unitMs: { en: "ms", zh: "毫秒" },
   unitPx: { en: "px", zh: "像素" },
   unitSteps: { en: "steps", zh: "步" },
@@ -147,6 +301,9 @@ const MESSAGES = {
     en: "Color settings only affect the on-screen preview and are not written to the keyboard.",
     zh: "颜色配置仅调整显示效果，不会存入键盘。",
   },
+  colorSaveCurrentLayer: { en: "Save current layer", zh: "保存当前层图片" },
+  colorSaveAllLayers: { en: "Save all layers", zh: "保存所有层图片" },
+  colorSaving: { en: "Saving…", zh: "保存中…" },
   colorLayoutTitle: { en: "Layout options", zh: "布局选项" },
   colorAppearanceTitle: { en: "Appearance", zh: "外观" },
   colorSizeSectionTitle: { en: "Overall", zh: "整体配置" },
@@ -353,6 +510,18 @@ const MESSAGES = {
   noKeyMapping: { en: 'no keycode mapping for "{code}"', zh: "没有与 “{code}” 对应的键码" },
   noMatch: { en: "No keycodes match “{query}”.", zh: "没有匹配 “{query}” 的键码。" },
 
+  // Basic-category "clear" keys (KC_NO / KC_TRNS) — two different kinds of clear
+  clearNoLabel: { en: "Clear", zh: "清空" },
+  clearNoTitle: {
+    en: "KC_NO — key does nothing (no function on any layer)",
+    zh: "KC_NO — 清空为空键,该位置无任何功能",
+  },
+  clearTransLabel: { en: "Transparent", zh: "透明" },
+  clearTransTitle: {
+    en: "KC_TRNS — transparent: falls through to the same key on a lower layer",
+    zh: "KC_TRNS — 透明清空,沿用下层同一位置的按键",
+  },
+
   // Keycode categories (keys must mirror KEYCODE_CATEGORIES names in keycodes.ts)
   categoryBasic: { en: "Basic Keys", zh: "基础按键" },
   categoryNumpad: { en: "Numpad", zh: "小键盘" },
@@ -494,6 +663,24 @@ const MESSAGES = {
     en: "Other Quantum keycodes that don't fit the categories above.",
     zh: "不属于上述分类的其他 Quantum 键码。",
   },
+
+  // QuantumCards composer (Modifiers / Mod-Tap / Layer-Tap)
+  quantumCardConfigure: { en: "Click to configure", zh: "点击配置" },
+  quantumPickMods: { en: "① Modifiers", zh: "① 选择修饰键" },
+  quantumPickLayer: { en: "① Target layer", zh: "① 选择目标层" },
+  quantumPickBasic: { en: "② Basic key", zh: "② 选择普通按键" },
+  quantumSideLeft: { en: "Left", zh: "左" },
+  quantumSideRight: { en: "Right", zh: "右" },
+  quantumLayerN: { en: "L{n}", zh: "层 {n}" },
+  quantumPreview: { en: "Preview", zh: "预览" },
+  quantumApply: { en: "Apply to key", zh: "应用到按键" },
+  quantumComboMissing: {
+    en: "No keycode exists for this modifier combination — pick a different one.",
+    zh: "该修饰键组合没有对应的键码,请更换组合。",
+  },
+  quantumNeedMod: { en: "Select at least one modifier.", zh: "请至少选择一个修饰键。" },
+  quantumNeedLayer: { en: "Select a target layer.", zh: "请选择目标层。" },
+  quantumNeedBasic: { en: "Pick a basic key below.", zh: "请在下方选择一个普通按键。" },
 
   // MatrixTester
   matrixStopped: { en: "Matrix test stopped: {error}", zh: "矩阵测试已停止:{error}" },
