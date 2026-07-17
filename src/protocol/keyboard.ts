@@ -643,7 +643,11 @@ export class Keyboard {
     try {
       definition = JSON.parse(json) as VialDefinition;
     } catch (err) {
-      console.error("[vialite]   vial.json JSON.parse failed; raw text follows:", err, json);
+      // The decompressed text can be tens of KB — only dump it when debugging.
+      console.error("[vialite]   vial.json JSON.parse failed:", err);
+      if (isDebugEnabled()) {
+        console.error("[vialite]   raw vial.json text:", json);
+      }
       throw err;
     }
 

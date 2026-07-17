@@ -8,7 +8,33 @@
 import { debugLog } from "../debug.ts";
 import { MSG_LEN, VIAL_USAGE, VIAL_USAGE_PAGE } from "./constants.ts";
 
-export class ProtocolError extends Error {}
+/**
+ * Stable identifier for a protocol failure the UI is expected to explain in the
+ * user's language. `src/protocol/` is framework-agnostic and can't reach the
+ * i18n dictionary itself, so the Error keeps an English `message` (technical
+ * detail, for the console) and carries a code the UI maps to a translated
+ * string — see `describeConnectError` in App.tsx.
+ */
+export type ProtocolErrorCode =
+  | "webhidUnsupported"
+  | "noDeviceSelected"
+  | "deviceDisconnected"
+  | "commFailed"
+  | "viaOnlyKeyboard"
+  | "unsupportedProtocol"
+  | "malformedDefinition";
+
+export class ProtocolError extends Error {
+  readonly code?: ProtocolErrorCode;
+  /** Interpolation params for the translated message (e.g. protocol versions). */
+  readonly params?: Record<string, string | number>;
+
+  constructor(message: string, code?: ProtocolErrorCode, params?: Record<string, string | number>) {
+    super(message);
+    this.code = code;
+    this.params = params;
+  }
+}
 
 interface PendingRead {
   /** Sequence number of the outgoing report this waiter expects a reply to. */
@@ -40,7 +66,7 @@ export class HidTransport {
 
   static async requestDevice(): Promise<HidTransport> {
     if (!("hid" in navigator)) {
-      throw new ProtocolError("This browser does not support WebHID");
+      throw new ProtocolError("This browser does not support WebHID", "webhidUnsupported");
     }
 
     const devices = await navigator.hid.requestDevice({
@@ -48,7 +74,7 @@ export class HidTransport {
     });
     const device = devices[0];
     if (!device) {
-      throw new ProtocolError("No device selected");
+      throw new ProtocolError("No device selected", "noDeviceSelected");
     }
     return HidTransport.fromDevice(device);
   }
@@ -171,7 +197,7 @@ export class HidTransport {
   ): Promise<Uint8Array<ArrayBuffer>> {
     for (let attempt = 0; attempt < retries; attempt++) {
       if (this.disconnected) {
-        throw new ProtocolError("device disconnected");
+        throw new ProtocolError("device disconnected", "deviceDisconnected");
       }
       if (attempt > 0) {
         await sleep(500);
@@ -190,9 +216,9 @@ export class HidTransport {
     }
 
     if (this.disconnected) {
-      throw new ProtocolError("device disconnected");
+      throw new ProtocolError("device disconnected", "deviceDisconnected");
     }
-    throw new ProtocolError("failed to communicate with the device");
+    throw new ProtocolError("failed to communicate with the device", "commFailed");
   }
 
   private sendOnce(msg: Uint8Array<ArrayBuffer>, timeoutMs: number): Promise<Uint8Array<ArrayBuffer> | null> {

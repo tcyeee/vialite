@@ -92,7 +92,7 @@ function ComboPreviewCard({
       >
         <div
           style={{ backfaceVisibility: "hidden", gridArea: "1 / 1" }}
-          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#73575e14_35%,transparent_36%),radial-gradient(circle_at_top_right,#73575e14_35%,transparent_36%)] bg-[#f5ecef] bg-size-[4.95em_4.95em] text-[#5b434b]"
+          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#57637314_35%,transparent_36%),radial-gradient(circle_at_top_right,#57637314_35%,transparent_36%)] bg-[#eaeff7] bg-size-[4.95em_4.95em] text-[#434b5b] shadow-lg shadow-slate-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-slate-900/15"
         >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden select-none">
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
@@ -123,7 +123,7 @@ function ComboPreviewCard({
         {editable && (
           <div
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", gridArea: "1 / 1" }}
-            className="card overflow-hidden border-2 border-dashed border-brand-outline/50 bg-white"
+            className="card overflow-hidden border-2 border-dashed border-brand-outline/50 bg-white shadow-lg shadow-slate-900/10"
           >
             <div className="card-body gap-1.5 px-4 pt-4 pb-2">
               <div className="mb-1 flex items-center justify-between">

@@ -23,6 +23,7 @@ import { HidTransport } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./contexts/toast.tsx";
 import { track } from "./analytics.ts";
+import { debugWarn } from "./debug.ts";
 
 type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
 
@@ -218,7 +219,7 @@ function App() {
           } catch (err) {
             // Claimed by another app, permission revoked, ... — a candidate we
             // can't even open shouldn't stop us reaching a good one behind it.
-            console.warn(`[vialite] cannot open ${device.productName}, skipping:`, err);
+            debugWarn(`[vialite] cannot open ${device.productName}, skipping:`, err);
             continue;
           }
           if (await probeVial(transport)) {
@@ -227,7 +228,7 @@ function App() {
             await attachTransport(transport);
             return;
           }
-          console.warn(`[vialite] skipping non-Vial device: ${device.productName}`);
+          debugWarn(`[vialite] skipping non-Vial device: ${device.productName}`);
           await transport.close();
         }
         setStatus("idle");
