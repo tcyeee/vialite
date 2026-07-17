@@ -128,11 +128,11 @@ function SectionPendingControls({
   const { t } = useI18n();
   const { discard } = useContext(QmkPendingContext);
   return (
-    <div className="flex items-center gap-1.5">
-      <button type="button" className="btn btn-ghost btn-xs" onClick={() => discard(keys)}>
+    <div className="flex items-center gap-2">
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => discard(keys)}>
         {t("cancel")}
       </button>
-      <button type="button" className="btn btn-primary btn-xs" onClick={onOpenConfirm}>
+      <button type="button" className="btn btn-primary btn-sm" onClick={onOpenConfirm}>
         {t("qmkConfirmChanges")}
       </button>
     </div>
@@ -229,7 +229,7 @@ export function QmkSettingsSection({
 
   return (
     <section id={titleKey} data-qmk-toc>
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2 flex min-h-8 items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-brand-on-surface-variant">{t(titleKey)}</h2>
         {sectionDirty && <SectionPendingControls keys={sectionPendingKeys} onOpenConfirm={() => setConfirmOpen(true)} />}
       </div>
@@ -393,7 +393,7 @@ export function QmkSettingsPanel({
 
   return (
     <QmkPendingContext.Provider value={{ pending, stage, discard, commit }}>
-      <div ref={containerRef} className="flex flex-col gap-6">
+      <div ref={containerRef} className="flex flex-col gap-10">
         <MagicSettings keyboard={keyboard} />
         <GraveEscapeSettings keyboard={keyboard} />
         <TapHoldSettings keyboard={keyboard} />

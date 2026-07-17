@@ -44,7 +44,6 @@ function AddKeycodeButton({ onPick }: { onPick: (qmkId: string) => void }) {
     <KeycodeCascadeSelector
       placeholder="+"
       compact
-      resolveMasked
       keepPicked={false}
       triggerClassName="btn btn-dash btn-xs gap-1"
       onPick={(entry) => onPick(entry.qmkId)}
@@ -65,7 +64,6 @@ function AddActionButton({
     <KeycodeCascadeSelector
       placeholder={label}
       compact
-      resolveMasked
       keepPicked={false}
       triggerClassName="btn btn-sm btn-outline gap-1"
       onPick={(entry) => onAdd({ kind, keycodes: [entry.qmkId] })}
@@ -303,7 +301,7 @@ export function MacroPanel({ keyboard, onChange }: Props) {
             </label>
             <div className="tab-content bg-base-100 border-base-300 p-6 min-h-90">
               {i === active && (
-                <div className="flex flex-col gap-4">
+                <div className="tab-panel-appear flex flex-col gap-4">
                   <div className="flex flex-col gap-2">
                     {actions.length === 0 && (
                       <p className="text-xs text-brand-on-surface-variant">{t("macroEmpty")}</p>

@@ -290,6 +290,7 @@ const MESSAGES = {
     zh: "面向 Vial 协议键盘的原生网页配置器 —— 通过 WebHID 直接与键盘通信,无需 Qt、无需 WebAssembly、无需安装驱动。",
   },
   siteAboutGithub: { en: "GitHub", zh: "GitHub 项目" },
+  siteAboutDiscord: { en: "Discord", zh: "Discord 社区" },
   siteGeneralTitle: { en: "General", zh: "通用" },
   siteDangerTitle: { en: "Danger Zone", zh: "危险操作" },
   clearCacheTitle: { en: "Clear site cache", zh: "清空网站缓存" },
@@ -774,6 +775,20 @@ const MESSAGES = {
   keyInfoCode: { en: "Code", zh: "编码" },
   keyInfoTap: { en: "Tap", zh: "点击" },
   keyInfoHold: { en: "Hold", zh: "长按" },
+  keyInfoCombo: { en: "Together", zh: "同时" },
+  keyInfoLayerAction: { en: "Switch to layer {layer}", zh: "切换到层 {layer}" },
+  keyInfoComboHint: {
+    en: "Fires the modifier and key on a single press.",
+    zh: "单次按下会同时触发修饰键与按键。",
+  },
+  keyInfoModTapHint: {
+    en: "Tap for the key, hold for the modifier.",
+    zh: "轻点触发按键,长按触发修饰键。",
+  },
+  keyInfoLayerTapHint: {
+    en: "Tap for the key, hold to switch layer.",
+    zh: "轻点触发按键,长按切换层。",
+  },
 
   // Dual-role hold editor (shown when a cap's hold band is selected)
   holdEditorTitle: { en: "Hold action", zh: "长按动作" },

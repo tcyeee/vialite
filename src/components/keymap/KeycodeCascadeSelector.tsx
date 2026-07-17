@@ -8,7 +8,6 @@ import {
 } from "react";
 import {
   KEYCODE_CATEGORIES,
-  isBasicQmkId,
   label as kcLabel,
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
@@ -31,10 +30,10 @@ import {
 
 interface Props {
   /**
-   * Assign the picked keycode. When {@link Props.resolveMasked} is false (the
-   * default, e.g. KeycodeTabs) masked templates (LCTL_T(kc), …) are emitted
-   * verbatim and the parent runs the "pick inner key" flow; when true this
-   * component runs that flow itself and only emits concrete keycodes.
+   * Assign the picked keycode. Masked Quantum templates (LCTL_T(kc), …) are
+   * never emitted verbatim: picking one commits a concrete keycode with its
+   * inner key defaulted to KC_NO (e.g. LCTL_T(KC_NO)), which the user edits
+   * afterwards — so `onPick` only ever receives concrete keycodes.
    */
   onPick: (entry: KeycodeDef) => void;
   /** Connected device, for macro / tap-dance previews shown in the info panel.
@@ -46,9 +45,6 @@ interface Props {
   value?: string;
   /** Trigger text shown before anything is picked (overrides the default). */
   placeholder?: string;
-  /** Resolve masked templates in-widget: picking e.g. Mod-Tap keeps the dropdown
-   *  open to choose an inner basic key, then emits the combined keycode. */
-  resolveMasked?: boolean;
   /** Keep the picked keycode as the trigger label after committing. Set false for
    *  momentary "add" triggers that should always read as their placeholder. */
   keepPicked?: boolean;
@@ -209,31 +205,6 @@ const buildMiddle = (category: string | null, entries: KeycodeDef[]): MiddleItem
     : entries.map((entry) => ({ kind: "leaf", entry }));
 };
 
-/** First keycode a category will describe: its first leaf, or a group's first
- *  sub-entry. Used to seed the info panel so it's never blank. */
-const firstDescribable = (
-  items: MiddleItem[],
-): { group: string | null; qmkId: string | null } => {
-  const first = items[0];
-  if (!first) return { group: null, qmkId: null };
-  if (first.kind === "leaf") return { group: null, qmkId: first.entry.qmkId };
-  return { group: first.key, qmkId: first.entries[0]?.entry.qmkId ?? null };
-};
-
-/** Locate a keycode within pre-built middle items (which group it belongs to). */
-const locate = (
-  items: MiddleItem[],
-  qmkId: string,
-): { group: string | null; qmkId: string } | null => {
-  for (const it of items) {
-    if (it.kind === "leaf") {
-      if (it.entry.qmkId === qmkId) return { group: null, qmkId };
-    } else if (it.entries.some((e) => e.entry.qmkId === qmkId)) {
-      return { group: it.key, qmkId };
-    }
-  }
-  return null;
-};
 
 /**
  * Full keycode catalogue as a three-level cascade: the left column lists every
@@ -253,7 +224,6 @@ export function KeycodeCascadeSelector({
   keyboard,
   value,
   placeholder: placeholderProp,
-  resolveMasked = false,
   keepPicked = true,
   compact = false,
   triggerClassName,
@@ -269,9 +239,6 @@ export function KeycodeCascadeSelector({
   // The expanded middle-column group (e.g. "MO"), or null when a leaf is active.
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(value ?? null);
-  // Masked template awaiting its inner basic key (only when resolveMasked).
-  const [pending, setPending] = useState<KeycodeDef | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   // Menu mode: the popover element (for measuring) and its clamped viewport
   // position (null until the layout effect measures it, then falls back to the
@@ -285,18 +252,19 @@ export function KeycodeCascadeSelector({
     onClose?.();
   };
 
+  // Collapse back to the top level (category column only), discarding the
+  // revealed middle / sub columns and the info panel. Used both to seed a fresh
+  // open and to auto-collapse when the pointer leaves the popover.
+  const collapse = () => {
+    setActiveCat(null);
+    setActiveGroupKey(null);
+    setActiveEntryId(null);
+  };
+
   // Keep the trigger label in sync with a parent-controlled value.
   useEffect(() => {
     setPickedId(value ?? null);
   }, [value]);
-
-  // Closing (outside-click / Escape) discards any half-finished masked pick.
-  useEffect(() => {
-    if (!open) {
-      setPending(null);
-      setHint(null);
-    }
-  }, [open]);
 
   // All non-empty categories: the static tables plus whatever the attached
   // device exposes (Custom keycodes, Tap Dance). Recomputed each render is
@@ -374,11 +342,14 @@ export function KeycodeCascadeSelector({
     setActiveEntryId(loc.qmkId);
   };
 
-  // Switch the middle column's category and seed the info panel with its first
-  // keycode so the panel is never blank on category change.
+  // Reveal the middle column for a category, but keep its groups collapsed (no
+  // sub-column) — the user drills into a group on demand. No entry is described
+  // yet: the info panel stays hidden until the pointer is over an actual level-2+
+  // item (a middle-column entry / group or a sub-column entry).
   const selectCat = (name: string) => {
     setActiveCat(name);
-    seed(firstDescribable(buildMiddle(name, categories.find((c) => c.name === name)?.entries ?? [])));
+    setActiveGroupKey(null);
+    setActiveEntryId(null);
   };
 
   const pickedLabel = (() => {
@@ -391,31 +362,20 @@ export function KeycodeCascadeSelector({
   })();
 
   const openMenu = () => {
-    setPending(null);
-    setHint(null);
-    // Seed the active column from the current pick's category, else the first.
-    const cat =
-      (pickedId &&
-        categories.find((c) => c.entries.some((e) => e.qmkId === pickedId))?.name) ||
-      categories[0]?.name ||
-      null;
-    setActiveCat(cat);
-    // Seed the info panel with the current pick if it's in this category (and
-    // expand its group), else the category's first describable keycode.
-    const items = buildMiddle(cat, categories.find((c) => c.name === cat)?.entries ?? []);
-    seed((pickedId ? locate(items, pickedId) : null) ?? firstDescribable(items));
+    // Open collapsed at the top level: show only the category column and let the
+    // user drill in (hover a category → middle column, hover a group →
+    // sub-column), like a standard cascade selector, instead of pre-expanding
+    // every level at once.
+    collapse();
     setOpen(true);
   };
 
-  // Menu mode: (re)open and seed the columns whenever the anchor point changes
-  // (the parent passes a fresh object per right-click). Runs post-render, so the
-  // `openMenu` const is initialised by the time this fires. Unlike the trigger
-  // dropdown we start collapsed at the top level (no sub-column pre-expanded) so
-  // the user drills left→right, and drop any stale clamped position.
+  // Menu mode: (re)open whenever the anchor point changes (the parent passes a
+  // fresh object per right-click). Runs post-render, so the `openMenu` const is
+  // initialised by the time this fires; also drops any stale clamped position.
   useEffect(() => {
     if (!anchor) return;
     openMenu();
-    setActiveGroupKey(null);
     setMenuPos(null);
     // Keyed on the anchor object identity only; openMenu reads current state.
   }, [anchor]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -432,7 +392,10 @@ export function KeycodeCascadeSelector({
     const left = Math.max(margin, Math.min(anchor.x, window.innerWidth - rect.width - margin));
     const top = Math.max(margin, Math.min(anchor.y, window.innerHeight - rect.height - margin));
     setMenuPos((p) => (p && p.left === left && p.top === top ? p : { left, top }));
-  }, [menuMode, open, anchor]);
+    // Re-clamp as the user drills in: revealing the middle / sub columns and the
+    // info panel widens the popover, which could otherwise grow past the
+    // viewport's right edge.
+  }, [menuMode, open, anchor, activeCat, activeGroupKey, activeEntryId]);
 
   const emit = (entry: KeycodeDef) => {
     if (keepPicked) setPickedId(entry.qmkId);
@@ -441,24 +404,15 @@ export function KeycodeCascadeSelector({
   };
 
   const commit = (entry: KeycodeDef) => {
-    // In resolveMasked mode a masked template starts an inner-key sub-pick: keep
-    // the dropdown open until a basic key is chosen, then emit the combination.
-    if (resolveMasked) {
-      setHint(null);
-      if (entry.masked) {
-        setPending(entry);
-        return;
-      }
-      if (pending) {
-        if (!isBasicQmkId(entry.qmkId)) {
-          setHint(t("cannotNest", { qmkId: entry.qmkId, template: pending.qmkId }));
-          return;
-        }
-        const finalId = pending.qmkId.replace("kc", entry.qmkId);
-        setPending(null);
-        emit({ qmkId: finalId, label: kcLabel(finalId) });
-        return;
-      }
+    // Quantum masked templates (Mod-Tap, Layer-Tap, held-mods, …) no longer
+    // demand an inner-key sub-pick: commit them with the inner key defaulted to
+    // KC_NO (e.g. LCTL_T(KC_NO)) so the key drops in immediately and the user
+    // edits the inner key afterwards. Emitting a concrete keycode here also
+    // means no parent ever needs to run its own inner-key flow.
+    if (entry.masked) {
+      const finalId = entry.qmkId.replace("kc", "KC_NO");
+      emit({ qmkId: finalId, label: kcLabel(finalId) });
+      return;
     }
     emit(entry);
   };
@@ -529,20 +483,11 @@ export function KeycodeCascadeSelector({
           : "absolute left-0 top-full z-10 mt-1 flex flex-col gap-1 text-base-content"
       }
       style={menuStyle}
+      // Auto-collapse the drilled-in columns back to the category column when
+      // the pointer leaves the popover (React onMouseLeave doesn't fire while
+      // moving between the popover's own columns, only on a real exit).
+      onMouseLeave={collapse}
     >
-            {pending && (
-              <div className="alert alert-info alert-soft flex items-center py-1 text-sm">
-                <span>{t("pickInnerKey", { template: pending.qmkId.replace("kc", "…") })}</span>
-                <button className="btn btn-xs ml-auto" onClick={() => setPending(null)}>
-                  {t("cancel")}
-                </button>
-              </div>
-            )}
-            {hint && (
-              <div className="alert alert-warning alert-soft py-1 text-sm">
-                <span>{hint}</span>
-              </div>
-            )}
             <div className="flex items-start gap-2">
             {/* Selection columns (category / middle / sub) grouped into one card. */}
             <div className="flex overflow-hidden rounded-box bg-base-100 shadow ring-1 ring-base-content/10">
@@ -563,6 +508,9 @@ export function KeycodeCascadeSelector({
                 </li>
               ))}
             </ul>
+            {/* Middle column: revealed only once a category is active, so opening
+                shows just the category column (progressive left→right drill-in). */}
+            {activeCat !== null && (
             <ul className="menu menu-sm max-h-72 w-44 flex-nowrap overflow-y-auto p-1">
               {activeMiddle.map((item) =>
                 item.kind === "leaf" ? (
@@ -606,6 +554,7 @@ export function KeycodeCascadeSelector({
                 ),
               )}
             </ul>
+            )}
             {/* Sub-column: parameterised variants of the expanded group (e.g. the
                 target layer for MO/TG/…). Only rendered when a group is active,
                 pushing the info panel to the 4th level. */}
@@ -632,9 +581,11 @@ export function KeycodeCascadeSelector({
             {/* Info panel: a read-only, standalone card describing the active
                 keycode — a function blurb, a macro / tap-dance preview, and the
                 raw encoding. Visually detached (own gap + rounded corners) from
-                the selection columns; not selectable, purely informational. */}
+                the selection columns; not selectable, purely informational.
+                Only shown while the pointer is over a level-2+ item (a described
+                keycode) — hovering just a category leaves it hidden. */}
+            {activeEntry && (
             <div className="max-h-72 w-52 overflow-y-auto rounded-box bg-base-100 p-3 shadow ring-1 ring-base-content/10">
-              {activeEntry ? (
                 <div className="flex flex-col gap-3">
                   {/* 1. Keycode encoding — always first. */}
                   <div>
@@ -700,12 +651,8 @@ export function KeycodeCascadeSelector({
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="text-xs opacity-40">
-                  {zh ? "悬停查看编码" : "Hover to inspect"}
-                </div>
-              )}
             </div>
+            )}
             </div>
           </div>
     );

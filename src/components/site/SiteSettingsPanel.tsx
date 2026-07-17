@@ -38,15 +38,26 @@ export function SiteSettingsPanel() {
       <section className="flex aspect-square w-full max-w-xs flex-col items-center justify-center gap-4 self-center rounded-box bg-brand-surface-variant/30 p-6 text-center">
         <img src="/logo-full.svg" alt="Vialite" className="h-15 w-auto" />
         <p className="text-sm leading-relaxed text-brand-on-surface-variant">{t("siteAboutIntro")}</p>
-        <a
-          href="https://github.com/tcyeee/vialite"
-          target="_blank"
-          rel="noreferrer"
-          className="btn btn-ghost btn-circle"
-          aria-label={t("siteAboutGithub")}
-        >
-          <Icon icon="mdi:github" className="h-9 w-9" />
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href="https://github.com/tcyeee/vialite"
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-ghost btn-circle"
+            aria-label={t("siteAboutGithub")}
+          >
+            <Icon icon="mdi:github" className="h-9 w-9" />
+          </a>
+          <a
+            href="https://discord.gg/J8GkuQG3aF"
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-ghost btn-circle"
+            aria-label={t("siteAboutDiscord")}
+          >
+            <Icon icon="mdi:discord" className="h-9 w-9" />
+          </a>
+        </div>
       </section>
 
       <section>

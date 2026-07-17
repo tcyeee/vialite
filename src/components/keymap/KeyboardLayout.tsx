@@ -281,7 +281,6 @@ export function KeyboardLayout({
                 ? keyboard.getKey(layer, menu.target.row, menu.target.col)
                 : keyboard.getEncoder(layer, menu.target.index, menu.target.direction)
             }
-            resolveMasked
             onPick={(entry: KeycodeDef) => {
               onContextAssign(menu.target, entry.qmkId);
               setMenu(null);

@@ -1417,6 +1417,65 @@ export function isBasicQmkId(qmkId: string): boolean {
 }
 
 /**
+ * Runtime behaviour of a composite keycode, discriminated by `kind` so callers
+ * can describe each shape *accurately* instead of forcing everything into a
+ * tap/hold mould (see {@link dualRole}, which flattens the first three cases):
+ *
+ * - `modTap` — Mod-Tap (`LCTL_T(KC_A)`): genuinely tap `inner` / hold the
+ *   modifier `role`.
+ * - `layerTap` — Layer-Tap (`LT(2,KC_A)` / serialized `LT2(KC_A)`): genuinely
+ *   tap `inner` / hold to activate `layer` (`role` is its short "L2" label).
+ * - `modCombo` — masked modifier (`LSFT(KC_A)`, `C_S(KC_A)`, `HYPR(KC_A)`…):
+ *   fires the modifier `role` **together with** `inner` on a single press. This
+ *   is NOT a tap/hold key even though it shares the `fn(kc)` shape.
+ * - `plain` — anything else: a single action, no second role.
+ */
+export type KeyBehavior =
+  | { kind: "modTap"; inner: string; role: string }
+  | { kind: "layerTap"; inner: string; role: string; layer: number }
+  | { kind: "modCombo"; inner: string; role: string }
+  | { kind: "plain" };
+
+export function keyBehavior(qmkId: string): KeyBehavior {
+  const composite = /^([A-Za-z0-9_]+)\((.+)\)$/.exec(qmkId);
+  if (!composite) {
+    return { kind: "plain" };
+  }
+  const [, fn, arg] = composite;
+  // Layer-Tap, canonical two-arg form LT(<layer>,kc).
+  if (fn === "LT") {
+    const comma = arg.indexOf(",");
+    if (comma < 0) {
+      return { kind: "plain" };
+    }
+    const layer = Number.parseInt(arg.slice(0, comma).trim(), 10);
+    return { kind: "layerTap", inner: arg.slice(comma + 1).trim(), role: `L${layer}`, layer };
+  }
+  // Layer-Tap, serialized one-arg form LT<n>(kc).
+  const ltN = /^LT(\d+)$/.exec(fn);
+  if (ltN) {
+    const layer = Number.parseInt(ltN[1], 10);
+    return { kind: "layerTap", inner: arg, role: `L${layer}`, layer };
+  }
+  // Mod-Tap <mods>_T(kc): the display template's first line is the modifier
+  // label plus a "_T" suffix (e.g. "LCtl_T"), which we strip for the role label.
+  if (fn.endsWith("_T")) {
+    const tmpl = displayByQmkId.get(`${fn}(kc)`);
+    const role = (tmpl ? tmpl.label.split("\n")[0] : fn).replace(/_T$/, "");
+    return { kind: "modTap", inner: arg, role };
+  }
+  // Masked modifier <mods>(kc): every one has a `${fn}(kc)` display template
+  // (the `_T` Mod-Tap variants were already handled above, so a surviving match
+  // is always a masked mod). The template's first line is the modifier label
+  // (e.g. "LSft", "Hyper") — no `_T` suffix to strip — which becomes the role.
+  const maskTmpl = displayByQmkId.get(`${fn}(kc)`);
+  if (maskTmpl) {
+    return { kind: "modCombo", inner: arg, role: maskTmpl.label.split("\n")[0] };
+  }
+  return { kind: "plain" };
+}
+
+/**
  * Splits a dual-role tap/hold keycode into its two independent actions, or
  * returns null for everything else. `tap` is the qmk_id fired on a normal press
  * (the inner key, e.g. `KC_A`); `hold` is a short label for the second role
@@ -1429,43 +1488,13 @@ export function isBasicQmkId(qmkId: string): boolean {
  * dual-role so the modifier renders in the hold band and can be retargeted via
  * the shared hold editor. NOTE: that editor rebuilds the hold as a real Mod-Tap
  * (`MT(...)`), i.e. editing converts the fire-together masked form into an
- * actual tap/hold — an accepted trade-off for one unified editor.
+ * actual tap/hold — an accepted trade-off for one unified editor. Callers that
+ * need to tell these shapes apart (e.g. the hover info card) should use
+ * {@link keyBehavior} instead.
  */
 export function dualRole(qmkId: string): { tap: string; hold: string } | null {
-  const composite = /^([A-Za-z0-9_]+)\((.+)\)$/.exec(qmkId);
-  if (!composite) {
-    return null;
-  }
-  const [, fn, arg] = composite;
-  // Layer-Tap, canonical two-arg form LT(<layer>,kc).
-  if (fn === "LT") {
-    const comma = arg.indexOf(",");
-    if (comma < 0) {
-      return null;
-    }
-    return { tap: arg.slice(comma + 1).trim(), hold: `L${arg.slice(0, comma).trim()}` };
-  }
-  // Layer-Tap, serialized one-arg form LT<n>(kc).
-  const ltN = /^LT(\d+)$/.exec(fn);
-  if (ltN) {
-    return { tap: arg, hold: `L${ltN[1]}` };
-  }
-  // Mod-Tap <mods>_T(kc): the display template's first line is the modifier
-  // label plus a "_T" suffix (e.g. "LCtl_T"), which we strip for the hold band.
-  if (fn.endsWith("_T")) {
-    const tmpl = displayByQmkId.get(`${fn}(kc)`);
-    const hold = (tmpl ? tmpl.label.split("\n")[0] : fn).replace(/_T$/, "");
-    return { tap: arg, hold };
-  }
-  // Masked modifier <mods>(kc): every one has a `${fn}(kc)` display template
-  // (the `_T` Mod-Tap variants were already handled above, so a surviving match
-  // is always a masked mod). The template's first line is the modifier label
-  // (e.g. "LSft", "Hyper") — no `_T` suffix to strip — which becomes the hold.
-  const maskTmpl = displayByQmkId.get(`${fn}(kc)`);
-  if (maskTmpl) {
-    return { tap: arg, hold: maskTmpl.label.split("\n")[0] };
-  }
-  return null;
+  const b = keyBehavior(qmkId);
+  return b.kind === "plain" ? null : { tap: b.inner, hold: b.role };
 }
 
 export type HoldInfo =

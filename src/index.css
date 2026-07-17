@@ -209,6 +209,32 @@ body {
   }
 }
 
+/* Tab-panel content swap (Layer tabs on 键盘布局 / 个性化, macro tabs on 宏配置).
+   The active panel's content mounts fresh on each switch, so this entry
+   animation re-fires every time. `backwards` fill (not `both`) for the same
+   reason as .page-transition: a lingering transform would create a containing
+   block that traps fixed-position descendants. */
+@keyframes tab-panel-appear {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-panel-appear {
+  animation: tab-panel-appear 0.24s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-panel-appear {
+    animation: none;
+  }
+}
+
 @keyframes nav-label-appear {
   from {
     opacity: 0;
@@ -700,8 +726,10 @@ body {
 .key-info-card {
   z-index: 50;
   pointer-events: none;
+  min-width: 11rem;
+  min-height: 3.5rem;
   max-width: 18rem;
-  padding: 0.5rem 0.625rem;
+  padding: 0.75rem 0.875rem;
   border-radius: 0.5rem;
   background: light-dark(#ffffff, #2a2a2a);
   color: light-dark(#1a1a1a, #ededed);
@@ -751,8 +779,28 @@ body {
   color: light-dark(#666, #aaa);
 }
 
+/* Raw keycode pinned at the very top of the card, divider-separated from the
+   name/behaviour body below so it always reads first, with a clear gap. */
+.key-info-code-top {
+  display: block;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid light-dark(#ececec, #454545);
+}
+
 .key-info-hex {
   opacity: 0.8;
+}
+
+/* Behaviour hint line at the bottom of the info card (mod-tap / layer-tap /
+   fire-together explanation). Muted, wraps within the card's max-width. */
+.key-info-hint {
+  margin-top: 0.125rem;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: light-dark(#8a8a8a, #9a9a9a);
 }
 
 .keyboard-layout .encoder {

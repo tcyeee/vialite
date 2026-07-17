@@ -49,3 +49,36 @@ jobs:
           curl -fsS -X POST "https://sctapi.ftqq.com/${SENDKEY}.send" \
             --data-urlencode "title=${TITLE}" \
             --data-urlencode "desp=${DESP}"
+
+      - name: Notify Discord
+        # Skips silently when DISCORD_WEBHOOK_URL isn't configured, so forks/PRs
+        # without the secret don't fail the workflow.
+        if: always()
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK_URL not set, skipping Discord notification."
+            exit 0
+          fi
+          if [ "${{ job.status }}" = "success" ]; then
+            TITLE="✅ Vialite 部署成功 / Deploy succeeded"
+            DESC="commit \`${GITHUB_SHA:0:7}\` 已部署到生产环境。"
+            COLOR=3066993   # green
+          else
+            TITLE="❌ Vialite 部署失败 / Deploy failed"
+            DESC="commit \`${GITHUB_SHA:0:7}\` 部署失败,请查看日志。"
+            COLOR=15158332  # red
+          fi
+          curl -fsS -H "Content-Type: application/json" -X POST "$WEBHOOK" \
+            --data @- <<JSON
+          {
+            "embeds": [{
+              "title": "${TITLE}",
+              "description": "${DESC}",
+              "url": "${RUN_URL}",
+              "color": ${COLOR}
+            }]
+          }
+          JSON

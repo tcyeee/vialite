@@ -2,6 +2,8 @@
 
 [English](README.md) · **简体中文**
 
+![Vialite 运行截图](public/img.png)
+
 一款面向 [Vial](https://get.vial.today/) 协议键盘的原生 Web 配置器,通过 [WebHID](https://developer.mozilla.org/zh-CN/docs/Web/API/WebHID_API) 直接与键盘通信 —— 无需 Qt、无需 WebAssembly、无需安装驱动。
 
 这是一个从零编写的 Web 前端,而非对官方 `vial-gui`/`vial-web` 的构建封装(后者将 PyQt5 桌面应用编译成 WebAssembly)。Vial HID 协议本身在 `src/protocol/` 下用 TypeScript 重新实现,移植自 [`vial-gui`](https://github.com/vial-kb/vial-gui) 的 Python 实现。

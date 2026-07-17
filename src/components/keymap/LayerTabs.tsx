@@ -33,7 +33,9 @@ export function LayerTabs({ layers, active, onSelect, isConfigured, children }: 
             )}
             {t("layerN", { n: i })}
           </label>
-          <div className="tab-content bg-base-100 border-base-300 w-fit p-6">{i === active && children}</div>
+          <div className="tab-content bg-base-100 border-base-300 w-fit p-6">
+            {i === active && <div className="tab-panel-appear">{children}</div>}
+          </div>
         </Fragment>
       ))}
     </div>

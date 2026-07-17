@@ -17,7 +17,6 @@ export function KeySlot({ qmkId, onChange, keyboard, className }: Props) {
       value={qmkId}
       keyboard={keyboard}
       compact
-      resolveMasked
       triggerClassName={
         className ?? "btn btn-outline min-h-12 min-w-24 justify-between py-1 text-xs"
       }
