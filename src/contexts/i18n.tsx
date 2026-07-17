@@ -362,9 +362,9 @@ const MESSAGES = {
   // Sidebar
   navHome: { en: "Keyboard Layout", zh: "键盘布局" },
   navMatrixTest: { en: "Keyboard Test", zh: "键盘测试" },
-  navMacro: { en: "Macro", zh: "宏配置" },
+  navMacro: { en: "Macros", zh: "宏配置" },
   navTapDance: { en: "Tap Dance", zh: "点击舞步" },
-  navCombo: { en: "Combo", zh: "组合键" },
+  navCombo: { en: "Combos", zh: "组合键" },
   navKeyboardColor: { en: "Personalization", zh: "个性化" },
   navAdvanced: { en: "QMK Settings", zh: "QMK 设置" },
   navSiteSettings: { en: "Website Settings", zh: "网站设置" },
