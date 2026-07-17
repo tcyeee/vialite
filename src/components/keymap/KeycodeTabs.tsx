@@ -2,18 +2,15 @@ import { useState } from "react";
 import {
   KEYCODE_CATEGORIES,
   isBasicQmkId,
-  label as kcLabel,
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { HelpIcon } from "../common/HelpIcon.tsx";
-import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "./QuickConfig104.tsx";
 import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
 import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
 import {
   CATEGORY_KEYS,
-  CLEAR_LABELS,
   KEYCODE_HELP,
   LAYER_GROUPS,
   LAYER_GROUP_OTHER,
@@ -206,10 +203,10 @@ interface Props {
 /**
  * Inline, tabbed keycode palette shown below the keyboard once a key/encoder is
  * selected. Each tab is one KEYCODE_CATEGORIES group (Basic, Media, …). The
- * Basic tab leads with the physical 104-key board (same as the modal picker)
- * and hides those keys from the flat list to avoid duplication. Masked
- * templates (Layer-Tap, Mod-Tap, …) set a pending state and wait for the user
- * to click an inner basic key, mirroring KeycodePicker's flow.
+ * Basic tab renders the cascade selector alone (it already covers every basic
+ * key, incl. KC_NO/KC_TRNS), replacing the former physical 104-key board.
+ * Masked templates (Layer-Tap, Mod-Tap, …) set a pending state and wait for the
+ * user to click an inner basic key, mirroring KeycodePicker's flow.
  */
 export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
   const { t } = useI18n();
@@ -284,11 +281,9 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
   const allCategories: VisibleCategory[] = ordered;
   const activeCat = allCategories.find((c) => c.name === active) ?? allCategories[0];
   const isBasic = activeCat.name === "Basic";
-  const entries = isBasic
-    ? activeCat.entries.filter(
-        (e) => !QUICK_CONFIG_QMK_IDS.has(e.qmkId) && !CLEAR_LABELS[e.qmkId],
-      )
-    : activeCat.entries;
+  // The Basic tab renders the cascade selector alone (it already covers every
+  // basic key, incl. KC_NO/KC_TRNS), so its flat list is unused.
+  const entries = activeCat.entries;
 
   const keyButton = (entry: KeycodeDef) => (
     <button
@@ -381,35 +376,8 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
           <span>{hint}</span>
         </div>
       )}
-      {isBasic && (
-        <div className="mt-3 overflow-x-auto pb-1">
-          <QuickConfig104
-            scale={1.2}
-            className="qc-compact-icons"
-            onPick={(id) => pick({ qmkId: id, label: kcLabel(id) })}
-          />
-        </div>
-      )}
-      {isBasic && (
-        // KC_NO / KC_TRNS aren't physical keys on the 104 board; surface them as
-        // two plainly-labelled buttons (清空按键 / 设置为穿透) with explanatory
-        // tooltips instead of the raw id / "▽" glyph the flat list would show.
-        <div className="mt-3 flex flex-wrap gap-2">
-          {Object.entries(CLEAR_LABELS).map(([qmkId, { label, title }]) => (
-            <button
-              key={qmkId}
-              className="btn btn-sm h-auto min-h-8 min-w-12 py-1 font-normal normal-case leading-tight"
-              title={t(title)}
-              onClick={() => pick({ qmkId, label: kcLabel(qmkId) })}
-            >
-              {t(label)}
-            </button>
-          ))}
-        </div>
-      )}
+      {isBasic && <KeycodeCascadeSelector onPick={pick} keyboard={keyboard} />}
       {activeCat.name === MACRO_TD_NAME && activeCat.groups ? (
-        <>
-        <KeycodeCascadeSelector onPick={pick} keyboard={keyboard} />
         <MacroTapDanceCards
           groups={[
             ...activeCat.groups.map((g) => ({
@@ -437,7 +405,6 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
           ]}
           onPick={pick}
         />
-        </>
       ) : activeCat.name === "Layers" && activeCat.groups ? (
         <LayerCategoryCards
           groups={activeCat.groups.map((g) => ({
@@ -487,7 +454,7 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
               )}
             </div>
           ))
-        : entries.length > 0 && (
+        : !isBasic && entries.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1">{entries.map(keyButton)}</div>
           )}
     </div>

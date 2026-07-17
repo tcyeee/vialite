@@ -10,7 +10,7 @@ import {
 } from "../../protocol/keycodes.ts";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { EVENT_CODE_TO_QMK } from "../keymap/keyEventMap.ts";
-import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "../keymap/QuickConfig104.tsx";
+import { KeycodeCascadeSelector } from "../keymap/KeycodeCascadeSelector.tsx";
 import { CATEGORY_KEYS, CLEAR_LABELS, deviceCategories } from "../keymap/keycodeMeta.ts";
 
 /** Categories hidden from the advanced picker (both browse and search). */
@@ -107,15 +107,8 @@ export function KeycodePicker({ onPick, onClose }: Props) {
   const q = query.trim().toLowerCase();
   const categories = useMemo(() => {
     const all = [...VISIBLE_CATEGORIES, ...deviceCategories()];
-    // When the 104-key board is visible (no active search), hide the keys it
-    // already exposes so the category lists don't duplicate them.
     if (!q) {
-      return all
-        .map((cat) => ({
-          name: cat.name,
-          entries: cat.entries.filter((e) => !QUICK_CONFIG_QMK_IDS.has(e.qmkId)),
-        }))
-        .filter((cat) => cat.entries.length > 0);
+      return all.filter((cat) => cat.entries.length > 0);
     }
     return all
       .map((cat) => ({
@@ -193,14 +186,7 @@ export function KeycodePicker({ onPick, onClose }: Props) {
             <span>{hint}</span>
           </div>
         )}
-        {!q && (
-          <section>
-            <h4 className="mt-3 mb-1 text-sm font-semibold opacity-70">{t("quickConfigTitle")}</h4>
-            <div className="overflow-x-auto pb-1">
-              <QuickConfig104 onPick={pickByQmkId} />
-            </div>
-          </section>
-        )}
+        {!q && <KeycodeCascadeSelector onPick={pick} />}
         {categories.map((category) => (
           <section key={category.name}>
             <h4 className="mt-3 mb-1 text-sm font-semibold opacity-70">

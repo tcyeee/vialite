@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   KEYCODE_CATEGORIES,
+  isBasicQmkId,
   label as kcLabel,
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
@@ -23,12 +24,32 @@ import {
 
 interface Props {
   /**
-   * Assign the picked keycode. Routed through KeycodeTabs' own `pick`, so masked
-   * templates (LCTL_T(kc), …) still open the "pick inner key" flow there.
+   * Assign the picked keycode. When {@link Props.resolveMasked} is false (the
+   * default, e.g. KeycodeTabs) masked templates (LCTL_T(kc), …) are emitted
+   * verbatim and the parent runs the "pick inner key" flow; when true this
+   * component runs that flow itself and only emits concrete keycodes.
    */
   onPick: (entry: KeycodeDef) => void;
-  /** Connected device, for macro / tap-dance previews shown in the info panel. */
-  keyboard: Keyboard;
+  /** Connected device, for macro / tap-dance previews shown in the info panel.
+   *  Optional: when absent (e.g. embedded in a plain slot field) the info panel
+   *  simply omits the live macro / tap-dance previews. */
+  keyboard?: Keyboard;
+  /** Current keycode, used to seed the trigger label so an existing value shows
+   *  through (e.g. a tap-dance slot's current key) instead of the placeholder. */
+  value?: string;
+  /** Trigger text shown before anything is picked (overrides the default). */
+  placeholder?: string;
+  /** Resolve masked templates in-widget: picking e.g. Mod-Tap keeps the dropdown
+   *  open to choose an inner basic key, then emits the combined keycode. */
+  resolveMasked?: boolean;
+  /** Keep the picked keycode as the trigger label after committing. Set false for
+   *  momentary "add" triggers that should always read as their placeholder. */
+  keepPicked?: boolean;
+  /** Inline field styling: drop the heading + fixed width so the trigger sits in
+   *  a row of controls (macro action rows, tap-dance / combo slots). */
+  compact?: boolean;
+  /** Extra classes for the trigger button (e.g. to match a slot's sizing). */
+  triggerClassName?: string;
 }
 
 /** One category column entry: its display name and the keycodes under it. */
@@ -213,7 +234,16 @@ const locate = (
  * relatedTarget is unreliable across browsers); the active category is seeded on
  * open so the right column is never empty.
  */
-export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
+export function KeycodeCascadeSelector({
+  onPick,
+  keyboard,
+  value,
+  placeholder: placeholderProp,
+  resolveMasked = false,
+  keepPicked = true,
+  compact = false,
+  triggerClassName,
+}: Props) {
   const { t, lang } = useI18n();
   const [open, setOpen] = useState(false);
   const [activeCat, setActiveCat] = useState<string | null>(null);
@@ -221,8 +251,24 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   // The expanded middle-column group (e.g. "MO"), or null when a leaf is active.
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
-  const [pickedId, setPickedId] = useState<string | null>(null);
+  const [pickedId, setPickedId] = useState<string | null>(value ?? null);
+  // Masked template awaiting its inner basic key (only when resolveMasked).
+  const [pending, setPending] = useState<KeycodeDef | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Keep the trigger label in sync with a parent-controlled value.
+  useEffect(() => {
+    setPickedId(value ?? null);
+  }, [value]);
+
+  // Closing (outside-click / Escape) discards any half-finished masked pick.
+  useEffect(() => {
+    if (!open) {
+      setPending(null);
+      setHint(null);
+    }
+  }, [open]);
 
   // All non-empty categories: the static tables plus whatever the attached
   // device exposes (Custom keycodes, Tap Dance). Recomputed each render is
@@ -236,15 +282,16 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
   );
 
   // Live macro action lists for the connected device; the getter re-decodes the
-  // raw buffer each access, so read it once per render and share.
-  const macros = keyboard.macros;
+  // raw buffer each access, so read it once per render and share. Empty when no
+  // device is attached (picker context).
+  const macros = keyboard?.macros ?? [];
 
   // Whether an M{n} / TD(n) entry has user-set content, for the green status dot.
   const isConfigured = (qmkId: string): boolean => {
     const mi = macroIndex(qmkId);
     if (mi !== null) return (macros[mi]?.length ?? 0) > 0;
     const ti = tapDanceIndex(qmkId);
-    if (ti !== null) return tapDanceConfigured(keyboard.tapDanceEntries[ti]);
+    if (ti !== null && keyboard) return tapDanceConfigured(keyboard.tapDanceEntries[ti]);
     return false;
   };
 
@@ -266,7 +313,7 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
 
   const zh = lang === "zh";
   const heading = zh ? "按键选择器（级联）" : "Keycode Selector (cascade)";
-  const placeholder = zh ? "选择按键" : "Pick a keycode";
+  const placeholder = placeholderProp ?? (zh ? "选择按键" : "Pick a keycode");
 
   const catLabel = (name: string) => (CATEGORY_KEYS[name] ? t(CATEGORY_KEYS[name]) : name);
   // The two "clear" keycodes (KC_NO / KC_TRNS) get plain translated labels
@@ -316,6 +363,8 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
   })();
 
   const openMenu = () => {
+    setPending(null);
+    setHint(null);
     // Seed the active column from the current pick's category, else the first.
     const cat =
       (pickedId &&
@@ -330,10 +379,33 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
     setOpen(true);
   };
 
-  const commit = (entry: KeycodeDef) => {
-    setPickedId(entry.qmkId);
+  const emit = (entry: KeycodeDef) => {
+    if (keepPicked) setPickedId(entry.qmkId);
     onPick(entry);
     setOpen(false);
+  };
+
+  const commit = (entry: KeycodeDef) => {
+    // In resolveMasked mode a masked template starts an inner-key sub-pick: keep
+    // the dropdown open until a basic key is chosen, then emit the combination.
+    if (resolveMasked) {
+      setHint(null);
+      if (entry.masked) {
+        setPending(entry);
+        return;
+      }
+      if (pending) {
+        if (!isBasicQmkId(entry.qmkId)) {
+          setHint(t("cannotNest", { qmkId: entry.qmkId, template: pending.qmkId }));
+          return;
+        }
+        const finalId = pending.qmkId.replace("kc", entry.qmkId);
+        setPending(null);
+        emit({ qmkId: finalId, label: kcLabel(finalId) });
+        return;
+      }
+    }
+    emit(entry);
   };
 
   // Per-key description ("按键说明"): a Basic clear key's own copy, a per-keycode
@@ -383,19 +455,40 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
       : entryLabel(sub.entry).split("\n").join(" ");
 
   return (
-    <div className="mt-3">
-      <h4 className="mb-1 text-sm font-semibold opacity-70">{heading}</h4>
-      <div ref={rootRef} className="relative w-64">
+    <div className={compact ? "" : "mt-3"}>
+      {!compact && <h4 className="mb-1 text-sm font-semibold opacity-70">{heading}</h4>}
+      <div ref={rootRef} className={`relative ${compact ? "inline-block" : "w-64"}`}>
         <button
           type="button"
-          className="btn btn-sm w-full justify-between font-normal normal-case"
+          className={
+            triggerClassName ??
+            `btn btn-sm justify-between font-normal normal-case ${compact ? "" : "w-full"}`
+          }
           onClick={() => (open ? setOpen(false) : openMenu())}
         >
           <span className={pickedId ? "" : "opacity-50"}>{pickedLabel}</span>
           <span className="opacity-50">▾</span>
         </button>
         {open && (
-          <div className="absolute left-0 top-full z-10 mt-1 flex items-start gap-2">
+          {/* The popover paints its own base-100 surfaces, so it must also set
+              its own foreground — it can be embedded in a context with an
+              inherited text color (e.g. the Quantum cards' light-on-dark
+              cards), which would otherwise leave it white-on-white. */}
+          <div className="absolute left-0 top-full z-10 mt-1 flex flex-col gap-1 text-base-content">
+            {pending && (
+              <div className="alert alert-info alert-soft flex items-center py-1 text-sm">
+                <span>{t("pickInnerKey", { template: pending.qmkId.replace("kc", "…") })}</span>
+                <button className="btn btn-xs ml-auto" onClick={() => setPending(null)}>
+                  {t("cancel")}
+                </button>
+              </div>
+            )}
+            {hint && (
+              <div className="alert alert-warning alert-soft py-1 text-sm">
+                <span>{hint}</span>
+              </div>
+            )}
+            <div className="flex items-start gap-2">
             {/* Selection columns (category / middle / sub) grouped into one card. */}
             <div className="flex overflow-hidden rounded-box bg-base-100 shadow ring-1 ring-base-content/10">
             <ul className="menu menu-sm max-h-72 w-36 flex-nowrap overflow-y-auto border-r border-base-content/10 p-1">
@@ -520,7 +613,7 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
                       )}
                     </div>
                   )}
-                  {activeTapDanceIdx !== null && (
+                  {activeTapDanceIdx !== null && keyboard && (
                     <div>
                       <div className="mb-1 text-xs opacity-50">{t("cascadeTapDanceActions")}</div>
                       {(() => {
@@ -557,6 +650,7 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
                   {zh ? "悬停查看编码" : "Hover to inspect"}
                 </div>
               )}
+            </div>
             </div>
           </div>
         )}

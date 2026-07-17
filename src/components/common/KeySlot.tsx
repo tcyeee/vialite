@@ -1,36 +1,27 @@
-import { useState } from "react";
-import { KeycapFace } from "../keymap/KeycapFace.tsx";
-import { KeycodePicker } from "./KeycodePicker.tsx";
+import type { Keyboard } from "../../protocol/keyboard.ts";
+import { KeycodeCascadeSelector } from "../keymap/KeycodeCascadeSelector.tsx";
 
 interface Props {
   qmkId: string;
   onChange: (qmkId: string) => void;
+  /** Connected device, for the picker's macro / tap-dance info previews. */
+  keyboard?: Keyboard;
   className?: string;
 }
 
-/** A single keycode slot (tap dance / combo entry field): shows the current label, opens a KeycodePicker on click. */
-export function KeySlot({ qmkId, onChange, className }: Props) {
-  const [picking, setPicking] = useState(false);
-
+/** A single keycode slot (tap dance / combo entry field): shows the current
+ *  keycode and opens the cascade selector to reassign it. */
+export function KeySlot({ qmkId, onChange, keyboard, className }: Props) {
   return (
-    <>
-      <button
-        type="button"
-        className={className ?? "btn btn-outline min-h-12 min-w-24 flex-wrap py-1 text-xs whitespace-pre-line"}
-        title={qmkId}
-        onClick={() => setPicking(true)}
-      >
-        <KeycapFace qmkId={qmkId} className="whitespace-pre-line" />
-      </button>
-      {picking && (
-        <KeycodePicker
-          onPick={(id) => {
-            setPicking(false);
-            onChange(id);
-          }}
-          onClose={() => setPicking(false)}
-        />
-      )}
-    </>
+    <KeycodeCascadeSelector
+      value={qmkId}
+      keyboard={keyboard}
+      compact
+      resolveMasked
+      triggerClassName={
+        className ?? "btn btn-outline min-h-12 min-w-24 justify-between py-1 text-xs"
+      }
+      onPick={(entry) => onChange(entry.qmkId)}
+    />
   );
 }
