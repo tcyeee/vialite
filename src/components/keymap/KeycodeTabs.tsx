@@ -12,6 +12,12 @@ import { HelpIcon } from "../common/HelpIcon.tsx";
 import { QuickConfig104, QUICK_CONFIG_QMK_IDS } from "./QuickConfig104.tsx";
 import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
 import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
+import {
+  LAYER_GROUPS,
+  LAYER_GROUP_OTHER,
+  QUANTUM_GROUPS,
+  QUANTUM_GROUP_MISC,
+} from "./keycodeGroupMeta.ts";
 import { LayerCategoryCards } from "./LayerCategoryCards.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
 import { QuantumCards } from "./QuantumCards.tsx";
@@ -127,24 +133,16 @@ function comboMeta(
  */
 function layerGroups(): KeycodeGroup[] {
   const src = entriesOf("Layers");
-  const fns: [string, MessageKey, MessageKey][] = [
-    ["MO", "groupLayerMO", "groupLayerMOHelp"],
-    ["TG", "groupLayerTG", "groupLayerTGHelp"],
-    ["TT", "groupLayerTT", "groupLayerTTHelp"],
-    ["OSL", "groupLayerOSL", "groupLayerOSLHelp"],
-    ["TO", "groupLayerTO", "groupLayerTOHelp"],
-    ["DF", "groupLayerDF", "groupLayerDFHelp"],
-  ];
-  const groups: KeycodeGroup[] = fns
-    .map(([fn, titleKey, helpKey]) => ({
+  const groups: KeycodeGroup[] = LAYER_GROUPS
+    .map(({ titleKey, helpKey, match }) => ({
       titleKey,
       helpKey,
-      entries: src.filter((e) => e.qmkId.startsWith(`${fn}(`)),
+      entries: src.filter((e) => match(e.qmkId)),
     }))
     .filter((g) => g.entries.length > 0);
-  const rest = src.filter((e) => !fns.some(([fn]) => e.qmkId.startsWith(`${fn}(`)));
+  const rest = src.filter((e) => !LAYER_GROUPS.some((g) => g.match(e.qmkId)));
   if (rest.length > 0)
-    groups.push({ titleKey: "groupLayerOther", helpKey: "groupLayerOtherHelp", entries: rest });
+    groups.push({ titleKey: LAYER_GROUP_OTHER.titleKey, helpKey: LAYER_GROUP_OTHER.helpKey, entries: rest });
   return groups;
 }
 
@@ -154,38 +152,32 @@ function layerGroups(): KeycodeGroup[] {
  */
 function quantumGroups(): KeycodeGroup[] {
   const src = entriesOf("Quantum");
-  const isOSM = (id: string) => id.startsWith("OSM(");
-  const isModTap = (id: string) => /_T\(kc\)$/.test(id);
-  const isLayerTap = (id: string) => /^LT\d+\(/.test(id);
-  const isMod = (id: string) =>
-    !isOSM(id) && !isModTap(id) && !isLayerTap(id) && id.endsWith("(kc)");
-  const blocks: [MessageKey, MessageKey, (id: string) => boolean][] = [
-    ["groupQuantumMods", "groupQuantumModsHelp", isMod],
-    ["groupQuantumModTap", "groupQuantumModTapHelp", isModTap],
-    ["groupQuantumLayerTap", "groupQuantumLayerTapHelp", isLayerTap],
-  ];
-  const groups: KeycodeGroup[] = blocks
-    .map(([titleKey, helpKey, pred]) => ({
-      titleKey,
-      helpKey,
-      entries: src.filter((e) => pred(e.qmkId)),
-    }))
+  const metaFor = (key: string) => QUANTUM_GROUPS.find((g) => g.key === key)!;
+  // Top-level cards: held mods, mod-tap, layer-tap (in that order).
+  const groups: KeycodeGroup[] = ["mods", "modtap", "layertap"]
+    .map((key) => {
+      const g = metaFor(key);
+      return { titleKey: g.titleKey, helpKey: g.helpKey, entries: src.filter((e) => g.match(e.qmkId)) };
+    })
     .filter((g) => g.entries.length > 0);
-  // One-Shot Mods and everything that fits no other block are folded into a
-  // single "Other" card, shown as two labelled sections inside that card.
-  const osm = src.filter((e) => isOSM(e.qmkId));
-  const misc = src.filter(
-    (e) => !isOSM(e.qmkId) && !blocks.some(([, , pred]) => pred(e.qmkId)),
-  );
+  // One-Shot Mods and everything that fits no group are folded into a single
+  // "Other" card, shown as two labelled sections inside that card.
+  const osm = metaFor("osm");
+  const osmEntries = src.filter((e) => osm.match(e.qmkId));
+  const miscEntries = src.filter((e) => !QUANTUM_GROUPS.some((g) => g.match(e.qmkId)));
   const otherSections = [
-    osm.length > 0 && { titleKey: "groupQuantumOSM" as MessageKey, helpKey: "groupQuantumOSMHelp" as MessageKey, entries: osm },
-    misc.length > 0 && { titleKey: "groupQuantumMisc" as MessageKey, helpKey: "groupQuantumOtherHelp" as MessageKey, entries: misc },
+    osmEntries.length > 0 && { titleKey: osm.titleKey, helpKey: osm.helpKey, entries: osmEntries },
+    miscEntries.length > 0 && {
+      titleKey: QUANTUM_GROUP_MISC.titleKey,
+      helpKey: QUANTUM_GROUP_MISC.helpKey,
+      entries: miscEntries,
+    },
   ].filter((s): s is { titleKey: MessageKey; helpKey: MessageKey; entries: KeycodeDef[] } => Boolean(s));
   if (otherSections.length > 0)
     groups.push({
       titleKey: "groupQuantumOther",
-      helpKey: "groupQuantumOtherHelp",
-      entries: [...osm, ...misc],
+      helpKey: QUANTUM_GROUP_MISC.helpKey,
+      entries: [...osmEntries, ...miscEntries],
       sections: otherSections,
     });
   return groups;
@@ -505,6 +497,7 @@ export function KeycodeTabs({ onPick, keyboard, onNavigate }: Props) {
             sections: g.sections,
           }))}
           onPick={pick}
+          keyboard={keyboard}
         />
       ) : activeCat.groups
         ? activeCat.groups.map((group) => (

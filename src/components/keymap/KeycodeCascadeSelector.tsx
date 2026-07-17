@@ -8,6 +8,13 @@ import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
 import type { MacroAction } from "../../protocol/macro.ts";
 import { CATEGORY_KEYS, CLEAR_LABELS, deviceCategories } from "../common/KeycodePicker.tsx";
+import {
+  LAYER_GROUPS,
+  LAYER_GROUP_OTHER,
+  QUANTUM_GROUPS,
+  QUANTUM_GROUP_MISC,
+  type KeycodeGroupMeta,
+} from "./keycodeGroupMeta.ts";
 
 interface Props {
   /**
@@ -80,14 +87,16 @@ const tapDanceConfigured = (e: TapDanceEntry | undefined): boolean =>
 const kcText = (qmkId: string): string => kcLabel(qmkId).split("\n").join(" ");
 
 /** A bilingual display label for a project-owned group (kept out of the global
- *  i18n dictionary since this taxonomy is cascade-selector-only). */
+ *  i18n dictionary since these are cascade-selector-only). */
 type Bilingual = { zh: string; en: string };
 
 /**
  * A middle-column item: either a keycode committed directly, or a group that
  * expands into a sub-column, pushing the info panel to the 4th level. Groups
- * come from two sources: an explicit sub-category table (e.g. Basic → 字母 /
- * 符号 / …) or the layer-fn pattern (MO/TG/… → layer 0..15, where `arg` is set).
+ * carry a display label (an inline {@link Bilingual} for Basic's sub-areas, or
+ * a `titleKey` for Layers/Quantum sourced from {@link ./keycodeGroupMeta}) plus
+ * an optional description key; layer groups additionally set each entry's `arg`
+ * (the target layer index) for the sub-column label.
  */
 type MiddleItem =
   | { kind: "leaf"; entry: KeycodeDef }
@@ -95,19 +104,28 @@ type MiddleItem =
       kind: "group";
       key: string;
       label?: Bilingual;
+      titleKey?: MessageKey;
+      /** i18n key for the group's description, shown as the info panel's
+       *  per-key blurb (e.g. a layer/quantum group's help copy). */
+      descKey?: MessageKey;
       entries: { entry: KeycodeDef; arg?: string }[];
     };
 
 type MiddleGroup = Extract<MiddleItem, { kind: "group" }>;
 
 /**
- * Project-owned sub-category of a top-level category. `match` decides which
- * keycodes fall under it; order in the list is the order the groups render in.
+ * A cascade sub-category of a top-level category. `match` decides which keycodes
+ * fall under it; list order is the render order. The label comes from either an
+ * inline {@link Bilingual} (`label`) or an i18n `titleKey`. `layerArg` marks
+ * groups whose sub-entries are labelled by their `FN(n)` layer index.
  */
 interface SubGrouping {
   key: string;
-  label: Bilingual;
+  label?: Bilingual;
+  titleKey?: MessageKey;
+  descKey?: MessageKey;
   match: (qmkId: string) => boolean;
+  layerArg?: boolean;
 }
 
 const BASIC_SYMBOL_IDS = new Set([
@@ -124,7 +142,7 @@ const BASIC_MOD_IDS = new Set([
 ]);
 
 /** Basic split into 6 areas; unmatched keycodes (KC_NO/KC_TRNS) stay as leaves
- *  pinned above the groups. */
+ *  pinned above the groups. Labels are inline (no shared help copy). */
 const BASIC_SUBCATS: SubGrouping[] = [
   { key: "letters", label: { zh: "字母", en: "Letters" }, match: (id) => /^KC_[A-Z]$/.test(id) },
   { key: "numbers", label: { zh: "数字", en: "Numbers" }, match: (id) => /^KC_[0-9]$/.test(id) },
@@ -134,20 +152,38 @@ const BASIC_SUBCATS: SubGrouping[] = [
   { key: "mods", label: { zh: "修饰键", en: "Modifiers" }, match: (id) => BASIC_MOD_IDS.has(id) },
 ];
 
-/** Which top-level categories are subdivided by an explicit sub-category table. */
-const CATEGORY_SUBGROUPS: Record<string, SubGrouping[]> = { Basic: BASIC_SUBCATS };
+/** Map shared group metadata to a cascade sub-grouping (label + description from
+ *  the same i18n keys the quick-config tabs use). */
+const fromMeta = (m: KeycodeGroupMeta, layerArg = false): SubGrouping => ({
+  key: m.key,
+  titleKey: m.titleKey,
+  descKey: m.helpKey,
+  match: m.match,
+  layerArg,
+});
 
-/** Layer keycodes that take a numeric layer argument, grouped by function. */
-const LAYER_GROUP_FNS = ["MO", "TG", "TT", "OSL", "TO", "DF"];
+/** Layers → MO/TG/… groups (+ Other catch-all); sub-entries are layer indices. */
+const LAYER_SUBCATS: SubGrouping[] = [...LAYER_GROUPS, LAYER_GROUP_OTHER].map((m) =>
+  fromMeta(m, true),
+);
+/** Quantum → held-mods / mod-tap / layer-tap / one-shot (+ misc catch-all). */
+const QUANTUM_SUBCATS: SubGrouping[] = [...QUANTUM_GROUPS, QUANTUM_GROUP_MISC].map((m) =>
+  fromMeta(m),
+);
 
-/** `{ fn, arg }` for a groupable `FN(n)` layer keycode, else null. */
-const layerGroup = (qmkId: string): { fn: string; arg: string } | null => {
-  const m = /^([A-Z]+)\((\d+)\)$/.exec(qmkId);
-  return m && LAYER_GROUP_FNS.includes(m[1]) ? { fn: m[1], arg: m[2] } : null;
+/** Top-level categories subdivided into a middle-column sub-category table. */
+const CATEGORY_SUBGROUPS: Record<string, SubGrouping[]> = {
+  Basic: BASIC_SUBCATS,
+  Layers: LAYER_SUBCATS,
+  Quantum: QUANTUM_SUBCATS,
 };
 
-/** Bucket entries by an explicit sub-category table: unmatched entries become
- *  leaves (kept in order, pinned on top), groups render in table order. */
+/** Layer index for a `FN(n)` keycode, else undefined (e.g. FN_MO13). */
+const layerArgOf = (qmkId: string): string | undefined =>
+  /^[A-Z]+\((\d+)\)$/.exec(qmkId)?.[1];
+
+/** Bucket entries by a sub-category table: unmatched entries become leaves (kept
+ *  in order, pinned on top), groups render in table order. */
 const groupBySubcats = (entries: KeycodeDef[], subs: SubGrouping[]): MiddleItem[] => {
   const leaves: MiddleItem[] = [];
   const groups = new Map<string, MiddleGroup>();
@@ -159,10 +195,17 @@ const groupBySubcats = (entries: KeycodeDef[], subs: SubGrouping[]): MiddleItem[
     }
     let g = groups.get(sub.key);
     if (!g) {
-      g = { kind: "group", key: sub.key, label: sub.label, entries: [] };
+      g = {
+        kind: "group",
+        key: sub.key,
+        label: sub.label,
+        titleKey: sub.titleKey,
+        descKey: sub.descKey,
+        entries: [],
+      };
       groups.set(sub.key, g);
     }
-    g.entries.push({ entry });
+    g.entries.push({ entry, arg: sub.layerArg ? layerArgOf(entry.qmkId) : undefined });
   }
   const ordered = subs
     .map((s) => groups.get(s.key))
@@ -170,32 +213,13 @@ const groupBySubcats = (entries: KeycodeDef[], subs: SubGrouping[]): MiddleItem[
   return [...leaves, ...ordered];
 };
 
-/** Fold layer keycodes into per-function groups (MO/TG/…), preserving order. */
-const groupByLayerFn = (entries: KeycodeDef[]): MiddleItem[] => {
-  const items: MiddleItem[] = [];
-  const groupAt = new Map<string, number>();
-  for (const entry of entries) {
-    const g = layerGroup(entry.qmkId);
-    if (!g) {
-      items.push({ kind: "leaf", entry });
-      continue;
-    }
-    let idx = groupAt.get(g.fn);
-    if (idx === undefined) {
-      idx = items.length;
-      groupAt.set(g.fn, idx);
-      items.push({ kind: "group", key: g.fn, entries: [] });
-    }
-    (items[idx] as MiddleGroup).entries.push({ entry, arg: g.arg });
-  }
-  return items;
-};
-
 /** Middle-column items for a category: subdivided by its sub-category table if
- *  it has one, else by the layer-fn pattern (a no-op for most categories). */
+ *  it has one, else a flat list of leaves. */
 const buildMiddle = (category: string | null, entries: KeycodeDef[]): MiddleItem[] => {
   const subs = category ? CATEGORY_SUBGROUPS[category] : undefined;
-  return subs ? groupBySubcats(entries, subs) : groupByLayerFn(entries);
+  return subs
+    ? groupBySubcats(entries, subs)
+    : entries.map((entry) => ({ kind: "leaf", entry }));
 };
 
 /** First keycode a category will describe: its first leaf, or a group's first
@@ -360,14 +384,16 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
     setOpen(false);
   };
 
-  // Per-key description ("按键说明"): a Basic clear key's own copy or a custom
-  // keycode's device-provided title. This describes the *selected keycode*, not
+  // Per-key description ("按键说明"): a Basic clear key's own copy, a custom
+  // keycode's device-provided title, or the active group's shared description
+  // (e.g. a layer group's MO/TG/… help). Describes the *selected keycode*, not
   // its category — the category blurb is shown separately (see `catDesc`).
   const keyDesc = (() => {
     if (!activeEntry) return null;
     const clear = CLEAR_DESC[activeEntry.qmkId];
     if (clear) return t(clear);
     if (activeEntry.title && activeEntry.title !== activeEntry.label) return activeEntry.title;
+    if (activeGroup?.descKey) return t(activeGroup.descKey);
     return null;
   })();
   // Category-level blurb ("其他/分类说明"): a general description of the active
@@ -391,8 +417,10 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
     return a.keycodes.map(kcText).join(" + ");
   };
 
-  // Middle-column group label: its bilingual name, or the raw key (layer fns).
-  const groupLabel = (g: MiddleGroup): string => (g.label ? (zh ? g.label.zh : g.label.en) : g.key);
+  // Middle-column group label: an i18n title (Layers/Quantum), an inline
+  // bilingual name (Basic), or the raw key as a last resort.
+  const groupLabel = (g: MiddleGroup): string =>
+    g.titleKey ? t(g.titleKey) : g.label ? (zh ? g.label.zh : g.label.en) : g.key;
   // Sub-column item label: a layer index for layer groups, else the key's label.
   const subItemLabel = (sub: { entry: KeycodeDef; arg?: string }): string =>
     sub.arg !== undefined
@@ -486,7 +514,7 @@ export function KeycodeCascadeSelector({ onPick, keyboard }: Props) {
                   <li key={sub.entry.qmkId}>
                     <button
                       type="button"
-                      className={`justify-start ${
+                      className={`justify-start ${sub.entry.masked ? "italic" : ""} ${
                         activeEntryId === sub.entry.qmkId ? "menu-active" : ""
                       }`}
                       title={sub.entry.title ?? sub.entry.qmkId}

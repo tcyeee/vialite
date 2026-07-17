@@ -3,7 +3,8 @@ import { flushSync } from "react-dom";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import { deserialize, label as kcLabel, type KeycodeDef } from "../../protocol/keycodes.ts";
 import { HelpIcon } from "../common/HelpIcon.tsx";
-import { QuickConfig104 } from "./QuickConfig104.tsx";
+import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
+import type { Keyboard } from "../../protocol/keyboard.ts";
 import { startViewTransition } from "../common/viewTransition.ts";
 import { quantumHelp } from "./quantumHelp.ts";
 
@@ -34,6 +35,8 @@ interface Props {
   groups: QuantumCardGroup[];
   /** Assign the composed/picked keycode (routed through KeycodeTabs' pick handler). */
   onPick: (entry: KeycodeDef) => void;
+  /** Connected device, for the inner-key cascade selector's macro / tap-dance previews. */
+  keyboard: Keyboard;
 }
 
 /** Background colors cycled across the Quantum cards (up to five groups). */
@@ -102,7 +105,7 @@ function layerTemplates(entries: KeycodeDef[]): number[] {
  * reveal. Only one card is open at a time. Mirrors {@link FnMediaMouseCards} and
  * {@link LayerCategoryCards}.
  */
-export function QuantumCards({ groups, onPick }: Props) {
+export function QuantumCards({ groups, onPick, keyboard }: Props) {
   const { t, lang } = useI18n();
   const [expanded, setExpanded] = useState<string | null>(null);
   // Composer state — shared, since only one card is ever open at a time.
@@ -244,12 +247,10 @@ export function QuantumCards({ groups, onPick }: Props) {
           )}
         </div>
 
-        {/* Step 2 — the inner basic key, via the mini 104-board. */}
+        {/* Step 2 — the inner basic key, via the cascade selector. */}
         <div className="flex flex-col gap-2">
           <div className={stepClass}>{t("quantumPickBasic")}</div>
-          <div className="overflow-x-auto pb-1">
-            <QuickConfig104 scale={0.6} className="qc-compact-icons" onPick={setBasic} />
-          </div>
+          <KeycodeCascadeSelector keyboard={keyboard} onPick={(entry) => setBasic(entry.qmkId)} />
         </div>
 
         {/* Preview + apply. */}
