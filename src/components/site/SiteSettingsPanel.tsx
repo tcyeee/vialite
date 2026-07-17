@@ -55,7 +55,7 @@ export function SiteSettingsPanel() {
             className="btn btn-ghost btn-circle"
             aria-label={t("siteAboutDiscord")}
           >
-            <Icon icon="mdi:discord" className="h-9 w-9" />
+            <Icon icon="mdi:discord" className="h-8 w-8" />
           </a>
         </div>
       </section>
