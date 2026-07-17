@@ -71,7 +71,7 @@ function TapDancePreviewCard({
       style={{ perspective: "1200px", viewTransitionName: `tdcard-${index}` }}
     >
       {editable && !flipped && (
-        <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:-translate-y-2.5 group-hover/card:scale-[1.6] group-hover/card:opacity-100">
+        <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:-translate-y-2.5 group-hover/card:scale-[1.6] group-hover/card:opacity-100 dark:bg-neutral-700">
           <button
             type="button"
             className="btn btn-ghost btn-xs px-2 text-white hover:bg-white/20 hover:text-white"
@@ -96,7 +96,7 @@ function TapDancePreviewCard({
       >
         <div
           style={{ backfaceVisibility: "hidden", gridArea: "1 / 1" }}
-          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#73575e14_35%,transparent_36%),radial-gradient(circle_at_top_right,#73575e14_35%,transparent_36%)] bg-[#f5ecef] bg-size-[4.95em_4.95em] text-[#5b434b] shadow-lg shadow-stone-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-stone-900/15"
+          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#73575e14_35%,transparent_36%),radial-gradient(circle_at_top_right,#73575e14_35%,transparent_36%)] bg-[#f5ecef] bg-size-[4.95em_4.95em] text-[#5b434b] shadow-lg shadow-stone-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-stone-900/15 dark:bg-[radial-gradient(circle_at_bottom_left,#ffffff12_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff12_35%,transparent_36%)] dark:bg-[#2a2125] dark:text-[#e7d8dd] dark:shadow-black/40 dark:group-hover/card:shadow-black/55"
         >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden select-none">
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
@@ -132,7 +132,7 @@ function TapDancePreviewCard({
         {editable && (
           <div
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", gridArea: "1 / 1" }}
-            className="card overflow-hidden border-2 border-dashed border-brand-outline/50 bg-white shadow-lg shadow-stone-900/10"
+            className="card overflow-hidden border-2 border-dashed border-[#73575e]/50 bg-white shadow-lg shadow-stone-900/10 dark:border-[#e7d8dd]/30 dark:bg-[#232326] dark:shadow-black/40"
           >
             <div className="card-body gap-1.5 px-4 pt-4 pb-2">
               <div className="mb-1 flex items-center justify-between">
@@ -148,7 +148,7 @@ function TapDancePreviewCard({
                   <button type="button" className="btn btn-ghost btn-sm text-neutral-400" onClick={() => onCancel?.()}>
                     {t("cancel")}
                   </button>
-                  <button type="button" className="btn btn-ghost btn-sm text-neutral-700" onClick={() => onCloseEdit?.()}>
+                  <button type="button" className="btn btn-ghost btn-sm text-neutral-700 dark:text-neutral-200" onClick={() => onCloseEdit?.()}>
                     {t("done")}
                   </button>
                 </div>
@@ -164,7 +164,7 @@ function TapDancePreviewCard({
                   value={entry.tappingTerm}
                   onChange={(e) => onSave?.({ tappingTerm: Number(e.target.value) })}
                 />
-                <span className="text-xs text-neutral-500">{t("msUnit")}</span>
+                <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("msUnit")}</span>
               </div>
 
               {/* Same 2x2 arrangement as the front face's grid, so a field's position doesn't

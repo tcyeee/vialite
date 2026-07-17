@@ -67,7 +67,7 @@ function ComboPreviewCard({
       style={{ perspective: "1200px", viewTransitionName: `cbcard-${index}` }}
     >
       {editable && !flipped && (
-        <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:-translate-y-2.5 group-hover/card:scale-[1.6] group-hover/card:opacity-100">
+        <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:-translate-y-2.5 group-hover/card:scale-[1.6] group-hover/card:opacity-100 dark:bg-neutral-700">
           <button
             type="button"
             className="btn btn-ghost btn-xs px-2 text-white hover:bg-white/20 hover:text-white"
@@ -92,7 +92,7 @@ function ComboPreviewCard({
       >
         <div
           style={{ backfaceVisibility: "hidden", gridArea: "1 / 1" }}
-          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#57637314_35%,transparent_36%),radial-gradient(circle_at_top_right,#57637314_35%,transparent_36%)] bg-[#eaeff7] bg-size-[4.95em_4.95em] text-[#434b5b] shadow-lg shadow-slate-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-slate-900/15"
+          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#57637314_35%,transparent_36%),radial-gradient(circle_at_top_right,#57637314_35%,transparent_36%)] bg-[#eaeff7] bg-size-[4.95em_4.95em] text-[#434b5b] shadow-lg shadow-slate-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-slate-900/15 dark:bg-[radial-gradient(circle_at_bottom_left,#ffffff12_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff12_35%,transparent_36%)] dark:bg-[#1f242e] dark:text-[#d7dfeb] dark:shadow-black/40 dark:group-hover/card:shadow-black/55"
         >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden select-none">
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
@@ -123,7 +123,7 @@ function ComboPreviewCard({
         {editable && (
           <div
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", gridArea: "1 / 1" }}
-            className="card overflow-hidden border-2 border-dashed border-brand-outline/50 bg-white shadow-lg shadow-slate-900/10"
+            className="card overflow-hidden border-2 border-dashed border-[#576373]/50 bg-white shadow-lg shadow-slate-900/10 dark:border-[#d7dfeb]/30 dark:bg-[#232326] dark:shadow-black/40"
           >
             <div className="card-body gap-1.5 px-4 pt-4 pb-2">
               <div className="mb-1 flex items-center justify-between">
@@ -139,7 +139,7 @@ function ComboPreviewCard({
                   <button type="button" className="btn btn-ghost btn-sm text-neutral-400" onClick={() => onCancel?.()}>
                     {t("cancel")}
                   </button>
-                  <button type="button" className="btn btn-ghost btn-sm text-neutral-700" onClick={() => onCloseEdit?.()}>
+                  <button type="button" className="btn btn-ghost btn-sm text-neutral-700 dark:text-neutral-200" onClick={() => onCloseEdit?.()}>
                     {t("done")}
                   </button>
                 </div>
