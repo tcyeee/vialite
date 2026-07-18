@@ -101,6 +101,9 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
       ...(group.titleKey === "groupTapDance"
         ? { expandedWidth: "w-[410px]", expandedOffsetX: -20, expandedUncapped: true }
         : {}),
+      ...(group.titleKey === "groupMultiFunction"
+        ? { expandedWidth: "w-[340px]", expandedOffsetX: -20, expandedUncapped: true }
+        : {}),
       header: (
         <div className="flex items-center gap-2 font-bold tracking-tight">
           {CARD_ICONS[group.titleKey] && (

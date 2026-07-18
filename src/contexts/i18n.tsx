@@ -754,6 +754,14 @@ const MESSAGES = {
   groupMacros: { en: "Macros", zh: "宏" },
   groupTapDance: { en: "Tap Dance", zh: "Tap Dance" },
   groupMultiFunction: { en: "Multi-Function", zh: "多功能" },
+  multiFuncModified: {
+    en: "Layer one or more modifiers onto a base keycode",
+    zh: "为某个基础键码叠加一个或者多个修饰键",
+  },
+  multiFuncTapHold: {
+    en: "Tap sends the base keycode; hold activates a layer or modifier",
+    zh: "点按时候发送基础键码,长按激活层或者修饰键",
+  },
 
   // Combo-keys tab: the two expandable category cards
   comboCardReveal: { en: "Click to reveal", zh: "点击展开" },

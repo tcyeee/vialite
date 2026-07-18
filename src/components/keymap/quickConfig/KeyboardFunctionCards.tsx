@@ -128,8 +128,9 @@ export function KeyboardFunctionCards({ groups, onPick }: Props) {
       disabled: empty,
       expandedWidth: "w-[550px]",
       expandedHeight: "320px",
-      expandedOffsetY: 150,
-      expandedOffsetX: 0,
+      // Default the enlarged card 150px down its anchor; a group can nudge from there.
+      expandedOffsetY: group.expandedOffsetY ?? 150,
+      expandedOffsetX: group.expandedOffsetX ?? 0,
       header: (
         <div className="flex items-center gap-1.5 font-bold tracking-tight">
           {group.icon && (

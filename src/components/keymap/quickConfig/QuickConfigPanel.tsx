@@ -282,6 +282,8 @@ export function QuickConfigPanel({
     {
       titleKey: "categoryLighting",
       icon: "mdi:lightbulb-on-outline",
+      // Nudge the enlarged card up 33px from the 150px default.
+      expandedOffsetY: 0,
       entries: entriesOf("Lighting"),
     },
     ...(custom
@@ -289,9 +291,9 @@ export function QuickConfigPanel({
           {
             titleKey: "categoryKeyboardConfig" as MessageKey,
             icon: "mdi:tune-variant",
-            // Nudge the enlarged card down/right so it clears its neighbours.
-            expandedOffsetY: 33,
-            expandedOffsetX: 54,
+            // Nudge the enlarged card up 33px from the 150px default so it clears
+            // its neighbours.
+            expandedOffsetY: 150,
             entries: custom.entries,
           },
         ]
@@ -498,7 +500,25 @@ export function QuickConfigPanel({
                   {
                     titleKey: "groupMultiFunction" as MessageKey,
                     entries: [],
-                    custom: <div className="text-lg font-medium">hellowold</div>,
+                    custom: (
+                      <div className="flex gap-3">
+                        {[
+                          { color: "#e5484d", desc: t("multiFuncModified") },
+                          { color: "#3b82f6", desc: t("multiFuncTapHold") },
+                        ].map(({ color, desc }) => (
+                          <div
+                            key={color}
+                            className="flex flex-1 flex-col items-center gap-3 rounded-lg bg-white/10 p-3 text-center"
+                          >
+                            <span
+                              className="size-10 shrink-0 rounded"
+                              style={{ backgroundColor: color }}
+                            />
+                            <span className="text-xs leading-snug">{desc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ),
                   },
                 ]}
                 onPick={pick}
