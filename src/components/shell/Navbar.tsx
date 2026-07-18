@@ -12,7 +12,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="navbar sticky top-0 z-40 min-h-16 bg-black text-white px-6 md:px-10 lg:px-12">
+    <div className="navbar sticky top-0 z-30 min-h-16 bg-black text-white px-6 md:px-10 lg:px-12">
       <div className="navbar-start gap-2">
         {onMenuClick && (
           <button

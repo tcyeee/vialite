@@ -115,6 +115,18 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
     );
   }
 
+  // Macro caps (M0…M15) show the macro icon followed by the slot number rather
+  // than the bare "M0" text, matching the macro panel's tabs and 3D keycap.
+  const macro = /^M(\d+)$/.exec(qmkId);
+  if (macro) {
+    return (
+      <span className="key-face-badged">
+        <Icon className="key-icon key-icon-symbol" icon="mdi:script-text-outline" aria-label={kcLabel(qmkId)} />
+        <span className={className}>{macro[1]}</span>
+      </span>
+    );
+  }
+
   const side = KEY_SIDE[qmkId];
   const icon = capIconName(qmkId, keyDisplay);
 
