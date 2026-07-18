@@ -77,6 +77,21 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
       bg: theme.bg,
       disabled: empty,
       cardClassName: CARD_PATTERN,
+      // Per-card sizing/position of the enlarged copy. Macros and Tap Dance both
+      // open to a fixed 177px width nudged 20px left of their anchored edge; the
+      // Macro card additionally drops 50px so its enlarged copy clears the card
+      // above it.
+      ...(group.titleKey === "groupMacros"
+        ? {
+            expandedWidth: "w-[410px]",
+            expandedOffsetX: -20,
+            expandedOffsetY: 20,
+            expandedUncapped: true,
+          }
+        : {}),
+      ...(group.titleKey === "groupTapDance"
+        ? { expandedWidth: "w-[410px]", expandedOffsetX: -20, expandedUncapped: true }
+        : {}),
       header: (
         <div className="flex items-center gap-2 font-bold tracking-tight">
           {CARD_ICONS[group.titleKey] && (

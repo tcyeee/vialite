@@ -20,6 +20,7 @@ import {
   deviceCategories,
 } from "../keycodeMeta.ts";
 import { LayerCategoryCards } from "./LayerCategoryCards.tsx";
+import { LayerKeyPicker } from "./LayerKeyPicker.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
 import { QuantumCards } from "./QuantumCards.tsx";
 
@@ -398,7 +399,7 @@ export function QuickConfigPanel({
               BasicKeyboardGrid) followed by the config-settings block. */}
           <div>
             <BasicKeyboardGrid onPick={(qmkId) => pick({ qmkId, label: qmkId })} />
-            <div className="mt-4">
+            <div className="mt-4 pb-[200px]">
               <h4 className="mb-1 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
               <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
                 <span>{t("autoAdvance")}</span>
@@ -416,13 +417,29 @@ export function QuickConfigPanel({
           <div className="mt-4 lg:mt-0">
             <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryFnMediaMouse")}</h4>
             <FnMediaMouseCards
-              groups={FN_MEDIA_MOUSE_GROUPS.map((g) => ({
-                titleKey: g.titleKey!,
-                helpKey: g.helpKey,
-                entries: g.entries,
-                grid: g.grid,
-                mouse: g.titleKey === "groupMouse",
-              }))}
+              groups={[
+                ...FN_MEDIA_MOUSE_GROUPS.map((g) => ({
+                  titleKey: g.titleKey!,
+                  helpKey: g.helpKey,
+                  entries: g.entries,
+                  grid: g.grid,
+                  mouse: g.titleKey === "groupMouse",
+                })),
+                // 层按键: below Media, a two-step type → layer-number picker.
+                {
+                  titleKey: "groupLayerKeys" as MessageKey,
+                  entries: [],
+                  icon: "mdi:layers-outline",
+                  watermark: "LAYER",
+                  placeholder: (
+                    <LayerKeyPicker
+                      layerEntries={entriesOf("Layers")}
+                      layerCount={keyboard.layers}
+                      onPick={pick}
+                    />
+                  ),
+                },
+              ]}
               onPick={pick}
             />
           </div>

@@ -635,6 +635,17 @@ body {
   margin-right: -0.18em;
 }
 
+/* Mouse-button cap face (KC_BTN1…KC_BTN5): the mouse icon + button number. Like
+   .key-macro-face, the icon size comes from MOUSE_ICON.scale in keycapIcons.ts; here
+   it's only tucked tight against the number. */
+.key-mouse-face {
+  gap: 0;
+}
+.key-mouse-face .key-icon,
+.keyboard-layout .key-mouse-face .key-icon {
+  margin-right: -0.1em;
+}
+
 /* Boxed L/R side badge (mdi:alpha-l/r-box-outline): sized a notch below the cap
    font (em tracks the cap font-size, so it follows the 字体大小 scale). The glyph
    inherits the cap `color` (which the board sets to the chosen 字体颜色 on

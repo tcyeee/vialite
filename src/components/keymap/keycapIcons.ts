@@ -48,6 +48,14 @@ export const LAYER_ICON: CapIcon = { icon: "mdi:layers-outline", scale: 0.82 };
  */
 export const TAPDANCE_ICON: CapIcon = { icon: "mdi:animation", scale: 0.9 };
 
+/**
+ * Mouse-button cap glyph (KC_BTN1…KC_BTN5): the mouse icon shown before the button
+ * number, in place of the bare "Mouse Btn 1" text — the same `mdi:mouse-outline`
+ * glyph the 快捷配置 Mouse card and QMK mouse-key settings already use, so the
+ * pointer keys read consistently across the app. Badges the number like MACRO_ICON.
+ */
+export const MOUSE_ICON: CapIcon = { icon: "mdi:mouse-outline", scale: 0.82 };
+
 /** Boxed L/R side badge (Ⓛ / Ⓡ) prepended to left/right modifier caps. */
 export function sideBadgeIcon(side: "L" | "R"): CapIcon {
   return { icon: side === "L" ? "mdi:alpha-l-box-outline" : "mdi:alpha-r-box-outline" };
@@ -89,6 +97,16 @@ const CAP_ICONS: Record<string, CapIcon | ((mac: boolean) => CapIcon | null)> = 
   KC_DOWN: { icon: "mdi:arrow-down-thin", scale: SYMBOL },
   KC_LEFT: { icon: "mdi:arrow-left-thin", scale: SYMBOL },
   KC_RIGHT: { icon: "mdi:arrow-right-thin", scale: SYMBOL },
+  // Media volume/brightness caps. The volume glyphs already carry the +/-/mute
+  // mark, so they stand in for "Vol +"/"Vol -"/"Mute" outright. Brightness has no
+  // +/- mdi variant, so up/down are distinguished by sun size — the full-ray sun
+  // for brighter, the reduced-ray sun for dimmer — the same convention Apple
+  // engraves on the F1/F2 brightness keys.
+  KC_VOLU: { icon: "mdi:volume-plus", scale: SYMBOL },
+  KC_VOLD: { icon: "mdi:volume-minus", scale: SYMBOL },
+  KC_MUTE: { icon: "mdi:volume-mute", scale: SYMBOL },
+  KC_BRIU: { icon: "mdi:brightness-7", scale: SYMBOL },
+  KC_BRID: { icon: "mdi:brightness-5", scale: SYMBOL },
 };
 
 /**

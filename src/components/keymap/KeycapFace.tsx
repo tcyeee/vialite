@@ -2,7 +2,7 @@ import { Icon } from "@iconify/react";
 import type { CSSProperties } from "react";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { dualRole, holdInfo, keyBehavior, label as kcLabel, layerSwitchInfo, mediaAbbrev } from "../../protocol/keycodes.ts";
-import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, sideBadgeIcon, TAPDANCE_ICON } from "./keycapIcons.ts";
+import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, MOUSE_ICON, sideBadgeIcon, TAPDANCE_ICON } from "./keycapIcons.ts";
 
 /**
  * Renders one glyph from the keycap-icon table ({@link keycapIcons.ts}): its mdi
@@ -191,6 +191,19 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
       <span className="key-face-badged key-tapdance-face">
         <CapGlyph spec={TAPDANCE_ICON} label={kcLabel(qmkId)} />
         <span className={className}>{tapDance[1]}</span>
+      </span>
+    );
+  }
+
+  // Mouse-button caps (KC_BTN1…KC_BTN5) show the mouse icon followed by the button
+  // number rather than the wider "Mouse Btn 1" text, matching the macro/tap-dance
+  // icon+number treatment and the 快捷配置 Mouse card's icon-over-number tiles.
+  const mouseBtn = /^KC_BTN(\d+)$/.exec(qmkId);
+  if (mouseBtn) {
+    return (
+      <span className="key-face-badged key-mouse-face">
+        <CapGlyph spec={MOUSE_ICON} label={kcLabel(qmkId)} />
+        <span className={className}>{mouseBtn[1]}</span>
       </span>
     );
   }

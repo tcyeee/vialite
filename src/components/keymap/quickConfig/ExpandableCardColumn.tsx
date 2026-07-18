@@ -27,6 +27,30 @@ export interface ExpandableCardDef {
   hint?: ReactNode;
   /** Per-card override of the floating card's width (else the column default). */
   expandedWidth?: string;
+  /**
+   * Per-card fixed height for the floating card (else it sizes to content). Still
+   * capped to the column height. Set for a card whose body should fill a stable
+   * box regardless of content (e.g. the Mouse card's fixed 318px layout).
+   */
+  expandedHeight?: string;
+  /**
+   * Let the floating card grow to its full content height, opting out of the
+   * column-height cap. Set for content-sized cards (Macros/Tap Dance) whose
+   * wrapped tile grid should size to fit rather than scroll within the cap.
+   */
+  expandedUncapped?: boolean;
+  /**
+   * Per-card vertical nudge (px) of the floating card from its anchored position.
+   * Positive moves it down. Set for the Mouse card so its enlarged copy clears
+   * the neighbours above it.
+   */
+  expandedOffsetY?: number;
+  /**
+   * Per-card horizontal nudge (px) of the floating card from its anchored edge.
+   * Positive moves it right, negative left. Set on the Fn/Media/Mouse cards to
+   * pull their enlarged copies leftward.
+   */
+  expandedOffsetX?: number;
   /** Per-card override of the floating card-body padding class (default `p-6`). */
   expandedPadding?: string;
   /**
@@ -166,7 +190,9 @@ export function ExpandableCardColumn({
     const mid = (cards.length - 1) / 2;
     if (i < mid) return `top-0 ${side}`;
     if (i > mid) return `bottom-0 ${side}`;
-    return `top-1/2 ${side} -translate-y-1/2`;
+    // The middle card's -50% centering lives in the inline transform (see below)
+    // so it can compose with a per-card `expandedOffsetY` nudge.
+    return `top-1/2 ${side}`;
   };
 
   return (
@@ -240,8 +266,26 @@ export function ExpandableCardColumn({
                   // Size to content: no forced minimum, so a card with few keycodes
                   // stays short instead of padding out to a fixed box. Still cap the
                   // height to the column so a content-heavy card never spills past
-                  // its top/bottom — the body scrolls within that cap.
-                  maxHeight: containerH ?? undefined,
+                  // its top/bottom — the body scrolls within that cap. A card that
+                  // pins a fixed `expandedHeight` — or opts in via `expandedUncapped`
+                  // — bypasses the cap, so its height is honoured (or grows to
+                  // content) even when the collapsed column is shorter than it.
+                  height: card.expandedHeight,
+                  maxHeight:
+                    card.expandedHeight || card.expandedUncapped
+                      ? undefined
+                      : (containerH ?? undefined),
+                  marginLeft: card.expandedOffsetX,
+                  // Vertical position nudge as a transform (not margin) so it works
+                  // regardless of anchor edge — a `bottom-0`-anchored card ignores
+                  // marginTop. Composed with the middle card's -50% centering.
+                  transform:
+                    [
+                      i === (cards.length - 1) / 2 ? "translateY(-50%)" : "",
+                      card.expandedOffsetY ? `translateY(${card.expandedOffsetY}px)` : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined,
                 }}
                 onClick={() => close()}
               >

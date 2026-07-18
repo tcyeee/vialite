@@ -408,8 +408,8 @@ const MESSAGES = {
   navHome: { en: "Keyboard Layout", zh: "键盘布局" },
   navMatrixTest: { en: "Keyboard Test", zh: "键盘测试" },
   navMacro: { en: "Macros", zh: "宏配置" },
-  navTapDance: { en: "Tap Dance", zh: "点击舞步" },
-  navCombo: { en: "Combos", zh: "组合键" },
+  navTapDance: { en: "Tap Dance", zh: "Tap Dance" },
+  navCombo: { en: "Combos", zh: "Combos" },
   navKeyboardColor: { en: "Personalization", zh: "个性化" },
   navAdvanced: { en: "QMK Settings", zh: "QMK 设置" },
   navSiteSettings: { en: "Website Settings", zh: "网站设置" },
@@ -674,6 +674,45 @@ const MESSAGES = {
   lightRgbMX: { en: "Christmas effect.", zh: "圣诞灯效。" },
   lightRgbMG: { en: "Static gradient effect.", zh: "静态渐变灯效。" },
   lightRgbMT: { en: "RGB test effect (cycles all LEDs).", zh: "RGB 测试灯效（逐个点亮所有灯）。" },
+
+  // Per-key help for the Media keys (shown as a hover tooltip on the expanded
+  // Media card, and in the cascade selector's info panel).
+  mediaVolu: { en: "Volume up.", zh: "增大音量。" },
+  mediaVold: { en: "Volume down.", zh: "减小音量。" },
+  mediaMute: { en: "Mute / unmute audio.", zh: "静音 / 取消静音。" },
+  mediaMply: { en: "Play or pause media.", zh: "播放 / 暂停。" },
+  mediaMstp: { en: "Stop media playback.", zh: "停止播放。" },
+  mediaMprv: { en: "Previous track.", zh: "上一曲。" },
+  mediaMnxt: { en: "Next track.", zh: "下一曲。" },
+  mediaMrwd: { en: "Rewind.", zh: "快退。" },
+  mediaMffd: { en: "Fast forward.", zh: "快进。" },
+  mediaEjct: { en: "Eject media.", zh: "弹出媒体。" },
+  mediaBriu: { en: "Increase screen brightness.", zh: "增加屏幕亮度。" },
+  mediaBrid: { en: "Decrease screen brightness.", zh: "降低屏幕亮度。" },
+  mediaPwr: { en: "System power.", zh: "系统电源（关机）。" },
+  mediaSlep: { en: "Put the system to sleep.", zh: "系统睡眠。" },
+  mediaWake: { en: "Wake the system.", zh: "唤醒系统。" },
+  mediaCalc: { en: "Open the calculator.", zh: "打开计算器。" },
+  mediaMail: { en: "Open the mail client.", zh: "打开邮件客户端。" },
+  mediaMsel: { en: "Open the media player.", zh: "打开媒体播放器。" },
+  mediaMycm: { en: "Open the file explorer (My Computer).", zh: "打开“我的电脑”/文件管理器。" },
+  mediaWsch: { en: "Web search.", zh: "网页搜索。" },
+  mediaWhom: { en: "Open the browser home page.", zh: "打开浏览器主页。" },
+  mediaWbak: { en: "Browser: go back.", zh: "浏览器后退。" },
+  mediaWfwd: { en: "Browser: go forward.", zh: "浏览器前进。" },
+  mediaWstp: { en: "Stop loading the page.", zh: "停止加载网页。" },
+  mediaWref: { en: "Refresh the page.", zh: "刷新网页。" },
+  mediaWfav: { en: "Open browser favorites.", zh: "打开浏览器收藏夹。" },
+  mediaExec: { en: "Execute key.", zh: "执行键。" },
+  mediaHelp: { en: "Help key.", zh: "帮助键。" },
+  mediaSlct: { en: "Select key.", zh: "选择键。" },
+  mediaStop: { en: "Stop key.", zh: "停止键。" },
+  mediaAgin: { en: "Again / redo.", zh: "重做 / 再次。" },
+  mediaUndo: { en: "Undo.", zh: "撤销。" },
+  mediaCut: { en: "Cut.", zh: "剪切。" },
+  mediaCopy: { en: "Copy.", zh: "复制。" },
+  mediaPste: { en: "Paste.", zh: "粘贴。" },
+  mediaFind: { en: "Find.", zh: "查找。" },
   categoryTapDance: { en: "Tap Dance", zh: "Tap Dance" },
   categoryMacrosTapDance: { en: "Combo Keys", zh: "组合按键" },
 
@@ -696,6 +735,12 @@ const MESSAGES = {
   groupFnKeys: { en: "F13–F24", zh: "F13–F24" },
   groupMouse: { en: "Mouse", zh: "鼠标按键" },
   groupMedia: { en: "Media", zh: "媒体按键" },
+  groupLayerKeys: { en: "Layer", zh: "层按键" },
+
+  // The expanded 层按键 card: pick a layer-switch type, then a target layer number.
+  layerPickType: { en: "Layer Type", zh: "层类型" },
+  layerPickNum: { en: "Layer Number", zh: "层编号" },
+  layerPickNumHint: { en: "Pick a type first", zh: "请先选择层类型" },
 
   // Section labels within the expanded Mouse card (cross-shaped clusters + rest)
   groupMouseMove: { en: "Move", zh: "移动" },
@@ -705,7 +750,7 @@ const MESSAGES = {
 
   // Sub-groups within the merged "Macros / Tap Dance" tab
   groupMacros: { en: "Macros", zh: "宏" },
-  groupTapDance: { en: "Tap Dance", zh: "点击舞步" },
+  groupTapDance: { en: "Tap Dance", zh: "Tap Dance" },
 
   // Combo-keys tab: the two expandable category cards
   comboCardReveal: { en: "Click to reveal", zh: "点击展开" },
@@ -716,7 +761,7 @@ const MESSAGES = {
   layerCardCommon: { en: "Common", zh: "常用" },
   comboCardEdit: { en: "Edit", zh: "编辑" },
   // The third, non-expandable Combo card in the "Macros / Tap Dance" tab.
-  groupCombo: { en: "Combo", zh: "组合键 (Combo)" },
+  groupCombo: { en: "Combo", zh: "Combo" },
   comboCardInfoHint: { en: "Applied automatically", zh: "创建后自动生效" },
   comboAutoApply: {
     en: "Combos take effect automatically once created — no key binding needed.",
