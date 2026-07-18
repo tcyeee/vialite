@@ -337,7 +337,7 @@ export function FnMediaMouseCards({ groups, onPick }: Props) {
       // The Media card (neither grid nor mouse) opens to a fixed 411×319 box; its
       // labelled buttons scroll within that height.
       ...(!group.grid && !group.mouse && !group.placeholder
-        ? { expandedWidth: "w-[810px]", expandedHeight: "430px", expandedOffsetY: 150, expandedOffsetX: -300 }
+        ? { expandedWidth: "w-[810px]", expandedHeight: "430px", expandedOffsetY: 100, expandedOffsetX: -300 }
         : {}),
       // The placeholder Layer card opens to a 412px-wide box holding its picker;
       // it grows to content height (uncapped) so its layer-number grid is never
