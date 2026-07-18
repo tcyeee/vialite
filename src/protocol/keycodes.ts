@@ -1535,6 +1535,24 @@ export function holdInfo(qmkId: string): HoldInfo | null {
   };
 }
 
+/** Layer-switch functions that target a single layer by number. */
+const LAYER_SWITCH_FNS = new Set(["MO", "TG", "TT", "OSL", "TO", "DF", "PDF"]);
+
+/**
+ * Parses a pure layer-switch keycode — `MO(2)`, `TG(3)`, `TT`, `OSL`, `TO`, `DF`,
+ * `PDF` — into its function name and target layer, or returns null for anything
+ * else (basic keys, mods, and dual-role Layer-Tap, which carries a tap key and is
+ * described by {@link keyBehavior} instead). Lets the preview render these caps as
+ * the stacked-layers icon + layer number rather than the raw "MO(2)" text.
+ */
+export function layerSwitchInfo(qmkId: string): { fn: string; layer: number } | null {
+  const m = /^([A-Z]+)\((\d+)\)$/.exec(qmkId);
+  if (!m || !LAYER_SWITCH_FNS.has(m[1])) {
+    return null;
+  }
+  return { fn: m[1], layer: Number.parseInt(m[2], 10) };
+}
+
 /**
  * Returns qmkId with its tap (inner) key swapped for newTap while keeping the
  * hold role — used when the user edits only the tap half of a dual-role cap.

@@ -2,18 +2,11 @@
 // Modifier keys render as the `apple-keyboard-*` / `microsoft-windows` glyphs;
 // anything without a mapping (letters included) falls back to its plain text label.
 //
-// The icon data is an offline subset (keycapIcons.data.ts) so no network / no
-// 2.9 MB full mdi bundle is needed. To regenerate that subset after changing the
-// icon list, re-run the extraction script kept in the git history of this file's
-// introduction (reads @iconify-json/mdi, resolves aliases, writes the .ts).
+// The `mdi:…` names returned here are served from the app-wide offline subset
+// registered in ../../mdiIcons.ts, so they render without a network request. After
+// adding a name below, re-run `node scripts/genIcons.mjs` to fold it into that subset.
 
-import { addCollection } from "@iconify/react";
 import type { KeyDisplay } from "../../contexts/keyDisplay.tsx";
-import { MDI_KEYCAP_ICONS } from "./keycapIcons.data.ts";
-
-// Register the offline subset once at module load so <Icon icon="mdi:…" /> resolves
-// synchronously without hitting the Iconify API.
-addCollection(MDI_KEYCAP_ICONS);
 
 /**
  * mdi icon name for a keycap, or `null` when the key has no icon and should fall

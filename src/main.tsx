@@ -8,6 +8,7 @@ import { PreviewAppearanceProvider } from "./contexts/previewAppearance.tsx";
 import { ThemeProvider } from "./contexts/theme.tsx";
 import { ToastProvider } from "./contexts/toast.tsx";
 import { getSupportStatus } from "./browserSupport.ts";
+import "./mdiIcons.ts"; // registers the offline mdi subset before the first render
 import "lenis/dist/lenis.css";
 import "./index.css";
 

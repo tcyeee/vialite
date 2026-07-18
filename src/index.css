@@ -588,6 +588,32 @@ body {
   transform: scale(0.8);
 }
 
+/* Layer-switch cap face: the stacked-layers glyph with the target layer number
+   badged on its lower-right corner. The number is knocked out in the keycap face
+   color over a currentColor chip so it stays legible whatever the 字体颜色 is. */
+.key-layer-face {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.key-layer-num {
+  position: absolute;
+  right: -0.35em;
+  bottom: -0.3em;
+  min-width: 1.05em;
+  padding: 0 0.15em;
+  box-sizing: border-box;
+  border-radius: 0.55em;
+  background: currentColor;
+  color: light-dark(#f2f2f2, #3a3a3a);
+  font-size: 0.62em;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+}
+
 /* Left/right modifier face: the side badge sits inline before the glyph/text. */
 .key-face-badged {
   display: inline-flex;

@@ -1,3 +1,4 @@
+import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
 import { HelpIcon } from "../../common/HelpIcon.tsx";
@@ -23,19 +24,6 @@ const CARD_BG = ["#3E5C6E", "#4A5478", "#5C4E78", "#73575E", "#6E5A3E", "#3E6E5C
 
 /** Cards per column before wrapping into the next column (7 cards → 4 + 3). */
 const CARDS_PER_COLUMN = 4;
-
-/** Stacked-layers glyph shown on each layer-function card heading. */
-function LayersIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M0 0h24v24H0z" fill="none" />
-      <path
-        fill="currentColor"
-        d="m13.387 3.425l6.365 4.243a1 1 0 0 1 0 1.664l-6.365 4.244a2.5 2.5 0 0 1-2.774 0L4.248 9.332a1 1 0 0 1 0-1.664l6.365-4.243a2.5 2.5 0 0 1 2.774 0m6.639 8.767a2 2 0 0 1-.577.598l-6.05 4.084a2.5 2.5 0 0 1-2.798 0l-6.05-4.084a2 2 0 0 1-.779-2.29l6.841 4.56a2.5 2.5 0 0 0 2.613.098l.16-.098l6.841-4.56a2 2 0 0 1-.201 1.692m0 3.25a2 2 0 0 1-.577.598l-6.05 4.084a2.5 2.5 0 0 1-2.798 0l-6.05-4.084a2 2 0 0 1-.779-2.29l6.841 4.56a2.5 2.5 0 0 0 2.613.098l.16-.098l6.841-4.56a2 2 0 0 1-.201 1.692"
-      />
-    </svg>
-  );
-}
 
 /** Extract the trailing "(n)" layer index for a compact inner label, else null. */
 function shortNum(qmkId: string): string | null {
@@ -63,7 +51,7 @@ export function LayerCategoryCards({ groups, onPick }: Props) {
       disabled: empty,
       header: (
         <div className="flex items-center gap-1.5 text-xl font-bold tracking-tight">
-          <LayersIcon />
+          <Icon icon="mdi:layers" aria-hidden="true" />
           <span>{t(group.titleKey)}</span>
           {group.helpKey && (
             <span onClick={(e) => e.stopPropagation()}>

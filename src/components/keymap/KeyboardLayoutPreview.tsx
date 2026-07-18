@@ -1,5 +1,7 @@
+import { Icon } from "@iconify/react";
 import { useMemo, type CSSProperties } from "react";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
+import { layerSwitchInfo } from "../../protocol/keycodes.ts";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
@@ -164,6 +166,21 @@ export function appearanceMetrics(
 }
 
 /**
+ * Cap face for a pure layer-switch key (MO/TG/TT/OSL/TO/DF/PDF): the stacked-
+ * layers glyph — the same icon the 快捷配置 layer-switch cards use — with the
+ * target layer number badged on it, in place of the raw "MO(2)" text. Layer-Tap
+ * caps are left to {@link KeycapFace}'s dual-role split (they carry a tap key).
+ */
+function LayerKeycapFace({ layer }: { layer: number }) {
+  return (
+    <span className="key-layer-face">
+      <Icon icon="mdi:layers" className="key-icon" aria-hidden="true" />
+      <span className="key-layer-num">{layer}</span>
+    </span>
+  );
+}
+
+/**
  * Read-only rendering of the connected board's physical layout — same geometry
  * pipeline as {@link KeyboardLayout}, but non-interactive (`pointer-events:none`)
  * and captioned with the given layer's labels so the board is recognizable. Used
@@ -243,26 +260,30 @@ export function KeyboardLayoutPreview({
       >
         {placed.keys
           .filter(({ key }) => !key.decal)
-          .map(({ key, shiftX, shiftY }) => (
-            <div
-              key={`${key.row},${key.col}@${key.x},${key.y}`}
-              className={"key" + posClass}
-              style={shapeStyle(key, shiftX, shiftY, PITCH, inset, inset)}
-            >
-              {hasSecondRect(key) && (
-                <span
-                  className="key-part2"
-                  style={{
-                    left: key.x2 * PITCH,
-                    top: key.y2 * PITCH,
-                    width: key.width2 * PITCH - inset,
-                    height: key.height2 * PITCH - inset,
-                  }}
-                />
-              )}
-              <KeycapFace qmkId={keyboard.getKey(layer, key.row, key.col)} />
-            </div>
-          ))}
+          .map(({ key, shiftX, shiftY }) => {
+            const qmkId = keyboard.getKey(layer, key.row, key.col);
+            const layerSwitch = layerSwitchInfo(qmkId);
+            return (
+              <div
+                key={`${key.row},${key.col}@${key.x},${key.y}`}
+                className={"key" + posClass}
+                style={shapeStyle(key, shiftX, shiftY, PITCH, inset, inset)}
+              >
+                {hasSecondRect(key) && (
+                  <span
+                    className="key-part2"
+                    style={{
+                      left: key.x2 * PITCH,
+                      top: key.y2 * PITCH,
+                      width: key.width2 * PITCH - inset,
+                      height: key.height2 * PITCH - inset,
+                    }}
+                  />
+                )}
+                {layerSwitch ? <LayerKeycapFace layer={layerSwitch.layer} /> : <KeycapFace qmkId={qmkId} />}
+              </div>
+            );
+          })}
         {placed.encoders.map(({ encoder, shiftX, shiftY }) => (
           <div
             key={`e${encoder.index},${encoder.direction}@${encoder.x},${encoder.y}`}
