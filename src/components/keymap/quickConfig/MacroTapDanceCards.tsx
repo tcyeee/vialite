@@ -78,7 +78,7 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
       disabled: empty,
       cardClassName: CARD_PATTERN,
       header: (
-        <div className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+        <div className="flex items-center gap-2 font-bold tracking-tight">
           {CARD_ICONS[group.titleKey] && (
             <Icon icon={CARD_ICONS[group.titleKey]!} className="h-6 w-6 shrink-0 opacity-90" />
           )}

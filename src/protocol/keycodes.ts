@@ -1687,6 +1687,25 @@ export function tapDanceKeycodeDefs(): readonly KeycodeDef[] {
   return tapDanceDefsCache;
 }
 
+/** qmk_ids in the Media category, for the two-word abbreviation below. */
+const MEDIA_QMK_IDS = new Set(KEYCODES_MEDIA.map((e) => e.qmkId));
+
+/**
+ * Compact initials for a two-word media keycap (Web Home → "WH", Play Pause →
+ * "PP", My PC → "MP") so the label fits a cap without wrapping. Returns null for
+ * anything that isn't a media keycode, or whose label isn't exactly two purely
+ * alphabetic words — so single-word caps (Mute, Eject) and symbol-tailed ones
+ * (Vol +, Bright -) keep their full text.
+ */
+export function mediaAbbrev(qmkId: string): string | null {
+  if (!MEDIA_QMK_IDS.has(qmkId)) return null;
+  const def = displayByQmkId.get(qmkId);
+  if (!def) return null;
+  const words = def.label.split(/\s+/).filter(Boolean);
+  if (words.length !== 2 || !words.every((w) => /^[A-Za-z]+$/.test(w))) return null;
+  return words.map((w) => w[0].toUpperCase()).join("");
+}
+
 /** Human-readable label for a qmk_id (or raw hex fallback identifier). */
 export function label(qmkId: string): string {
   const device = deviceLabelByQmkId.get(qmkId);

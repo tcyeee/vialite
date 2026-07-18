@@ -25,6 +25,17 @@ export interface ExpandableCardDef {
   decor?: ReactNode;
   /** The collapsed subtitle line ("Click to reveal" / "—" / …). */
   hint?: ReactNode;
+  /** Per-card override of the floating card's width (else the column default). */
+  expandedWidth?: string;
+  /** Per-card override of the floating card-body padding class (default `p-6`). */
+  expandedPadding?: string;
+  /**
+   * Render the expanded body without the scrolling gutter wrapper. Set for a
+   * body that always fits (e.g. the F13–F24 grid) so its content sits flush
+   * against the symmetric card padding instead of being offset by the reserved
+   * scrollbar gutter.
+   */
+  noScroll?: boolean;
   /**
    * Expanded body. When absent the card can't expand; clicking runs
    * {@link onActivate} instead (used by the Combo info card, which pops a toast).
@@ -209,8 +220,8 @@ export function ExpandableCardColumn({
               {/* Hidden while open: the enlarged copy floats above but the
                   overlay's own z-index would otherwise poke through here. */}
               {!isOpen && card.overlay}
-              <div className="card-body relative gap-5 p-6">
-                {card.header}
+              <div className="card-body relative gap-3 p-5">
+                <div className="text-xl">{card.header}</div>
                 {card.hint != null && (
                   <div className="text-xs tracking-widest uppercase opacity-40">{card.hint}</div>
                 )}
@@ -220,7 +231,7 @@ export function ExpandableCardColumn({
             {isOpen && card.body && (
               <div
                 ref={openCardRef}
-                className={`card absolute ${anchorClass(i)} ${expandedWidth} cursor-pointer select-none overflow-hidden text-brand-background shadow-[0_10px_40px_-5px_rgba(0,0,0,0.5)] ring-1 ring-black/10 dark:ring-white/10 ${
+                className={`card absolute ${anchorClass(i)} ${card.expandedWidth ?? expandedWidth} cursor-pointer select-none overflow-hidden text-brand-background shadow-[0_10px_40px_-5px_rgba(0,0,0,0.5)] ring-1 ring-black/10 dark:ring-white/10 ${
                   card.cardClassName ?? ""
                 }`}
                 style={{
@@ -235,15 +246,25 @@ export function ExpandableCardColumn({
                 onClick={() => close()}
               >
                 {card.decor}
-                <div className="card-body relative min-h-0 flex-1 gap-5 overflow-hidden p-6">
-                  {card.header}
-                  <div
-                    data-lenis-prevent
-                    className="-mr-2 min-h-0 flex-1 overflow-y-auto pr-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {card.body(close)}
-                  </div>
+                <div
+                  className={`card-body relative min-h-0 flex-1 gap-5 overflow-hidden ${
+                    card.expandedPadding ?? "p-6"
+                  }`}
+                >
+                  <div className="text-2xl">{card.header}</div>
+                  {card.noScroll ? (
+                    <div className="min-h-0 flex-1" onClick={(e) => e.stopPropagation()}>
+                      {card.body(close)}
+                    </div>
+                  ) : (
+                    <div
+                      data-lenis-prevent
+                      className="-mr-2 min-h-0 flex-1 overflow-y-auto pr-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {card.body(close)}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

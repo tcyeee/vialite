@@ -159,7 +159,7 @@ function quantumGroups(): KeycodeGroup[] {
 /**
  * The three Fn/Media/Mouse groups, shown as vertically-stacked expandable cards
  * inside the Basic tab (they used to live in a dedicated "Function" tab). Ordered
- * F13–F24, Mouse, then Media; the F-keys render in a 3×4 grid once expanded.
+ * F13–F24, Mouse, then Media; the F-keys render in a 2×6 grid once expanded.
  */
 const FN_MEDIA_MOUSE_GROUPS: KeycodeGroup[] = [
   { titleKey: "groupFnKeys", entries: entriesOf("Fn keys"), grid: true },
@@ -307,10 +307,12 @@ export function QuickConfigPanel({
   // Lighting and Custom tabs share a uniform tile: fixed height, a soft
   // translucent border and fill instead of btn-outline's solid currentColor
   // border, so the flat list reads as one consistent grid.
-  const tileButton = (entry: KeycodeDef) => (
+  const tileButton = (entry: KeycodeDef, nowrap = false) => (
     <button
       key={entry.qmkId}
-      className={`btn btn-sm h-14 min-w-[4.5rem] whitespace-pre-line border border-base-content/15 bg-base-content/[0.04] py-1 font-normal normal-case leading-tight hover:border-base-content/30 hover:bg-base-content/10${
+      className={`btn btn-sm h-14 min-w-[4.5rem] ${
+        nowrap ? "whitespace-nowrap" : "whitespace-pre-line"
+      } border border-base-content/15 bg-base-content/[0.04] py-1 font-normal normal-case leading-tight hover:border-base-content/30 hover:bg-base-content/10${
         entry.masked ? " italic" : ""
       }`}
       title={entry.title ?? entry.qmkId}
@@ -333,12 +335,12 @@ export function QuickConfigPanel({
   // A tile with a corner HelpIcon describing its concrete function. Falls back
   // to a plain tile when no description is available. The help badge stops click
   // propagation so hovering for help never assigns the keycode.
-  const tileWithHelp = (entry: KeycodeDef) => {
+  const tileWithHelp = (entry: KeycodeDef, nowrap = false) => {
     const help = helpText(entry);
-    if (!help) return tileButton(entry);
+    if (!help) return tileButton(entry, nowrap);
     return (
       <div key={entry.qmkId} className="relative">
-        {tileButton(entry)}
+        {tileButton(entry, nowrap)}
         <span
           className="absolute right-0.5 top-0.5"
           onClick={(e) => e.stopPropagation()}
@@ -352,7 +354,8 @@ export function QuickConfigPanel({
   // The merged "Keyboard Function" tab renders its grouped keys with the uniform
   // tile look (soft translucent border/fill) plus a per-key help badge.
   const isTileGroups = activeCat.name === KEYBOARD_FN_NAME;
-  const groupButton = activeCat.name === KEYBOARD_FN_NAME ? tileWithHelp : keyButton;
+  const groupButton =
+    activeCat.name === KEYBOARD_FN_NAME ? (entry: KeycodeDef) => tileWithHelp(entry) : keyButton;
   const groupGap = isTileGroups ? "gap-2" : "gap-1";
 
   return (
@@ -418,6 +421,7 @@ export function QuickConfigPanel({
                 helpKey: g.helpKey,
                 entries: g.entries,
                 grid: g.grid,
+                mouse: g.titleKey === "groupMouse",
               }))}
               onPick={pick}
             />
@@ -515,7 +519,9 @@ export function QuickConfigPanel({
                       <h5 className="mb-1 text-xs font-semibold opacity-60">{t(group.titleKey)}</h5>
                     )}
                     <div className="grid grid-flow-col grid-rows-6 gap-x-3 gap-y-2">
-                      {group.entries.map(tileWithHelp)}
+                      {group.entries.map((entry) =>
+                        tileWithHelp(entry, group.titleKey === "categoryLighting"),
+                      )}
                     </div>
                   </div>
                 ))}

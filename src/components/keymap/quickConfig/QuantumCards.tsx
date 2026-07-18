@@ -271,7 +271,7 @@ export function QuantumCards({ groups, onPick, keyboard }: Props) {
       bg: CARD_BG[i % CARD_BG.length],
       disabled: empty,
       header: (
-        <div className="flex items-center gap-1.5 text-2xl font-bold tracking-tight">
+        <div className="flex items-center gap-1.5 font-bold tracking-tight">
           <span>{t(group.titleKey)}</span>
           {group.helpKey && (
             <span onClick={(e) => e.stopPropagation()}>

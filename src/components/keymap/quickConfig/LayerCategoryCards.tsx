@@ -50,7 +50,7 @@ export function LayerCategoryCards({ groups, onPick }: Props) {
       bg: CARD_BG[i % CARD_BG.length],
       disabled: empty,
       header: (
-        <div className="flex items-center gap-1.5 text-2xl font-bold tracking-tight">
+        <div className="flex items-center gap-1.5 font-bold tracking-tight">
           <Icon icon="mdi:layers" aria-hidden="true" />
           <span>{t(group.titleKey)}</span>
           {group.helpKey && (

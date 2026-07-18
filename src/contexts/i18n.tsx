@@ -697,6 +697,12 @@ const MESSAGES = {
   groupMouse: { en: "Mouse", zh: "鼠标按键" },
   groupMedia: { en: "Media", zh: "媒体按键" },
 
+  // Section labels within the expanded Mouse card (cross-shaped clusters + rest)
+  groupMouseMove: { en: "Move", zh: "移动" },
+  groupMouseWheel: { en: "Wheel", zh: "滚轮" },
+  groupMouseButtons: { en: "Buttons", zh: "按键" },
+  groupMouseSpeed: { en: "Speed", zh: "速度" },
+
   // Sub-groups within the merged "Macros / Tap Dance" tab
   groupMacros: { en: "Macros", zh: "宏" },
   groupTapDance: { en: "Tap Dance", zh: "点击舞步" },

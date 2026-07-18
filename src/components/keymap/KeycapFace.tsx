@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import type { CSSProperties } from "react";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
-import { dualRole, holdInfo, keyBehavior, label as kcLabel, layerSwitchInfo } from "../../protocol/keycodes.ts";
+import { dualRole, holdInfo, keyBehavior, label as kcLabel, layerSwitchInfo, mediaAbbrev } from "../../protocol/keycodes.ts";
 import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, sideBadgeIcon, TAPDANCE_ICON } from "./keycapIcons.ts";
 
 /**
@@ -193,6 +193,14 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
         <span className={className}>{tapDance[1]}</span>
       </span>
     );
+  }
+
+  // Two-word media caps (Web Home, Play Pause…) render as compact initials
+  // ("WH", "PP") so they fit the cap without wrapping; single-word or symbol
+  // labels (Mute, Vol +) keep their full text.
+  const media = mediaAbbrev(qmkId);
+  if (media) {
+    return <span className={className}>{media}</span>;
   }
 
   const side = KEY_SIDE[qmkId];
