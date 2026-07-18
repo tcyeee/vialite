@@ -273,9 +273,7 @@ export function QuickConfigPanel({
           {
             titleKey: "categoryKeyboardConfig" as MessageKey,
             icon: "mdi:tune-variant",
-            // Nudge the enlarged card up 33px from the 150px default so it clears
-            // its neighbours.
-            expandedOffsetY: 150,
+            expandedOffsetY: 50,
             entries: custom.entries,
           },
         ]
@@ -287,8 +285,9 @@ export function QuickConfigPanel({
           {
             titleKey: "cardMore" as MessageKey,
             icon: "mdi:checkbox-blank-circle-outline",
-            // 150px default, nudged up 44px so the enlarged card clears its neighbours.
-            expandedOffsetY: 20,
+            // Widened 59px past the 550px default, and nudged down.
+            expandedWidth: "w-[800px]",
+            expandedOffsetY: 100,
             // Grow to fit its keycodes instead of a fixed 320px box.
             expandedUncapped: true,
             entries: OTHER_CARD_ENTRIES,

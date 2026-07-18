@@ -16,6 +16,8 @@ export interface KeyboardFnCardGroup {
   titleKey: MessageKey;
   /** mdi icon shown in the card heading, matching the Fn/Media/Mouse cards' glyphs. */
   icon?: string;
+  /** Per-card override of the enlarged card width (Tailwind class); defaults to w-[550px]. */
+  expandedWidth?: string;
   /** Per-card vertical nudge (px) of the enlarged card; positive moves it down. */
   expandedOffsetY?: number;
   /** Per-card horizontal nudge (px) of the enlarged card; positive moves it right. */
@@ -132,7 +134,7 @@ export function KeyboardFunctionCards({ groups, onPick }: Props) {
       key: group.titleKey,
       bg: CARD_BG[i % CARD_BG.length],
       disabled: empty,
-      expandedWidth: "w-[550px]",
+      expandedWidth: group.expandedWidth ?? "w-[550px]",
       // Auto-height cards leave expandedHeight unset so the card sizes to content.
       expandedHeight: group.expandedUncapped ? undefined : "320px",
       expandedUncapped: group.expandedUncapped,

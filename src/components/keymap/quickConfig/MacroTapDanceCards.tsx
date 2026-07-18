@@ -96,8 +96,8 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
       ...(group.titleKey === "groupMacros"
         ? {
             expandedWidth: "w-[410px]",
-            expandedOffsetX: -20,
-            expandedOffsetY: 20,
+            expandedOffsetX: -100,
+            expandedOffsetY: 0,
             expandedUncapped: true,
           }
         : {}),
