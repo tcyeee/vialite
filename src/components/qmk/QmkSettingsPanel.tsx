@@ -34,6 +34,7 @@ interface Props {
 export function SettingsRow({
   icon,
   label,
+  badge,
   description,
   help,
   control,
@@ -41,6 +42,8 @@ export function SettingsRow({
 }: {
   icon: ReactNode;
   label: string;
+  /** Optional inline tag rendered right of the label (e.g. a "Beta" badge). */
+  badge?: ReactNode;
   description?: string;
   /** Optional help text; renders a "?" HelpIcon with this tooltip next to the label. */
   help?: string;
@@ -56,6 +59,7 @@ export function SettingsRow({
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium text-brand-on-surface">{label}</span>
+          {badge}
           {help && <HelpIcon text={help} />}
         </div>
         {description && <div className="truncate text-xs opacity-60">{description}</div>}

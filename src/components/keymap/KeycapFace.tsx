@@ -2,7 +2,7 @@ import { Icon } from "@iconify/react";
 import type { CSSProperties } from "react";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { dualRole, holdInfo, keyBehavior, label as kcLabel, layerSwitchInfo, mediaAbbrev } from "../../protocol/keycodes.ts";
-import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, MOUSE_ICON, sideBadgeIcon, TAPDANCE_ICON } from "./keycapIcons.ts";
+import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, MEDIA_RESET_ICON_IDS, MOUSE_ICON, sideBadgeIcon, TAPDANCE_ICON } from "./keycapIcons.ts";
 
 /**
  * Renders one glyph from the keycap-icon table ({@link keycapIcons.ts}): its mdi
@@ -143,7 +143,7 @@ function HoldFace({ qmkId, fallback }: { qmkId: string; fallback: string }) {
  * component, so its own icon/text/side-badge logic applies unchanged.
  */
 export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; className?: string }) {
-  const { keyDisplay } = useKeyDisplay();
+  const { keyDisplay, mediaReset } = useKeyDisplay();
 
   const dual = dualRole(qmkId);
   if (dual) {
@@ -210,14 +210,18 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
 
   // Two-word media caps (Web Home, Play Pause…) render as compact initials
   // ("WH", "PP") so they fit the cap without wrapping; single-word or symbol
-  // labels (Mute, Vol +) keep their full text.
-  const media = mediaAbbrev(qmkId);
+  // labels (Mute, Vol +) keep their full text. Gated behind the 媒体部分按键重置
+  // (mediaReset) Beta toggle — off shows the full text label instead.
+  const media = mediaReset ? mediaAbbrev(qmkId) : null;
   if (media) {
     return <span className={className}>{media}</span>;
   }
 
   const side = KEY_SIDE[qmkId];
-  const icon = capIcon(qmkId, keyDisplay);
+  // The page-nav/volume/brightness glyphs are part of the same media-reset
+  // beautification, so suppress them (fall through to text) when it's off.
+  const icon =
+    mediaReset || !MEDIA_RESET_ICON_IDS.has(qmkId) ? capIcon(qmkId, keyDisplay) : null;
 
   let face;
   if (icon) {

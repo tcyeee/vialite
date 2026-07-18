@@ -110,6 +110,25 @@ const CAP_ICONS: Record<string, CapIcon | ((mac: boolean) => CapIcon | null)> = 
 };
 
 /**
+ * The caps whose glyph is part of the "媒体部分按键重置" (media reset) beautification
+ * rather than a core symbol: the page-nav keys (Home/End/PgUp/PgDown) and the media
+ * volume/brightness keys. When that Beta toggle is off these revert to their text
+ * label, so {@link KeycapFace} skips their {@link capIcon} glyph. Arrows, Enter,
+ * modifiers, etc. are core symbols and stay iconized regardless.
+ */
+export const MEDIA_RESET_ICON_IDS: ReadonlySet<string> = new Set([
+  "KC_HOME",
+  "KC_END",
+  "KC_PGUP",
+  "KC_PGDOWN",
+  "KC_VOLU",
+  "KC_VOLD",
+  "KC_MUTE",
+  "KC_BRIU",
+  "KC_BRID",
+]);
+
+/**
  * {@link CapIcon} for a keycap, or `null` when the key has no icon and should fall
  * back to its text label. `keyDisplay` selects the OS modifier style (see CAP_ICONS).
  */

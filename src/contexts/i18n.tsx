@@ -401,6 +401,11 @@ const MESSAGES = {
   fontPositionTopLeft: { en: "Top left", zh: "左上角" },
   fontPositionCenter: { en: "Center", zh: "居中" },
   fontPositionCenterBottom: { en: "Center bottom", zh: "居中靠下" },
+  mediaResetTitle: { en: "Media key beautify", zh: "媒体部分按键重置" },
+  mediaResetDesc: {
+    en: "Show media keys as initials and Home/End/PgUp/PgDown as icons",
+    zh: "将媒体按键显示为缩写,翻页、Home、End 显示为图标",
+  },
   exportLayoutDesc: { en: "Save the current keymap to a .vil file", zh: "将当前配置保存为 .vil 文件" },
   importLayoutDesc: { en: "Load a keymap from a .vil file", zh: "从 .vil 文件加载配置" },
 

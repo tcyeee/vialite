@@ -64,7 +64,7 @@ export function KeyboardColorPanel({
   onChange: () => void;
 }) {
   const { t } = useI18n();
-  const { keyDisplay, setKeyDisplay } = useKeyDisplay();
+  const { keyDisplay, setKeyDisplay, mediaReset, setMediaReset } = useKeyDisplay();
   const hasLayoutOptions =
     !!keyboard.layoutLabels &&
     keyboard.layoutLabels.length > 0 &&
@@ -465,6 +465,21 @@ export function KeyboardColorPanel({
                   </button>
                 ))}
               </div>
+            }
+          />
+          <SettingsRow
+            icon={<Icon icon="mdi:music-note-outline" className="h-5 w-5" />}
+            label={t("mediaResetTitle")}
+            badge={<span className="badge badge-secondary badge-sm">Beta</span>}
+            description={t("mediaResetDesc")}
+            control={
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={mediaReset}
+                onChange={(e) => setMediaReset(e.target.checked)}
+                aria-label={t("mediaResetTitle")}
+              />
             }
           />
         </ul>
