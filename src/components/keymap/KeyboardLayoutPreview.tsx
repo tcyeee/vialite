@@ -1,9 +1,9 @@
-import { Icon } from "@iconify/react";
 import { useMemo, type CSSProperties } from "react";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import { layerSwitchInfo } from "../../protocol/keycodes.ts";
 import type { Keyboard } from "../../protocol/keyboard.ts";
-import { KeycapFace } from "./KeycapFace.tsx";
+import { CapGlyph, KeycapFace } from "./KeycapFace.tsx";
+import { LAYER_ICON } from "./keycapIcons.ts";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
 
 /** Cap size in px per KLE unit, keyed by the display-size setting. */
@@ -174,7 +174,7 @@ export function appearanceMetrics(
 function LayerKeycapFace({ layer }: { layer: number }) {
   return (
     <span className="key-layer-face">
-      <Icon icon="mdi:layers" className="key-icon" aria-hidden="true" />
+      <CapGlyph spec={LAYER_ICON} />
       <span className="key-layer-num">{layer}</span>
     </span>
   );

@@ -561,11 +561,14 @@ body {
 
 /* Material Design Icon on a keycap (letters, modifiers, nav/whitespace keys),
    sized relative to the surrounding text so it matches wherever KeycapFace is
-   used off the board (tap-dance / combo / key slots). */
+   used off the board (tap-dance / combo / key slots). Each glyph's own size comes
+   from the keycap-icon table (keycapIcons.ts) as the `--cap-icon-scale` var — the
+   single knob for per-icon size (e.g. the ~20%-smaller symbol/macro glyphs). */
 .key-icon {
   width: 1.25em;
   height: 1.25em;
   color: inherit;
+  transform: scale(var(--cap-icon-scale, 1));
 }
 
 /* On the boards the icon is sized in rem (independent of cap font-size) and
@@ -580,12 +583,6 @@ body {
 .qc-compact-icons .key-icon {
   width: calc(1.5rem * var(--key-font-scale, 1) * 0.85);
   height: calc(1.5rem * var(--key-font-scale, 1) * 0.85);
-}
-
-/* Symbol icons (⌘ ⇧ ⌥ ⌃ ↵ ⌫ ⎵ arrows…) read larger than the text labels and the
-   letter icons; scale them down 20% to keep all three keycap face types matched. */
-.key-icon-symbol {
-  transform: scale(0.8);
 }
 
 /* Layer-switch cap face: the stacked-layers glyph with the target layer number
@@ -621,6 +618,18 @@ body {
   gap: 1px;
 }
 
+/* Macro cap face (M0…M15): the macro icon + slot number. The icon's size comes
+   from MACRO_ICON.scale in keycapIcons.ts (via --cap-icon-scale); here it's only
+   pulled tight against the number (negative margin overrides the .key-face-badged
+   1px gap and the icon's own layout box). */
+.key-macro-face {
+  gap: 0;
+}
+.key-macro-face .key-icon,
+.keyboard-layout .key-macro-face .key-icon {
+  margin-right: -0.28em;
+}
+
 /* Boxed L/R side badge (mdi:alpha-l/r-box-outline): sized a notch below the cap
    font (em tracks the cap font-size, so it follows the 字体大小 scale). The glyph
    inherits the cap `color` (which the board sets to the chosen 字体颜色 on
@@ -631,6 +640,8 @@ body {
   height: 1.3em;
   flex-shrink: 0;
   opacity: 1;
+  /* Size tunable per-badge from keycapIcons.ts (sideBadgeIcon) via --cap-icon-scale. */
+  transform: scale(var(--cap-icon-scale, 1));
 }
 
 /* Dual-role tap/hold cap (Mod-Tap, Layer-Tap): the tap action on top, the hold

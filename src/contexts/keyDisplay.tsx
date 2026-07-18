@@ -1,5 +1,5 @@
 // User preference for how modifier/OS-specific keycaps are labelled (e.g. GUI
-// shown as ⌘ vs the Windows key). Consumed by KeycapFace via capIconName to pick
+// shown as ⌘ vs the Windows key). Consumed by KeycapFace via capIcon to pick
 // per-OS modifier glyphs; the choice is persisted so it survives reloads. Mirrors
 // theme.tsx's persisted-choice pattern.
 

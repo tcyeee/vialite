@@ -1,7 +1,37 @@
 import { Icon } from "@iconify/react";
+import type { CSSProperties } from "react";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { dualRole, holdInfo, label as kcLabel } from "../../protocol/keycodes.ts";
-import { capIconName } from "./keycapIcons.ts";
+import { type CapIcon, capIcon, MACRO_ICON, sideBadgeIcon } from "./keycapIcons.ts";
+
+/**
+ * Renders one glyph from the keycap-icon table ({@link keycapIcons.ts}): its mdi
+ * name at its own size. Every icon substitution on a cap goes through here, so the
+ * per-icon `scale` — carried to CSS as the `--cap-icon-scale` var — is the single
+ * knob for a glyph's size. `className` picks the CSS box (`key-icon` for normal cap
+ * glyphs, `key-side-badge` for the boxed L/R badge).
+ *
+ * Exported so the preview's layer-switch face can render its glyph the same way.
+ */
+export function CapGlyph({
+  spec,
+  label,
+  className = "key-icon",
+}: {
+  spec: CapIcon;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <Icon
+      className={className}
+      icon={spec.icon}
+      style={spec.scale != null ? ({ "--cap-icon-scale": spec.scale } as CSSProperties) : undefined}
+      aria-label={label}
+      aria-hidden={label == null || undefined}
+    />
+  );
+}
 
 /**
  * Left/right modifier keys that get a small side badge (Ⓛ / Ⓡ) prepended to the
@@ -21,17 +51,13 @@ const KEY_SIDE: Record<string, "L" | "R"> = {
 };
 
 /**
- * Side badge: the boxed L/R Material Design Icon, sized a notch below the cap font
- * (see `.key-side-badge` in index.css). The glyph uses `currentColor`, so it tracks
- * the cap font color like the labels and other icons do.
+ * Side badge: the boxed L/R glyph (its icon + size come from {@link sideBadgeIcon}),
+ * sized a notch below the cap font (see `.key-side-badge` in index.css). The glyph
+ * uses `currentColor`, so it tracks the cap font color like the labels and icons do.
  */
 function SideBadge({ side }: { side: "L" | "R" }) {
   return (
-    <Icon
-      className="key-side-badge"
-      icon={side === "L" ? "mdi:alpha-l-box-outline" : "mdi:alpha-r-box-outline"}
-      aria-label={side === "L" ? "Left" : "Right"}
-    />
+    <CapGlyph spec={sideBadgeIcon(side)} className="key-side-badge" label={side === "L" ? "Left" : "Right"} />
   );
 }
 
@@ -48,7 +74,7 @@ const HOLD_MOD_BASIC: Record<"ctrl" | "shift" | "alt" | "gui", { L: string; R: s
  * the same way a plain modifier cap does — one {@link SideBadge} for the shared
  * left/right side, then each modifier's OS-style glyph (so a macOS `RGui` hold
  * shows Ⓡ + ⌘ instead of the text "RGui"), following the 系统修饰键 setting via
- * {@link capIconName}. Layer-Tap holds (and any non-mod hold) keep the plain short
+ * {@link capIcon}. Layer-Tap holds (and any non-mod hold) keep the plain short
  * label supplied in `fallback` (e.g. "L2").
  */
 function HoldFace({ qmkId, fallback }: { qmkId: string; fallback: string }) {
@@ -64,9 +90,9 @@ function HoldFace({ qmkId, fallback }: { qmkId: string; fallback: string }) {
       <SideBadge side={info.side} />
       {active.map((m) => {
         const kc = HOLD_MOD_BASIC[m][info.side];
-        const icon = capIconName(kc, keyDisplay);
-        return icon ? (
-          <Icon key={m} className="key-icon key-icon-symbol" icon={icon} aria-label={kcLabel(kc)} />
+        const spec = capIcon(kc, keyDisplay);
+        return spec ? (
+          <CapGlyph key={m} spec={spec} label={kcLabel(kc)} />
         ) : (
           // No OS glyph (e.g. Ctrl/Alt in windows mode) — fall back to the text
           // label with its redundant leading L/R stripped (the badge shows side).
@@ -80,18 +106,18 @@ function HoldFace({ qmkId, fallback }: { qmkId: string; fallback: string }) {
 }
 
 /**
- * The face of one keycap: a Material Design Icon when {@link capIconName} maps
- * the keycode (letters, modifiers, nav/whitespace keys), otherwise the plain
- * text label. Modifier glyphs follow the 系统修饰键 (keyDisplay) OS style, which
- * is read from context here so call sites don't have to thread it through.
+ * The face of one keycap: a Material Design Icon when {@link capIcon} maps the
+ * keycode (letters, modifiers, nav/whitespace keys), otherwise the plain text
+ * label. Which glyph and how big it renders both come from the keycap-icon table
+ * ({@link keycapIcons.ts}); modifier glyphs follow the 系统修饰键 (keyDisplay) OS
+ * style, read from context here so call sites don't have to thread it through.
  *
  * Shared by every keycap surface — the interactive {@link KeyboardLayout}, the
  * 键盘配色 {@link KeyboardLayoutPreview}, and the tap-dance / combo / quick-config
- * slots — so a keycode added to {@link capIconName} lights up in all of them at
- * once. `className` styles the text span (default `key-label`); the icon path
- * uses `key-icon key-icon-symbol` for the modifier/nav symbols (scaled down) so
- * they match the text labels in size. Left/right keys in {@link KEY_SIDE}
- * additionally get a {@link SideBadge} prepended.
+ * slots — so a keycode added to the table lights up in all of them at once.
+ * `className` styles the text span (default `key-label`); glyphs render via
+ * {@link CapGlyph}. Left/right keys in {@link KEY_SIDE} additionally get a
+ * {@link SideBadge} prepended.
  *
  * Dual-role tap/hold keys (Mod-Tap, Layer-Tap — see {@link dualRole}) split the
  * face in two: the tap action renders normally on the upper part, and the hold
@@ -120,22 +146,19 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
   const macro = /^M(\d+)$/.exec(qmkId);
   if (macro) {
     return (
-      <span className="key-face-badged">
-        <Icon className="key-icon key-icon-symbol" icon="mdi:script-text-outline" aria-label={kcLabel(qmkId)} />
+      <span className="key-face-badged key-macro-face">
+        <CapGlyph spec={MACRO_ICON} label={kcLabel(qmkId)} />
         <span className={className}>{macro[1]}</span>
       </span>
     );
   }
 
   const side = KEY_SIDE[qmkId];
-  const icon = capIconName(qmkId, keyDisplay);
+  const icon = capIcon(qmkId, keyDisplay);
 
   let face;
   if (icon) {
-    // Modifier/nav symbols (⌘ ⇧ ⌥ ⌃ ↵ ⌫ ⎵ arrows…) read larger than the plain text
-    // labels, so scale them down 20% via key-icon-symbol to keep the two keycap
-    // face types visually consistent in size.
-    face = <Icon className="key-icon key-icon-symbol" icon={icon} aria-label={kcLabel(qmkId)} />;
+    face = <CapGlyph spec={icon} label={kcLabel(qmkId)} />;
   } else {
     // With a side badge the leading L/R in the label (e.g. "LCtrl") is redundant.
     const text = side ? kcLabel(qmkId).slice(1) : kcLabel(qmkId);
