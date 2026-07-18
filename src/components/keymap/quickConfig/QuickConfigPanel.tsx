@@ -15,12 +15,10 @@ import {
   KEYCODE_HELP,
   LAYER_GROUPS,
   QUANTUM_GROUPS,
-  QUANTUM_GROUP_MISC,
   deviceCategories,
 } from "../keycodeMeta.ts";
 import { LayerKeyPicker } from "./LayerKeyPicker.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
-import { QuantumCards } from "./QuantumCards.tsx";
 import {
   KeyboardFunctionCards,
   type KeyboardFnCardGroup,
@@ -51,11 +49,6 @@ interface KeycodeGroup {
   entries: KeycodeDef[];
   /** Render the entries in a fixed 4-column grid rather than a flowing wrap. */
   grid?: boolean;
-  /**
-   * When present, the card body splits {@link entries} into labelled sections
-   * (used by the Quantum "Other" card to fold One-Shot Mods in as a section).
-   */
-  sections?: { titleKey: MessageKey; helpKey?: MessageKey; entries: KeycodeDef[] }[];
 }
 
 interface VisibleCategory {
@@ -103,43 +96,6 @@ function comboMeta(
 }
 
 /**
- * Split the flat "Quantum" list into one-shot mods, held modifiers, mod-tap,
- * layer-tap, and everything else — partitioned by qmk_id shape.
- */
-function quantumGroups(): KeycodeGroup[] {
-  const src = entriesOf("Quantum");
-  const metaFor = (key: string) => QUANTUM_GROUPS.find((g) => g.key === key)!;
-  // Top-level cards: held mods, mod-tap, layer-tap (in that order).
-  const groups: KeycodeGroup[] = ["mods", "modtap", "layertap"]
-    .map((key) => {
-      const g = metaFor(key);
-      return { titleKey: g.titleKey, helpKey: g.helpKey, entries: src.filter((e) => g.match(e.qmkId)) };
-    })
-    .filter((g) => g.entries.length > 0);
-  // One-Shot Mods and everything that fits no group are folded into a single
-  // "Other" card, shown as two labelled sections inside that card.
-  const osm = metaFor("osm");
-  const osmEntries = src.filter((e) => osm.match(e.qmkId));
-  const miscEntries = src.filter((e) => !QUANTUM_GROUPS.some((g) => g.match(e.qmkId)));
-  const otherSections = [
-    osmEntries.length > 0 && { titleKey: osm.titleKey, helpKey: osm.helpKey, entries: osmEntries },
-    miscEntries.length > 0 && {
-      titleKey: QUANTUM_GROUP_MISC.titleKey,
-      helpKey: QUANTUM_GROUP_MISC.helpKey,
-      entries: miscEntries,
-    },
-  ].filter((s): s is { titleKey: MessageKey; helpKey: MessageKey; entries: KeycodeDef[] } => Boolean(s));
-  if (otherSections.length > 0)
-    groups.push({
-      titleKey: "groupQuantumOther",
-      helpKey: QUANTUM_GROUP_MISC.helpKey,
-      entries: [...osmEntries, ...miscEntries],
-      sections: otherSections,
-    });
-  return groups;
-}
-
-/**
  * The three Fn/Media/Mouse groups, shown as vertically-stacked expandable cards
  * inside the Basic tab (they used to live in a dedicated "Function" tab). Ordered
  * F13–F24, Mouse, then Media; the F-keys render in a 2×6 grid once expanded.
@@ -149,6 +105,23 @@ const FN_MEDIA_MOUSE_GROUPS: KeycodeGroup[] = [
   { titleKey: "groupMouse", entries: entriesOf("Mouse") },
   { titleKey: "groupMedia", entries: entriesOf("Media") },
 ];
+
+/**
+ * The keycodes for the "其他" (Other) card at the end of the 其他 column: One-Shot
+ * Mods, plus any Quantum keycodes matching none of the typed Quantum groups, plus
+ * the two leftover Layer fn keys (FN_MO13/FN_MO23) that fit no per-type layer
+ * group. The Quantum category is otherwise hidden; this flat list keeps those
+ * keycodes reachable, rendered as an ordinary expandable card (not the removed
+ * QuantumCards) via {@link KeyboardFunctionCards}.
+ */
+const OTHER_CARD_ENTRIES: KeycodeDef[] = (() => {
+  const quantum = entriesOf("Quantum");
+  const osm = QUANTUM_GROUPS.find((g) => g.key === "osm")!;
+  const osmEntries = quantum.filter((e) => osm.match(e.qmkId));
+  const misc = quantum.filter((e) => !QUANTUM_GROUPS.some((g) => g.match(e.qmkId)));
+  const layerOther = entriesOf("Layers").filter((e) => !LAYER_GROUPS.some((g) => g.match(e.qmkId)));
+  return [...osmEntries, ...misc, ...layerOther];
+})();
 
 /**
  * Visible tabs for the inline picker: hidden categories dropped, and the three
@@ -172,43 +145,31 @@ const VISIBLE_CATEGORIES = (() => {
   return out;
 })();
 
-/**
- * Quantum sub-category cards, precomputed once (the display entries are
- * version-independent). Rendered as a labelled section inside the Combo Keys tab
- * rather than as a standalone tab (see {@link QuickConfigPanel}).
- */
-const QUANTUM_CARD_GROUPS = quantumGroups();
-
-/**
- * The Quantum column's own cards (Modifiers, Mod-Tap, Layer-Tap) — everything
- * except the catch-all "Other" card, which is relocated to the end of the 其他
- * (categoryOther) column below.
- */
-const QUANTUM_MAIN_GROUPS = QUANTUM_CARD_GROUPS.filter((g) => g.titleKey !== "groupQuantumOther");
-
-/**
- * The leftover Layer keycodes (FN_MO13/FN_MO23) that matched none of the six
- * per-type layer-switch groups. The dedicated 层切换 column was removed (层按键's
- * two-step picker covers the per-type cards), so these two fn keys are folded
- * into the Quantum "Other" card below instead.
- */
-const LAYER_OTHER_ENTRIES = entriesOf("Layers").filter(
-  (e) => !LAYER_GROUPS.some((g) => g.match(e.qmkId)),
-);
-
-/**
- * The Quantum "Other" card (One-Shot Mods + misc quantum keycodes), pulled out
- * of the Quantum column and appended to the 其他 column. Kept rendered by
- * {@link QuantumCards} so it keeps its `quantumHelp` tooltips and reveal layout.
- * The leftover Layer fn keys ({@link LAYER_OTHER_ENTRIES}) are appended to its
- * flat reveal so the removed 层切换 column's keycodes stay reachable.
- */
-const QUANTUM_OTHER_GROUPS = QUANTUM_CARD_GROUPS.filter(
-  (g) => g.titleKey === "groupQuantumOther",
-).map((g) => ({ ...g, entries: [...g.entries, ...LAYER_OTHER_ENTRIES] }));
-
 /** Editor pages the Combo Keys cards can jump to via their hover "编辑" action. */
 export type ComboEditTarget = "macro" | "tapdance" | "combo";
+
+/**
+ * The two Multi-Function categories the 多功能 card offers:
+ *  - "modified" (red): layer modifiers onto a base keycode.
+ *  - "taphold" (blue): tap sends the base keycode, hold activates a layer/mod.
+ */
+export type MultiFuncMode = "modified" | "taphold";
+
+/**
+ * Compose the keycode for a Multi-Function pick: the user armed a category, then
+ * clicked the {@link half} of a basic key ({@link base}). The wrapper values here
+ * are illustrative placeholders (Ctrl+Alt / Hyper, Layer 0 / Shift) — the scaffold
+ * for a future picker that lets the user choose the modifiers/layer themselves.
+ */
+function composeMultiFunc(mode: MultiFuncMode, base: string, half: "top" | "bottom"): string {
+  if (mode === "modified") {
+    // Bottom half → 左Ctrl+左Alt+base (the documented example); top half → Hyper.
+    return half === "bottom" ? `LCA(${base})` : `HYPR(${base})`;
+  }
+  // Tap-Hold: tap is always the clicked key; the hold slot differs per half —
+  // bottom → Layer 0 (the documented example), top → Left Shift.
+  return half === "bottom" ? `LT(0,${base})` : `LSFT_T(${base})`;
+}
 
 interface Props {
   onPick: (qmkId: string) => void;
@@ -240,6 +201,10 @@ export function QuickConfigPanel({
   const [active, setActive] = useState(VISIBLE_CATEGORIES[0].name);
   const [pending, setPending] = useState<KeycodeDef | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  // Multi-Function flow: which category ("modified" / "taphold") is armed and
+  // waiting for the user to click a key-half in the basic grid above. Null when
+  // idle. See {@link composeMultiFunc}.
+  const [multiFunc, setMultiFunc] = useState<MultiFuncMode | null>(null);
   // The Basic tab lays its keyboard grid + three card columns out in one wide
   // row; on large screens that row scrolls horizontally, and a vertical mouse
   // wheel over it is turned into a horizontal pan (see the hook).
@@ -261,6 +226,14 @@ export function QuickConfigPanel({
       return;
     }
     onPick(entry.qmkId);
+  };
+
+  // A key-half click in the basic grid while a Multi-Function category is armed:
+  // compose the dual-role keycode and write it to the selected key, then disarm.
+  const pickHalf = (base: string, half: "top" | "bottom") => {
+    if (!multiFunc) return;
+    onPick(composeMultiFunc(multiFunc, base, half));
+    setMultiFunc(null);
   };
 
   // Device-specific tabs (custom keycodes, tap dance) are appended live so they
@@ -295,6 +268,21 @@ export function QuickConfigPanel({
             // its neighbours.
             expandedOffsetY: 150,
             entries: custom.entries,
+          },
+        ]
+      : []),
+    // 其他: One-Shot Mods + misc Quantum + leftover Layer fn keys. The Quantum
+    // column was removed, but these keycodes stay reachable here as a plain card.
+    ...(OTHER_CARD_ENTRIES.length > 0
+      ? [
+          {
+            titleKey: "cardMore" as MessageKey,
+            icon: "mdi:checkbox-blank-circle-outline",
+            // 150px default, nudged up 44px so the enlarged card clears its neighbours.
+            expandedOffsetY: 20,
+            // Grow to fit its keycodes instead of a fixed 320px box.
+            expandedUncapped: true,
+            entries: OTHER_CARD_ENTRIES,
           },
         ]
       : []),
@@ -411,6 +399,16 @@ export function QuickConfigPanel({
           <span>{hint}</span>
         </div>
       )}
+      {multiFunc && (
+        <div className="alert alert-info alert-soft mt-3 flex items-center py-1 text-sm">
+          <span>
+            {t(multiFunc === "modified" ? "multiFuncPickModified" : "multiFuncPickTapHold")}
+          </span>
+          <button className="btn btn-xs ml-auto" onClick={() => setMultiFunc(null)}>
+            {t("cancel")}
+          </button>
+        </div>
+      )}
       {isBasic && (
         <div
           ref={basicRowRef}
@@ -419,7 +417,21 @@ export function QuickConfigPanel({
           {/* Left column: physical keyboard grid + special keys (both inside
               BasicKeyboardGrid) followed by the config-settings block. */}
           <div>
-            <BasicKeyboardGrid onPick={(qmkId) => pick({ qmkId, label: qmkId })} />
+            <BasicKeyboardGrid
+              onPick={(qmkId) => pick({ qmkId, label: qmkId })}
+              splitMode={multiFunc !== null}
+              splitTopHint={
+                multiFunc
+                  ? t(multiFunc === "modified" ? "multiFuncHalfHyper" : "multiFuncHalfHoldShift")
+                  : undefined
+              }
+              splitBottomHint={
+                multiFunc
+                  ? t(multiFunc === "modified" ? "multiFuncHalfHoldMod" : "multiFuncHalfHoldLayer")
+                  : undefined
+              }
+              onHalfPick={pickHalf}
+            />
             <div className="mt-4 pb-[200px]">
               <h4 className="mb-1 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
               <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
@@ -445,6 +457,12 @@ export function QuickConfigPanel({
                   entries: g.entries,
                   grid: g.grid,
                   mouse: g.titleKey === "groupMouse",
+                  icon:
+                    g.titleKey === "groupFnKeys"
+                      ? "mdi:alpha-f-box-outline"
+                      : g.titleKey === "groupMedia"
+                        ? "mdi:apple-safari"
+                        : undefined,
                 })),
                 // 层按键: below Media, a two-step type → layer-number picker.
                 {
@@ -501,22 +519,38 @@ export function QuickConfigPanel({
                     titleKey: "groupMultiFunction" as MessageKey,
                     entries: [],
                     custom: (
-                      <div className="flex gap-3">
-                        {[
-                          { color: "#e5484d", desc: t("multiFuncModified") },
-                          { color: "#3b82f6", desc: t("multiFuncTapHold") },
-                        ].map(({ color, desc }) => (
-                          <div
-                            key={color}
-                            className="flex flex-1 flex-col items-center gap-3 rounded-lg bg-white/10 p-3 text-center"
-                          >
-                            <span
-                              className="size-10 shrink-0 rounded"
-                              style={{ backgroundColor: color }}
-                            />
-                            <span className="text-xs leading-snug">{desc}</span>
-                          </div>
-                        ))}
+                      <div className="flex flex-col gap-3">
+                        <p className="text-xs leading-snug opacity-70">
+                          {t("multiFuncIntro")}
+                        </p>
+                        <div className="flex gap-3">
+                          {(
+                            [
+                              { mode: "modified", color: "#e5484d", desc: t("multiFuncModified") },
+                              { mode: "taphold", color: "#3b82f6", desc: t("multiFuncTapHold") },
+                            ] as const
+                          ).map(({ mode, color, desc }) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMultiFunc(mode);
+                              }}
+                              className={`flex flex-1 flex-col items-center gap-3 rounded-lg p-3 text-center transition-colors ${
+                                multiFunc === mode
+                                  ? "bg-white/25 ring-2 ring-white/60"
+                                  : "bg-white/10 hover:bg-white/20"
+                              }`}
+                            >
+                              <span
+                                className="size-10 shrink-0 rounded"
+                                style={{ backgroundColor: color }}
+                              />
+                              <span className="text-xs leading-snug">{desc}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     ),
                   },
@@ -530,38 +564,6 @@ export function QuickConfigPanel({
             <div>
               <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryOther")}</h4>
               <KeyboardFunctionCards groups={keyboardFnCardGroups} onPick={pick} />
-              {/* The Quantum "其他" card, relocated here as the column's last card
-                  (its own column, keyed off a distinct idPrefix so the two Quantum
-                  card instances don't share a view-transition-name). */}
-              {QUANTUM_OTHER_GROUPS.length > 0 && (
-                <QuantumCards
-                  idPrefix="quantumothercard"
-                  // No helpKey: this relocated "Other" card drops its header help icon.
-                  groups={QUANTUM_OTHER_GROUPS.map((g) => ({
-                    titleKey: g.titleKey!,
-                    entries: g.entries,
-                    sections: g.sections,
-                  }))}
-                  onPick={pick}
-                  keyboard={keyboard}
-                />
-              )}
-            </div>
-            <div>
-              <h4 className="mb-1 flex items-center gap-1 text-sm font-semibold">
-                <span className="opacity-70">{t("categoryQuantum")}</span>
-                <HelpIcon text={t("cascadeDescQuantum")} />
-              </h4>
-              <QuantumCards
-                groups={QUANTUM_MAIN_GROUPS.map((g) => ({
-                  titleKey: g.titleKey!,
-                  helpKey: g.helpKey,
-                  entries: g.entries,
-                  sections: g.sections,
-                }))}
-                onPick={pick}
-                keyboard={keyboard}
-              />
             </div>
           </div>
         </div>

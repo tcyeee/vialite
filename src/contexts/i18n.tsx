@@ -734,7 +734,7 @@ const MESSAGES = {
   specialAny: { en: "Any Key", zh: "任意按键" },
 
   // Sub-groups within the "Function" tab
-  groupFnKeys: { en: "F13–F24", zh: "F13–F24" },
+  groupFnKeys: { en: "F13~F24", zh: "F13~F24" },
   groupMouse: { en: "Mouse", zh: "鼠标按键" },
   groupMedia: { en: "Media", zh: "媒体按键" },
   groupLayerKeys: { en: "Layer", zh: "层按键" },
@@ -762,6 +762,23 @@ const MESSAGES = {
     en: "Tap sends the base keycode; hold activates a layer or modifier",
     zh: "点按时候发送基础键码,长按激活层或者修饰键",
   },
+  multiFuncIntro: {
+    en: "After choosing a category, click the top or bottom half of a key on the keyboard above to continue configuring it.",
+    zh: "选择分类以后,在上方键盘中,点击按键的上半部分和下半部分进行下一步配置",
+  },
+  // Banner shown while a Multi-Function category is armed, waiting for a key-half click.
+  multiFuncPickModified: {
+    en: "Click a key's bottom half to add Ctrl+Alt, or its top half for Hyper, then write it to the selected key.",
+    zh: "点击按键下半部分叠加 左Ctrl+左Alt,上半部分叠加 Hyper,写入所选按键",
+  },
+  multiFuncPickTapHold: {
+    en: "Click a key's bottom half for tap = key / hold = Layer 0, or its top half for hold = Shift.",
+    zh: "点击按键下半部分:短按该键 / 长按 Layer0;上半部分:长按 Shift",
+  },
+  multiFuncHalfHoldMod: { en: "Add Ctrl+Alt", zh: "叠加 左Ctrl+左Alt" },
+  multiFuncHalfHyper: { en: "Add Hyper", zh: "叠加 Hyper" },
+  multiFuncHalfHoldLayer: { en: "Tap key / hold Layer 0", zh: "短按该键 / 长按 Layer0" },
+  multiFuncHalfHoldShift: { en: "Tap key / hold Shift", zh: "短按该键 / 长按 Shift" },
 
   // Combo-keys tab: the two expandable category cards
   comboCardReveal: { en: "Click to reveal", zh: "点击展开" },
@@ -825,6 +842,10 @@ const MESSAGES = {
   groupQuantumLayerTap: { en: "Layer-Tap", zh: "层 / 点触" },
   groupQuantumOther: { en: "Other", zh: "其他" },
   groupQuantumMisc: { en: "Miscellaneous", zh: "其他键码" },
+  // Heading for the catch-all card in the 其他 column (One-Shot Mods + misc
+  // Quantum + leftover Layer fn keys). Named "更多 / More" rather than "其他"
+  // to read as an overflow bucket, not a sibling of the 其他 category itself.
+  cardMore: { en: "More", zh: "更多" },
 
   // Hover help for each "Quantum" sub-group
   groupQuantumOSMHelp: {

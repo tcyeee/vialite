@@ -97,11 +97,31 @@ const GAP = 0.25;
 const COLS = 18.5;
 const ROWS = 6.25;
 
+/** Which half of a key was clicked in split (Multi-Function) mode. */
+export type KeyHalf = "top" | "bottom";
+
 interface Props {
   onPick: (qmkId: string) => void;
+  /**
+   * Multi-Function mode: when set, every basic key splits into an upper and lower
+   * clickable half (see {@link onHalfPick}) so the user picks a base key *and*
+   * which dual-role slot it fills, instead of a single whole-key pick.
+   */
+  splitMode?: boolean;
+  /** Tooltip shown on a key's top / bottom half in {@link splitMode}. */
+  splitTopHint?: string;
+  splitBottomHint?: string;
+  /** Called with the clicked key and which half, in {@link splitMode}. */
+  onHalfPick?: (qmkId: string, half: KeyHalf) => void;
 }
 
-export function BasicKeyboardGrid({ onPick }: Props) {
+export function BasicKeyboardGrid({
+  onPick,
+  splitMode = false,
+  splitTopHint,
+  splitBottomHint,
+  onHalfPick,
+}: Props) {
   const { t } = useI18n();
   // "任意按键" modal: a free-form keycode expression (e.g. LT(2,KC_A), 0x5c00)
   // parsed and normalised to its canonical qmk_id before assignment.
@@ -138,18 +158,46 @@ export function BasicKeyboardGrid({ onPick }: Props) {
           >
             {keys.map((k) => {
               const w = k.w ?? 1;
+              const pos = {
+                left: `${k.x * U + GAP / 2}rem`,
+                top: `${k.y * U + GAP / 2}rem`,
+                width: `${w * U - GAP}rem`,
+                height: `${U - GAP}rem`,
+              };
+              // Split (Multi-Function) mode: the key becomes two stacked click
+              // zones. The label sits centred behind a mid divider; each half
+              // highlights on hover and reports which slot it fills.
+              if (splitMode && onHalfPick) {
+                return (
+                  <div
+                    key={k.qmkId}
+                    className="absolute overflow-hidden rounded-md border border-base-content/20 bg-base-100 leading-none"
+                    style={pos}
+                  >
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[0.72rem]">
+                      {k.label}
+                    </span>
+                    <span className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-base-content/25" />
+                    <button
+                      title={splitTopHint}
+                      onClick={() => onHalfPick(k.qmkId, "top")}
+                      className="absolute inset-x-0 top-0 h-1/2 transition-colors hover:bg-primary/25"
+                    />
+                    <button
+                      title={splitBottomHint}
+                      onClick={() => onHalfPick(k.qmkId, "bottom")}
+                      className="absolute inset-x-0 bottom-0 h-1/2 transition-colors hover:bg-secondary/25"
+                    />
+                  </div>
+                );
+              }
               return (
                 <button
                   key={k.qmkId}
                   title={k.qmkId}
                   onClick={() => onPick(k.qmkId)}
                   className="absolute flex flex-col items-center justify-center rounded-md border border-base-content/20 bg-base-100 leading-none transition-colors hover:bg-base-200"
-                  style={{
-                    left: `${k.x * U + GAP / 2}rem`,
-                    top: `${k.y * U + GAP / 2}rem`,
-                    width: `${w * U - GAP}rem`,
-                    height: `${U - GAP}rem`,
-                  }}
+                  style={pos}
                 >
                   {k.sub && <span className="text-[0.6rem] opacity-55">{k.sub}</span>}
                   <span className="text-[0.72rem]">{k.label}</span>

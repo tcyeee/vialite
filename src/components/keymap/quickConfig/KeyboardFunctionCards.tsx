@@ -20,6 +20,12 @@ export interface KeyboardFnCardGroup {
   expandedOffsetY?: number;
   /** Per-card horizontal nudge (px) of the enlarged card; positive moves it right. */
   expandedOffsetX?: number;
+  /**
+   * Let the enlarged card grow to its full content height instead of the fixed
+   * 320px box (and opt out of the column-height cap). Set for a catch-all card
+   * whose keycode count varies.
+   */
+  expandedUncapped?: boolean;
   entries: KeycodeDef[];
 }
 
@@ -29,8 +35,8 @@ interface Props {
   onPick: (entry: KeycodeDef) => void;
 }
 
-/** Background colors for the Lighting / Keyboard-Config cards. */
-const CARD_BG = ["#3E6E64", "#5E4A6E"];
+/** Background colors for the Lighting / Keyboard-Config / Other cards. */
+const CARD_BG = ["#3E6E64", "#5E4A6E", "#4A5A6E"];
 
 /**
  * The expanded card body: every keycode as a labelled button with a hover
@@ -127,7 +133,9 @@ export function KeyboardFunctionCards({ groups, onPick }: Props) {
       bg: CARD_BG[i % CARD_BG.length],
       disabled: empty,
       expandedWidth: "w-[550px]",
-      expandedHeight: "320px",
+      // Auto-height cards leave expandedHeight unset so the card sizes to content.
+      expandedHeight: group.expandedUncapped ? undefined : "320px",
+      expandedUncapped: group.expandedUncapped,
       // Default the enlarged card 150px down its anchor; a group can nudge from there.
       expandedOffsetY: group.expandedOffsetY ?? 150,
       expandedOffsetX: group.expandedOffsetX ?? 0,
