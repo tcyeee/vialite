@@ -624,6 +624,17 @@ body {
   margin-right: -0.28em;
 }
 
+/* Tap-dance cap face (TD0…TDn): the gesture icon + slot number. Like .key-macro-face,
+   the icon size comes from TAPDANCE_ICON.scale in keycapIcons.ts; here it's only
+   tucked tight against the number. */
+.key-tapdance-face {
+  gap: 0;
+}
+.key-tapdance-face .key-icon,
+.keyboard-layout .key-tapdance-face .key-icon {
+  margin-right: -0.18em;
+}
+
 /* Boxed L/R side badge (mdi:alpha-l/r-box-outline): sized a notch below the cap
    font (em tracks the cap font-size, so it follows the 字体大小 scale). The glyph
    inherits the cap `color` (which the board sets to the chosen 字体颜色 on
@@ -656,23 +667,45 @@ body {
   padding: 0 3px;
   border-radius: 3px;
   background: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.16));
+  /* The hold band is always a single line — a modifier set or "L"+digit — so it
+     never wraps; overflow is clipped (with an ellipsis on the .key-hold-mods row). */
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 /* Mod-Tap hold band: side badge + OS-style modifier glyph(s), laid out inline
    like a plain modifier cap. Icons/badge are sized in em so they track the band's
    own 0.8em font-size everywhere (board and off-board), overriding the board's
-   rem-based .key-icon so a hold glyph never dwarfs the shaded band. */
+   rem-based .key-icon so a hold glyph never dwarfs the shaded band.
+
+   Laid out as an inline (block) line rather than a flex row so that when several
+   modifier glyphs (e.g. Hyper = ⌃⇧⌥⌘) don't fit the cap, the overflow is clipped
+   with a trailing ellipsis. text-overflow needs a block box with a bounded width,
+   so min-width:0 lets it shrink inside its flex parent (.key-dual-hold) and
+   max-width:100% caps it to the band. */
 .key-hold-mods {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Glyphs/badge/text flow inline on one line (nowrap keeps inline boxes together,
+   but only if they are inline-level — the SideBadge/Icon svgs would otherwise be
+   block and stack vertically); center them vertically on the band. */
+.key-hold-mods > * {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .key-hold-mods .key-icon,
 .keyboard-layout .key-hold-mods .key-icon {
-  width: 1.15em;
-  height: 1.15em;
+  width: 1.4em;
+  height: 1.4em;
 }
 
 .key-hold-text {
@@ -716,6 +749,14 @@ body {
   box-sizing: border-box;
   overflow: hidden;
   white-space: nowrap;
+}
+
+/* Masked-modifier hold band (modCombo, e.g. HYPR(kc)): its "hold" fires together
+   with the tap on a single press rather than on a genuine long press, so the band
+   is drawn with a dashed border to set it apart from a real Mod-Tap/Layer-Tap hold
+   (which keeps the solid border above). The tap half is unaffected. */
+.keyboard-layout .key-dual-hold.key-dual-hold-combo {
+  border-style: dashed;
 }
 
 /* Independently-clickable hit areas over a dual-role cap: transparent buttons

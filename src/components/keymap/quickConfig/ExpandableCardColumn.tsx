@@ -53,9 +53,6 @@ interface Props {
   onExpandedChange?: (key: string | null) => void;
 }
 
-/** Floating-card minimum height, in px, when the column is at least this tall. */
-const MIN_FLOAT_PX = 26 * 16;
-
 /**
  * A vertical column of expandable cards. Clicking a card grows a floating copy
  * (raised z-index, height-capped to the column) over its neighbours without
@@ -212,7 +209,7 @@ export function ExpandableCardColumn({
               {/* Hidden while open: the enlarged copy floats above but the
                   overlay's own z-index would otherwise poke through here. */}
               {!isOpen && card.overlay}
-              <div className="card-body relative gap-3 p-5">
+              <div className="card-body relative gap-5 p-6">
                 {card.header}
                 {card.hint != null && (
                   <div className="text-xs tracking-widest uppercase opacity-40">{card.hint}</div>
@@ -229,15 +226,16 @@ export function ExpandableCardColumn({
                 style={{
                   backgroundColor: card.bg,
                   viewTransitionName: name,
-                  // Cap the height to the column so the card never spills past its
-                  // top/bottom; keep a sensible minimum for short columns.
+                  // Size to content: no forced minimum, so a card with few keycodes
+                  // stays short instead of padding out to a fixed box. Still cap the
+                  // height to the column so a content-heavy card never spills past
+                  // its top/bottom — the body scrolls within that cap.
                   maxHeight: containerH ?? undefined,
-                  minHeight: containerH ? Math.min(MIN_FLOAT_PX, containerH) : MIN_FLOAT_PX,
                 }}
                 onClick={() => close()}
               >
                 {card.decor}
-                <div className="card-body relative min-h-0 flex-1 gap-3 overflow-hidden p-5">
+                <div className="card-body relative min-h-0 flex-1 gap-5 overflow-hidden p-6">
                   {card.header}
                   <div
                     data-lenis-prevent

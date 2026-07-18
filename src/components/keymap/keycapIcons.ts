@@ -37,9 +37,16 @@ export const MACRO_ICON: CapIcon = { icon: "mdi:script-text-outline", scale: 0.7
 
 /**
  * Layer-switch cap glyph (MO/TG/TT/OSL/TO/DF/PDF): the stacked-layers icon that
- * carries the target layer number badge, in place of the raw "MO(2)" text.
+ * carries the target layer number badge, in place of the raw "MO(2)" text. Sized a
+ * notch below a normal cap icon so it doesn't crowd the layer-number badge.
  */
-export const LAYER_ICON: CapIcon = { icon: "mdi:layers-outline" };
+export const LAYER_ICON: CapIcon = { icon: "mdi:layers-outline", scale: 0.82 };
+
+/**
+ * Tap-dance cap glyph (TD0…TDn): the double-tap gesture icon shown before the slot
+ * number, in place of the bare "TD0" text — mirroring how MACRO_ICON badges macro caps.
+ */
+export const TAPDANCE_ICON: CapIcon = { icon: "mdi:animation", scale: 0.9 };
 
 /** Boxed L/R side badge (Ⓛ / Ⓡ) prepended to left/right modifier caps. */
 export function sideBadgeIcon(side: "L" | "R"): CapIcon {

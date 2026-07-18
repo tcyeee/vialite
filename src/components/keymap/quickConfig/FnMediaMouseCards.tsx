@@ -10,6 +10,13 @@ export interface FnCardGroup {
   /** Translation key for a hover help tooltip shown next to the heading. */
   helpKey?: MessageKey;
   entries: KeycodeDef[];
+  /**
+   * Render the revealed keycodes as square `combo-num-card` tiles (the same
+   * look as the Macros/Tap Dance cards) instead of the wider labelled pill
+   * buttons. Used for the F13–F24 card, whose short labels fit the fixed
+   * square tiles.
+   */
+  grid?: boolean;
 }
 
 interface Props {
@@ -38,7 +45,7 @@ export function FnMediaMouseCards({ groups, onPick }: Props) {
       bg: CARD_BG[i % CARD_BG.length],
       disabled: empty,
       header: (
-        <div className="flex items-center gap-1.5 text-xl font-bold tracking-tight">
+        <div className="flex items-center gap-1.5 text-2xl font-bold tracking-tight">
           <span>{t(group.titleKey)}</span>
           {group.helpKey && (
             <span onClick={(e) => e.stopPropagation()}>
@@ -52,21 +59,37 @@ export function FnMediaMouseCards({ groups, onPick }: Props) {
         : `${t("comboCardReveal")} · ${t("comboCardCount", { n: group.entries.length })}`,
       body: empty
         ? undefined
-        : () => (
-            <div className="combo-num-grid flex flex-wrap gap-2">
-              {group.entries.map((entry, j) => (
-                <button
-                  key={entry.qmkId}
-                  className="combo-item btn btn-sm h-auto min-h-8 min-w-12 border-white/20 bg-white/10 py-1 font-normal whitespace-pre-line text-white normal-case hover:border-white/40 hover:bg-white/25"
-                  style={{ animationDelay: `${Math.min(j * 25, 300)}ms` }}
-                  title={entry.title ?? entry.qmkId}
-                  onClick={() => onPick(entry)}
-                >
-                  {entry.label || entry.qmkId}
-                </button>
-              ))}
-            </div>
-          ),
+        : group.grid
+          ? () => (
+              <div className="combo-num-grid flex flex-wrap gap-2">
+                {group.entries.map((entry, j) => (
+                  <button
+                    key={entry.qmkId}
+                    className="combo-num-card"
+                    style={{ animationDelay: `${Math.min(j * 30, 400)}ms` }}
+                    title={entry.title ?? entry.qmkId}
+                    onClick={() => onPick(entry)}
+                  >
+                    {entry.label || entry.qmkId}
+                  </button>
+                ))}
+              </div>
+            )
+          : () => (
+              <div className="combo-num-grid flex flex-wrap gap-2">
+                {group.entries.map((entry, j) => (
+                  <button
+                    key={entry.qmkId}
+                    className="combo-item btn btn-sm h-auto min-h-8 min-w-12 border-white/20 bg-white/10 py-1 font-normal whitespace-pre-line text-white normal-case hover:border-white/40 hover:bg-white/25"
+                    style={{ animationDelay: `${Math.min(j * 25, 300)}ms` }}
+                    title={entry.title ?? entry.qmkId}
+                    onClick={() => onPick(entry)}
+                  >
+                    {entry.label || entry.qmkId}
+                  </button>
+                ))}
+              </div>
+            ),
     };
   });
 

@@ -417,6 +417,7 @@ export function QuickConfigPanel({
                 titleKey: g.titleKey!,
                 helpKey: g.helpKey,
                 entries: g.entries,
+                grid: g.grid,
               }))}
               onPick={pick}
             />

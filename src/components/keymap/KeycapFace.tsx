@@ -1,8 +1,8 @@
 import { Icon } from "@iconify/react";
 import type { CSSProperties } from "react";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
-import { dualRole, holdInfo, label as kcLabel, layerSwitchInfo } from "../../protocol/keycodes.ts";
-import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, sideBadgeIcon } from "./keycapIcons.ts";
+import { dualRole, holdInfo, keyBehavior, label as kcLabel, layerSwitchInfo } from "../../protocol/keycodes.ts";
+import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, sideBadgeIcon, TAPDANCE_ICON } from "./keycapIcons.ts";
 
 /**
  * Renders one glyph from the keycap-icon table ({@link keycapIcons.ts}): its mdi
@@ -147,12 +147,17 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
 
   const dual = dualRole(qmkId);
   if (dual) {
+    // A masked modifier (modCombo, e.g. HYPR(kc)/LSFT(kc)) fires its modifier
+    // *together with* the tap on a single press — it is not a genuine long-press
+    // hold like Mod-Tap/Layer-Tap. Mark its hold band so CSS draws a dashed border,
+    // distinguishing the fire-together (短按) case from a real hold (长按).
+    const isCombo = keyBehavior(qmkId).kind === "modCombo";
     return (
       <span className="key-dual">
         <span className="key-dual-tap">
           <KeycapFace qmkId={dual.tap} className={className} />
         </span>
-        <span className="key-dual-hold">
+        <span className={isCombo ? "key-dual-hold key-dual-hold-combo" : "key-dual-hold"}>
           <HoldFace qmkId={qmkId} fallback={dual.hold} />
         </span>
       </span>
@@ -174,6 +179,18 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
       <span className="key-face-badged key-macro-face">
         <CapGlyph spec={MACRO_ICON} label={kcLabel(qmkId)} />
         <span className={className}>{macro[1]}</span>
+      </span>
+    );
+  }
+
+  // Tap-dance caps (TD(0)…TD(n)) show the gesture icon followed by the slot number
+  // rather than the bare "TD0" text, matching the macro caps' icon+number treatment.
+  const tapDance = /^TD\((\d+)\)$/.exec(qmkId);
+  if (tapDance) {
+    return (
+      <span className="key-face-badged key-tapdance-face">
+        <CapGlyph spec={TAPDANCE_ICON} label={kcLabel(qmkId)} />
+        <span className={className}>{tapDance[1]}</span>
       </span>
     );
   }
