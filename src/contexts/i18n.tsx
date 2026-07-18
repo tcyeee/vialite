@@ -551,7 +551,7 @@ const MESSAGES = {
   quickConfigTitle: { en: "Quick Config", zh: "快捷配置" },
   quickConfigHint: { en: "Select a key above, then click a key below to assign it.", zh: "先在上方选中一个键位,再点击下方键盘为其赋值。" },
   quickConfigNoSelection: { en: "No key selected", zh: "未选中键位" },
-  selectKeyFirst: { en: "Please select a key first", zh: "请先选择一个按键" },
+  selectKeyFirst: { en: "Please select the key you want to change", zh: "请选中需要修改的按键" },
   advancedPicker: { en: "Advanced…", zh: "高级…" },
 
   // KeycodePicker
@@ -753,18 +753,18 @@ const MESSAGES = {
   // Sub-groups within the merged "Macros / Tap Dance" tab
   groupMacros: { en: "Macros", zh: "宏" },
   groupTapDance: { en: "Tap Dance", zh: "Tap Dance" },
-  groupMultiFunction: { en: "Multi-Function", zh: "多功能" },
+  groupMultiFunction: { en: "Key Overlay", zh: "按键叠加" },
   multiFuncModified: {
-    en: "Layer one or more modifiers onto a base keycode",
-    zh: "为某个基础键码叠加一个或者多个修饰键",
+    en: "Modifier",
+    zh: "修饰键",
   },
   multiFuncTapHold: {
-    en: "Tap sends the base keycode; hold activates a layer or modifier",
-    zh: "点按时候发送基础键码,长按激活层或者修饰键",
+    en: "Hold for layer or modifier",
+    zh: "长按激活层或者修饰键",
   },
   multiFuncIntro: {
-    en: "After choosing a category, click the top or bottom half of a key on the keyboard above to continue configuring it.",
-    zh: "选择分类以后,在上方键盘中,点击按键的上半部分和下半部分进行下一步配置",
+    en: "Add functions on top of a base key",
+    zh: "为基础按键叠加功能",
   },
   detailSettings: { en: "Detailed settings", zh: "详细设置" },
 

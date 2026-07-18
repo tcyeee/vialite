@@ -179,9 +179,13 @@ export function ExpandableCardColumn({
   useEffect(() => {
     if (!expanded) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (openCardRef.current && !openCardRef.current.contains(e.target as Node)) {
-        close();
-      }
+      const target = e.target instanceof Element ? e.target : null;
+      // Clicking inside the open card never closes it (that's the card's own job).
+      if (openCardRef.current?.contains(e.target as Node)) return;
+      // Clicking the keyboard preview above re-selects a cap without collapsing the
+      // card, so the user can keep the same card open while retargeting keys.
+      if (target?.closest("[data-keyboard-preview]")) return;
+      close();
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);

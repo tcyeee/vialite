@@ -206,6 +206,13 @@ function App() {
   }, [attachTransport, teardown, t]);
 
   const handleDisconnect = useCallback(async () => {
+    // Revoke the WebHID grant so auto-reconnect on the next page load won't
+    // silently re-attach the board the user just chose to disconnect. teardown
+    // nulls transportRef, so forget it first.
+    const transport = transportRef.current;
+    if (transport) {
+      await transport.forget().catch(() => {});
+    }
     await teardown();
     setError(null);
     setStatus("idle");
@@ -607,7 +614,14 @@ function App() {
                         计算为 auto,容器边缘会裁掉溢出的阴影,padding 区域不被裁剪。
                         等量负外边距(-mx/-mb/-mt)抵消这圈 padding,使键盘的视觉
                         位置与周围内容保持原有对齐,不因留白而偏移。 */}
-                    <div className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2">
+                    <div
+                      // Marks the keyboard preview so an expanded quick-config
+                      // card below stays open when a key here is clicked — the
+                      // click still re-selects the cap, it just doesn't collapse
+                      // the card (see ExpandableCardColumn's outside-click close).
+                      data-keyboard-preview
+                      className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2"
+                    >
                       <KeyboardLayout
                         keyboard={keyboard}
                         layer={layer}
@@ -644,20 +658,27 @@ function App() {
                       layerCount={keyboard.layers}
                       onWrite={handleHoldWrite}
                     />
-                  ) : selected ? (
-                    <section className="mt-6">
-                      <QuickConfigPanel
-                        onPick={handleAssign}
-                        keyboard={keyboard}
-                        onNavigate={navigate}
-                        onOpenQmkSection={openQmkSection}
-                        autoAdvance={autoAdvance}
-                        onAutoAdvanceChange={setAutoAdvance}
-                      />
-                    </section>
                   ) : (
+                    // 快捷配置始终显示;未选中按键时整体置灰且不可交互(提示浮在
+                    // 模拟键盘上)。置灰在面板内部按块处理,以便提示徽标保持不透明
+                    // ——祖先若用 opacity 会连带把徽标一起变透明。
                     <section className="mt-6">
-                      <p className="text-sm opacity-70">{t("selectKeyFirst")}</p>
+                      <div
+                        aria-disabled={!selected}
+                        className={
+                          selected ? undefined : "pointer-events-none select-none"
+                        }
+                      >
+                        <QuickConfigPanel
+                          onPick={handleAssign}
+                          keyboard={keyboard}
+                          onNavigate={navigate}
+                          onOpenQmkSection={openQmkSection}
+                          autoAdvance={autoAdvance}
+                          onAutoAdvanceChange={setAutoAdvance}
+                          disabled={!selected}
+                        />
+                      </div>
                     </section>
                   )}
                 </>

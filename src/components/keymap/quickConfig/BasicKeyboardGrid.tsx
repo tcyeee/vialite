@@ -99,9 +99,11 @@ const ROWS = 6.25;
 
 interface Props {
   onPick: (qmkId: string) => void;
+  /** 未选中按键时置 true:在模拟键盘上浮出「请先选择按键」提示。 */
+  disabled?: boolean;
 }
 
-export function BasicKeyboardGrid({ onPick }: Props) {
+export function BasicKeyboardGrid({ onPick, disabled = false }: Props) {
   const { t } = useI18n();
   // "任意按键" modal: a free-form keycode expression (e.g. LT(2,KC_A), 0x5c00)
   // parsed and normalised to its canonical qmk_id before assignment.
@@ -131,9 +133,11 @@ export function BasicKeyboardGrid({ onPick }: Props) {
     <div>
       <h4 className="mb-3 text-sm font-semibold opacity-70">{t("groupBasicBoard")}</h4>
       <div className="overflow-x-auto pb-2">
-        <div className="w-fit rounded-lg border border-base-content/30 bg-base-200 p-2">
+        <div className="relative w-fit rounded-lg border border-base-content/30 bg-base-200 p-2">
           <div
-            className="relative"
+            // 置灰只作用于按键本身,提示徽标作为兄弟节点渲染在外层(见下),
+            // 避免 opacity 祖先把徽标一起变透明。
+            className={`relative${disabled ? " opacity-40" : ""}`}
             style={{ width: `${COLS * U}rem`, height: `${ROWS * U}rem` }}
           >
             {keys.map((k) => {
@@ -157,10 +161,19 @@ export function BasicKeyboardGrid({ onPick }: Props) {
               );
             })}
           </div>
+          {disabled && (
+            // 未选中按键时,提示浮在模拟键盘正中央;作为置灰层的兄弟节点渲染,
+            // 保持完全不透明。
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-primary-content shadow-lg">
+                {t("selectKeyFirst")}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="mt-3">
+      <div className={`mt-3${disabled ? " opacity-40" : ""}`}>
         <h4 className="mb-2 text-sm font-semibold opacity-70">{t("specialKeys")}</h4>
         <div className="flex flex-wrap gap-2">
           <button

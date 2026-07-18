@@ -185,6 +185,8 @@ interface Props {
   autoAdvance: boolean;
   /** Toggle {@link autoAdvance}. */
   onAutoAdvanceChange: (value: boolean) => void;
+  /** 未选中按键:在基础按键的模拟键盘上浮出「请先选择按键」提示。 */
+  disabled?: boolean;
 }
 
 /**
@@ -201,6 +203,7 @@ export function QuickConfigPanel({
   onOpenQmkSection,
   autoAdvance,
   onAutoAdvanceChange,
+  disabled = false,
 }: Props) {
   const { t } = useI18n();
   // The "详细设置" pill shown at the top-right of an expanded card, jumping to the
@@ -376,10 +379,14 @@ export function QuickConfigPanel({
     activeCat.name === KEYBOARD_FN_NAME ? (entry: KeycodeDef) => tileWithHelp(entry) : keyButton;
   const groupGap = isTileGroups ? "gap-2" : "gap-1";
 
+  // 未选中按键时把面板整体置灰。置灰按块施加(而非用一个 opacity 祖先包裹整块),
+  // 这样基础按键模拟键盘上的提示徽标能保持不透明——opacity 会向所有后代传递并封顶。
+  const dim = disabled ? " opacity-40" : "";
+
   return (
     <div>
       {allCategories.length > 1 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className={`flex flex-wrap items-center gap-x-4 gap-y-2${dim}`}>
           <div role="tablist" className="tabs tabs-box w-fit">
             {allCategories.map((cat) => (
               <button
@@ -415,8 +422,11 @@ export function QuickConfigPanel({
           {/* Left column: physical keyboard grid + special keys (both inside
               BasicKeyboardGrid) followed by the config-settings block. */}
           <div>
-            <BasicKeyboardGrid onPick={(qmkId) => pick({ qmkId, label: qmkId })} />
-            <div className="mt-4 pb-[200px]">
+            <BasicKeyboardGrid
+              onPick={(qmkId) => pick({ qmkId, label: qmkId })}
+              disabled={disabled}
+            />
+            <div className={`mt-4 pb-[200px]${dim}`}>
               <h4 className="mb-1 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
               <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
                 <span>{t("autoAdvance")}</span>
@@ -431,7 +441,7 @@ export function QuickConfigPanel({
             </div>
           </div>
           {/* Middle column: the vertical Fn/Media/Mouse cards. */}
-          <div className="mt-4 lg:mt-0">
+          <div className={`mt-4 lg:mt-0${dim}`}>
             <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryFnMediaMouse")}</h4>
             <FnMediaMouseCards
               groups={[
@@ -475,7 +485,7 @@ export function QuickConfigPanel({
               Macros / Tap Dance / Combo on the left, Quantum on the right. Kept
               side-by-side on large screens (where the whole Basic row scrolls
               horizontally); only allowed to stack on narrow viewports. */}
-          <div className="mt-4 flex flex-wrap gap-6 lg:mt-0 lg:flex-nowrap">
+          <div className={`mt-4 flex flex-wrap gap-6 lg:mt-0 lg:flex-nowrap${dim}`}>
             <div>
               <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryMacrosTapDance")}</h4>
               <MacroTapDanceCards
@@ -517,12 +527,48 @@ export function QuickConfigPanel({
                         <div className="flex gap-3">
                           {(
                             [
-                              { mode: "modified", color: "#e5484d", desc: t("multiFuncModified") },
-                              { mode: "taphold", color: "#3b82f6", desc: t("multiFuncTapHold") },
+                              {
+                                mode: "modified",
+                                desc: t("multiFuncModified"),
+                                // 修饰键:单个 ⌘ 图标。
+                                iconNode: (
+                                  <Icon
+                                    icon="mdi:apple-keyboard-command"
+                                    className="size-10 shrink-0"
+                                    aria-hidden="true"
+                                  />
+                                ),
+                              },
+                              {
+                                mode: "taphold",
+                                desc: t("multiFuncTapHold"),
+                                // 长按激活层/修饰键:⌘ 叠加 层图标,左上角 ⌘、右下角
+                                // 层,表达"轻触出键、长按切层/修饰"的双重角色。
+                                iconNode: (
+                                  <span className="relative block size-10 shrink-0" aria-hidden="true">
+                                    <Icon
+                                      icon="mdi:apple-keyboard-command"
+                                      className="absolute top-0 left-0 size-6"
+                                    />
+                                    <Icon
+                                      icon="mdi:layers-outline"
+                                      className="absolute right-0 bottom-0 size-6"
+                                    />
+                                    {/* 分隔两枚图标的白色斜线(左下 → 右上)。 */}
+                                    <span
+                                      className="pointer-events-none absolute inset-0"
+                                      style={{
+                                        background:
+                                          "linear-gradient(to bottom right, transparent calc(50% - 0.75px), #ffffff calc(50% - 0.75px), #ffffff calc(50% + 0.75px), transparent calc(50% + 0.75px))",
+                                      }}
+                                    />
+                                  </span>
+                                ),
+                              },
                             ] as const
-                          ).map(({ mode, color, desc }) => (
+                          ).map(({ mode, desc, iconNode }) => (
                             <button
-                              key={color}
+                              key={mode}
                               type="button"
                               // Clicking a category is the whole interaction: the
                               // framework keycode is written to the selected key at
@@ -534,12 +580,7 @@ export function QuickConfigPanel({
                               }}
                               className="flex flex-1 flex-col items-center gap-3 rounded-lg bg-white/10 p-3 text-center transition-colors hover:bg-white/20"
                             >
-                              <Icon
-                                icon="mdi:f0130"
-                                className="size-10 shrink-0"
-                                style={{ color }}
-                                aria-hidden="true"
-                              />
+                              {iconNode}
                               <span className="text-xs leading-snug">{desc}</span>
                             </button>
                           ))}
@@ -563,7 +604,7 @@ export function QuickConfigPanel({
       )}
       {activeCat.groups
         ? activeCat.groups.map((group) => (
-            <div key={group.titleKey ?? ""} className="mt-3">
+            <div key={group.titleKey ?? ""} className={`mt-3${dim}`}>
               {group.titleKey && (
                 <h4 className="mb-1 flex items-center gap-1 text-sm font-semibold">
                   <span className="opacity-70">{t(group.titleKey)}</span>
@@ -582,7 +623,7 @@ export function QuickConfigPanel({
             </div>
           ))
         : !isBasic && entries.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1">{entries.map(keyButton)}</div>
+            <div className={`mt-3 flex flex-wrap gap-1${dim}`}>{entries.map(keyButton)}</div>
           )}
     </div>
   );

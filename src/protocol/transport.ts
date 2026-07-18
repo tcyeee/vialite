@@ -142,6 +142,21 @@ export class HidTransport {
     }
   }
 
+  /**
+   * Closes the device and revokes its WebHID permission grant, so a later
+   * `navigator.hid.getDevices()` no longer returns it. Used by the explicit
+   * user-driven disconnect: without forgetting, the grant survives a page
+   * reload and auto-reconnect would silently re-attach the board the user
+   * just chose to disconnect.
+   */
+  async forget(): Promise<void> {
+    const device = this.device;
+    await this.close();
+    // forget() is WebHID; not in every TS DOM lib version, and absent on
+    // older Chrome — best-effort, a failure just leaves the grant in place.
+    await (device as HIDDevice & { forget?: () => Promise<void> }).forget?.().catch(() => {});
+  }
+
   private handleHidDisconnect = (event: HIDConnectionEvent) => {
     if (event.device !== this.device) {
       return;
