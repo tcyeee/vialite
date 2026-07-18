@@ -921,6 +921,10 @@ const MESSAGES = {
 
   // Dual-role hold editor (shown when a cap's hold band is selected)
   holdEditorTitle: { en: "Hold action", zh: "长按动作" },
+  holdEditorIntro: {
+    en: "Tap outputs the key; hold to activate a layer or modifiers.",
+    zh: "点按输出按键;长按激活层或修饰键。",
+  },
   holdEditorTapKeeps: { en: "Tap stays: {key}", zh: "点按保持:{key}" },
   holdEditorModeNone: { en: "None", zh: "无" },
   holdEditorModifiers: { en: "Modifiers", zh: "修饰键" },

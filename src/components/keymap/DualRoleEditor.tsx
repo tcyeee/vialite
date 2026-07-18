@@ -9,6 +9,7 @@ import {
   dualRole,
   holdInfo,
   keyBehavior,
+  label as kcLabel,
 } from "../../protocol/keycodes.ts";
 import { CapGlyph } from "./KeycapFace.tsx";
 import { capIcon, sideBadgeIcon } from "./keycapIcons.ts";
@@ -36,6 +37,75 @@ function Warning({ children }: { children: ReactNode }) {
   return (
     <div role="alert" className="alert alert-warning alert-soft mt-3 py-2 text-sm">
       <span>{children}</span>
+    </div>
+  );
+}
+
+/**
+ * Header shown above both editor variants. It restates what is being edited so
+ * the two shapes read distinctly: `dashed` (fire-together / masked modifier)
+ * echoes the cap's dashed hold band with a dashed accent tile + double-tap glyph,
+ * while a real hold (Mod-Tap / Layer-Tap) gets a solid accent + hold glyph — the
+ * same visual language the board uses to tell the two apart. A trailing chip
+ * pins the tap key that stays put through any edit here.
+ */
+function EditorHeader({ dashed, title, desc, tap }: { dashed: boolean; title: string; desc: string; tap: string }) {
+  const { t } = useI18n();
+  const { keyDisplay } = useKeyDisplay();
+  const tapName = kcLabel(tap).split("\n").join(" ") || tap;
+  const tapSpec = capIcon(tap, keyDisplay);
+  return (
+    <header className="mb-5 flex flex-wrap items-center gap-3">
+      <span
+        aria-hidden="true"
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-2xl text-primary ${
+          dashed ? "border-2 border-dashed border-primary/60" : "border-2 border-primary/60 bg-primary/10"
+        }`}
+      >
+        <Icon icon={dashed ? "mdi:gesture-double-tap" : "mdi:gesture-tap-hold"} />
+      </span>
+      <div className="min-w-0">
+        <h2 className="text-lg font-semibold leading-tight text-brand-on-surface">{title}</h2>
+        <p className="text-sm opacity-70">{desc}</p>
+      </div>
+      <div className="ml-auto flex items-center gap-2 rounded-lg border border-base-content/10 bg-base-200/60 px-3 py-1.5">
+        <span className="text-xs uppercase tracking-wide opacity-50">{t("holdEditorTapKeeps", { key: "" }).replace(/[:：]\s*$/, "")}</span>
+        <span className="kbd kbd-sm min-w-6 justify-center">
+          {tapSpec ? <CapGlyph spec={tapSpec} label={tapName} /> : tapName}
+        </span>
+      </div>
+    </header>
+  );
+}
+
+/**
+ * One labelled choice card (a Layer card, a Modifiers card, …). `dimmed` fades a
+ * card whose mode isn't the active one; `className` carries per-card sizing.
+ */
+function OptionCard({
+  icon,
+  title,
+  dimmed,
+  className = "",
+  children,
+}: {
+  icon: string;
+  title: string;
+  dimmed?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`flex flex-col gap-3 rounded-xl border border-base-content/10 bg-base-200/40 p-4 transition-opacity ${
+        dimmed ? "opacity-50" : ""
+      } ${className}`}
+    >
+      <div className="flex items-center gap-1.5 text-sm font-semibold opacity-70">
+        <Icon icon={icon} aria-hidden="true" />
+        {title}
+      </div>
+      {children}
     </div>
   );
 }
@@ -189,17 +259,18 @@ export function DualRoleEditor({ qmkId, layerCount, onWrite }: Props) {
 
   if (!dual) return null;
 
-  const clearCard = (
+  // Shared "make this a plain key" action, shown in each variant's footer.
+  const clearButton = (
     <button
       type="button"
       onClick={() => {
         setDeferClear(false);
         onWrite("KC_NO");
       }}
-      aria-label={t("holdClearKey")}
-      className="flex w-24 flex-col items-center justify-center rounded-xl border border-base-content/10 bg-base-200/60 text-base-content/40 transition-colors hover:border-error/40 hover:bg-error/10 hover:text-error"
+      className="btn btn-ghost btn-sm gap-1.5 text-error/70 hover:bg-error/10 hover:text-error"
     >
-      <Icon icon="mdi:close" className="text-5xl" aria-hidden="true" />
+      <Icon icon="mdi:close-circle-outline" className="text-base" aria-hidden="true" />
+      {t("holdClearKey")}
     </button>
   );
 
@@ -235,9 +306,9 @@ export function DualRoleEditor({ qmkId, layerCount, onWrite }: Props) {
     };
 
     return (
-      <section className="mt-6">
-        <h2 className="mb-4 text-lg font-semibold text-brand-on-surface">{t("holdComboTitle")}</h2>
-        <div className="flex flex-wrap items-start gap-3">
+      <section className="mt-6 max-w-3xl">
+        <EditorHeader dashed title={t("holdComboTitle")} desc={t("holdComboIntro")} tap={tap} />
+        <OptionCard icon="mdi:apple-keyboard-shift" title={t("holdEditorModifiers")}>
           <ModifierPicker
             mods={mods}
             onToggle={(m) => apply({ ...mods, [m]: !mods[m] })}
@@ -245,11 +316,11 @@ export function DualRoleEditor({ qmkId, layerCount, onWrite }: Props) {
             toggleDisabled={(m) => !mods[m] && !nameable({ ...mods, [m]: true })}
             sideDisabled={(s) => (s === "L" ? !leftOk : !rightOk)}
           />
-          {clearCard}
-        </div>
+        </OptionCard>
         {deferClear && <Warning>{t("holdSelectAtLeastOne")}</Warning>}
         {!deferClear && hint && <Warning>{hint}</Warning>}
         {!deferClear && !hint && (!leftOk || !rightOk) && <Warning>{t("holdComboUnsupported")}</Warning>}
+        <div className="mt-4 flex justify-end border-t border-base-content/10 pt-3">{clearButton}</div>
       </section>
     );
   }
@@ -291,19 +362,11 @@ export function DualRoleEditor({ qmkId, layerCount, onWrite }: Props) {
   };
 
   return (
-    <section className="mt-6">
-      <h2 className="mb-4 text-lg font-semibold text-brand-on-surface">{t("holdEditorTitle")}</h2>
-      <div className="flex flex-wrap items-start gap-3">
+    <section className="mt-6 max-w-3xl">
+      <EditorHeader dashed={false} title={t("holdEditorTitle")} desc={t("holdEditorIntro")} tap={tap} />
+      <div className="flex flex-wrap items-start gap-4">
         {/* Layer card — dimmed while the cap holds modifiers. */}
-        <div
-          className={`flex w-72 flex-col gap-2 rounded-xl border border-base-content/10 bg-base-200/60 p-3 transition-opacity ${
-            modActive ? "opacity-50" : ""
-          }`}
-        >
-          <div className="flex items-center gap-1.5 text-sm font-semibold opacity-70">
-            <Icon icon="mdi:layers-outline" aria-hidden="true" />
-            {t("holdEditorLayer")}
-          </div>
+        <OptionCard icon="mdi:layers-outline" title={t("holdEditorLayer")} dimmed={modActive} className="w-72">
           <div className="flex flex-wrap gap-1.5">
             {Array.from({ length: Math.max(layerCount, 1) }, (_, i) => (
               <button
@@ -316,26 +379,20 @@ export function DualRoleEditor({ qmkId, layerCount, onWrite }: Props) {
               </button>
             ))}
           </div>
-        </div>
+        </OptionCard>
 
         {/* Modifiers card — dimmed while the cap holds a layer. */}
-        <div
-          className={`rounded-xl border border-base-content/10 bg-base-200/60 p-3 transition-opacity ${
-            layerActive ? "opacity-50" : ""
-          }`}
-        >
-          <div className="mb-2 text-sm font-semibold opacity-70">{t("holdEditorModifiers")}</div>
+        <OptionCard icon="mdi:apple-keyboard-shift" title={t("holdEditorModifiers")} dimmed={layerActive}>
           <ModifierPicker
             mods={mods}
             onToggle={(m) => applyMods({ ...mods, [m]: !mods[m] })}
             onSide={(s) => applyMods({ ...mods, side: s })}
           />
-        </div>
-
-        {clearCard}
+        </OptionCard>
       </div>
       {deferClear && <Warning>{t("holdSelectAtLeastOne")}</Warning>}
       {hint && <Warning>{hint}</Warning>}
+      <div className="mt-4 flex justify-end border-t border-base-content/10 pt-3">{clearButton}</div>
     </section>
   );
 }
