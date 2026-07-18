@@ -1,6 +1,7 @@
 // Decorative 3D keycap shown above the macro tabs. It renders a single
 // mechanical-keyboard keycap whose top legend mirrors the currently selected
-// macro slot (M0, M1, …) — purely presentational, no picking or protocol data.
+// macro slot (a macro icon + the slot number) — purely presentational, no
+// picking or protocol data.
 // Style/teardown conventions follow the other three.js views in this project
 // (KeyboardModelPreview, KeyboardLayout3D): alpha renderer, reduced-motion
 // aware, full geometry/material/texture disposal on unmount.
@@ -14,6 +15,12 @@ const CAP_DEPTH = 2.2;
 const CAP_COLOR = 0xf2f2f2;
 const MAX_TILT = 0.35; // radians, tilt at the far edge of the window
 
+// mdi:script-text-outline path (24×24 viewBox), matching the macro icon used in
+// the sidebar nav and the tab labels. Drawn to the left of the slot number.
+const MACRO_ICON_PATH =
+  "M15 20a1 1 0 0 0 1-1V4H8a1 1 0 0 0-1 1v11H5V5a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3v1h-2V5a1 1 0 0 0-1-1a1 1 0 0 0-1 1v14a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-1h11a2 2 0 0 0 2 2M9 6h5v2H9zm0 4h5v2H9zm0 4h5v2H9z";
+const MACRO_ICON_VIEWBOX = 24;
+
 function makeLegendTexture(text: string): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 256;
@@ -21,10 +28,27 @@ function makeLegendTexture(text: string): THREE.CanvasTexture {
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#1b1c17";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+
+  const iconSize = 88;
+  const iconScale = iconSize / MACRO_ICON_VIEWBOX;
+  const gap = 6;
+  const cy = canvas.height / 2 + 6;
+
+  // Center the icon + number as a group.
   ctx.font = "700 96px system-ui, sans-serif";
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 6);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  const textWidth = ctx.measureText(text).width;
+  const startX = (canvas.width - (iconSize + gap + textWidth)) / 2;
+
+  ctx.save();
+  ctx.translate(startX, cy - iconSize / 2);
+  ctx.scale(iconScale, iconScale);
+  ctx.fill(new Path2D(MACRO_ICON_PATH));
+  ctx.restore();
+
+  ctx.fillText(text, startX + iconSize + gap, cy);
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
@@ -32,7 +56,7 @@ function makeLegendTexture(text: string): THREE.CanvasTexture {
 }
 
 interface Props {
-  /** Legend to print on the keycap top, e.g. "M0". */
+  /** Slot number printed to the right of the macro icon, e.g. "0". */
   label: string;
 }
 

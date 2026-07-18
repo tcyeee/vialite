@@ -104,7 +104,7 @@ type NavKind = "home" | "matrixTest" | "macro" | "tapDance" | "combo" | "keyboar
 const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; icon: string }[] = [
   { kind: "home", mode: "keymap", labelKey: "navHome", icon: "mdi:home-outline" },
   { kind: "macro", mode: "macro", labelKey: "navMacro", icon: "mdi:script-text-outline" },
-  { kind: "tapDance", mode: "tapdance", labelKey: "navTapDance", icon: "mdi:gesture-double-tap" },
+  { kind: "tapDance", mode: "tapdance", labelKey: "navTapDance", icon: "mdi:animation" },
   { kind: "combo", mode: "combo", labelKey: "navCombo", icon: "mdi:vector-combine" },
   { kind: "keyboardColor", mode: "color", labelKey: "navKeyboardColor", icon: "mdi:palette-outline" },
   { kind: "importExport", mode: "io", labelKey: "navImportExport", icon: "mdi:swap-horizontal" },

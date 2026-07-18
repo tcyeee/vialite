@@ -1,3 +1,4 @@
+import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import { useToast } from "../../../contexts/toast.tsx";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
@@ -40,6 +41,17 @@ const THEMES = [
   { bg: "#4A5C4E", watermark: "COMBO" },
 ] as const;
 
+/**
+ * The card heading icon per category, matching the sidebar nav glyphs (see
+ * shell/Sidebar.tsx's NAV_ITEMS) so the Macros / Tap Dance / Combo cards read as
+ * the same features as their left-menu entries.
+ */
+const CARD_ICONS: Partial<Record<MessageKey, string>> = {
+  groupMacros: "mdi:script-text-outline",
+  groupTapDance: "mdi:animation",
+  groupCombo: "mdi:vector-combine",
+};
+
 /** A soft two-corner dot pattern echoing the Tap Dance preview cards. */
 const CARD_PATTERN =
   "bg-[radial-gradient(circle_at_bottom_left,#ffffff08_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff08_35%,transparent_36%)] bg-size-[4.95em_4.95em]";
@@ -65,7 +77,14 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
       bg: theme.bg,
       disabled: empty,
       cardClassName: CARD_PATTERN,
-      header: <div className="text-xl font-bold tracking-tight">{t(group.titleKey)}</div>,
+      header: (
+        <div className="flex items-center gap-2 text-xl font-bold tracking-tight">
+          {CARD_ICONS[group.titleKey] && (
+            <Icon icon={CARD_ICONS[group.titleKey]!} className="h-6 w-6 shrink-0 opacity-90" />
+          )}
+          {t(group.titleKey)}
+        </div>
+      ),
       decor: (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
           <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">

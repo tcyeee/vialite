@@ -621,27 +621,16 @@ body {
   gap: 1px;
 }
 
-/* Hand-drawn L/R side badge: white letter on a black circle, sized a notch below
-   the cap font (em tracks the cap font-size, so it follows the 字体大小 scale). */
+/* Boxed L/R side badge (mdi:alpha-l/r-box-outline): sized a notch below the cap
+   font (em tracks the cap font-size, so it follows the 字体大小 scale). The glyph
+   inherits the cap `color` (which the board sets to the chosen 字体颜色 on
+   `.keyboard-layout`), so the L/R badge tracks the font color like the labels and
+   icons do. */
 .key-side-badge {
-  width: 0.8em;
-  height: 0.8em;
+  width: 1.3em;
+  height: 1.3em;
   flex-shrink: 0;
-  opacity: 0.75;
-}
-
-/* The circle is the badge's "ink": it inherits the cap `color` (which the board
-   sets to the chosen 字体颜色 on `.keyboard-layout`), so the L/R badge tracks the
-   font color like the labels and icons do. The letter is knocked out in the
-   keycap face color so it stays legible whatever the font color is. */
-.key-side-badge circle {
-  fill: currentColor;
-}
-
-.key-side-badge text {
-  fill: light-dark(#f2f2f2, #3a3a3a);
-  font-size: 12px;
-  font-weight: 700;
+  opacity: 1;
 }
 
 /* Dual-role tap/hold cap (Mod-Tap, Layer-Tap): the tap action on top, the hold

@@ -21,17 +21,17 @@ const KEY_SIDE: Record<string, "L" | "R"> = {
 };
 
 /**
- * Hand-drawn side badge: a white L or R centered on a solid black circle, sized a
- * notch below the cap font (see `.key-side-badge` in index.css).
+ * Side badge: the boxed L/R Material Design Icon, sized a notch below the cap font
+ * (see `.key-side-badge` in index.css). The glyph uses `currentColor`, so it tracks
+ * the cap font color like the labels and other icons do.
  */
 function SideBadge({ side }: { side: "L" | "R" }) {
   return (
-    <svg className="key-side-badge" viewBox="0 0 16 16" role="img" aria-label={side === "L" ? "Left" : "Right"}>
-      <circle cx="8" cy="8" r="8" />
-      <text x="8" y="8.5" textAnchor="middle" dominantBaseline="central">
-        {side}
-      </text>
-    </svg>
+    <Icon
+      className="key-side-badge"
+      icon={side === "L" ? "mdi:alpha-l-box-outline" : "mdi:alpha-r-box-outline"}
+      aria-label={side === "L" ? "Left" : "Right"}
+    />
   );
 }
 

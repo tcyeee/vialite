@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState, type DragEvent } from "react";
+import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { VIAL_PROTOCOL_ADVANCED_MACROS } from "../../protocol/constants.ts";
 import type { Keyboard, MacroAction } from "../../protocol/keyboard.ts";
@@ -276,7 +277,7 @@ export function MacroPanel({ keyboard, onChange }: Props) {
           <HelpIcon text={t("macroMemoryHelp")} />
         </div>
       </div>
-      <MacroKeycap3D label={`M${active}`} />
+      <MacroKeycap3D label={String(active)} />
       <div className="tabs tabs-lift">
         {edited.map((macro, i) => (
           <Fragment key={i}>
@@ -284,9 +285,17 @@ export function MacroPanel({ keyboard, onChange }: Props) {
                 colored dot rather than a glyph baked into the ::after label text. */}
             <label
               role="tab"
-              className="tab gap-1.5"
+              className="tab gap-1.5 relative isolate"
               aria-label={`${macro.length > 0 ? "● " : ""}M${i}${slotChanged && i === active ? "*" : ""}`}
             >
+              {/* Inset translucent fill marking inactive-but-configured slots
+                  (inset-1 pulls it in from the tab edges), mirroring LayerTabs. */}
+              {macro.length > 0 && i !== active && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-1 -z-10 rounded-md bg-brand-secondary/15"
+                />
+              )}
               <input
                 type="radio"
                 name="macro_tabs"
@@ -297,7 +306,10 @@ export function MacroPanel({ keyboard, onChange }: Props) {
               {macro.length > 0 && (
                 <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-secondary" />
               )}
-              {`M${i}${slotChanged && i === active ? "*" : ""}`}
+              <span className="inline-flex items-center gap-0.5">
+                <Icon icon="mdi:script-text-outline" className="h-4 w-4 shrink-0" />
+                {`${i}${slotChanged && i === active ? "*" : ""}`}
+              </span>
             </label>
             <div className="tab-content bg-base-100 border-base-300 p-6 min-h-90">
               {i === active && (

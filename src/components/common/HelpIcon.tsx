@@ -33,7 +33,7 @@ export function HelpIcon({ text, position = "top", variant = "default", classNam
       : "bg-brand-on-surface-variant/20 text-brand-on-surface-variant";
   return (
     <span
-      className={`tooltip ${tooltipPos} relative z-20 before:z-50 after:z-50 before:max-w-xs before:whitespace-normal before:content-[attr(data-tip)]${
+      className={`tooltip ${tooltipPos} relative z-20 before:z-[99] after:z-[99] before:max-w-xs before:whitespace-normal before:content-[attr(data-tip)]${
         className ? ` ${className}` : ""
       }`}
       data-tip={text}
