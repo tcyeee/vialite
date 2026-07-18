@@ -1,8 +1,8 @@
 import { Icon } from "@iconify/react";
 import type { CSSProperties } from "react";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
-import { dualRole, holdInfo, label as kcLabel } from "../../protocol/keycodes.ts";
-import { type CapIcon, capIcon, MACRO_ICON, sideBadgeIcon } from "./keycapIcons.ts";
+import { dualRole, holdInfo, label as kcLabel, layerSwitchInfo } from "../../protocol/keycodes.ts";
+import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, sideBadgeIcon } from "./keycapIcons.ts";
 
 /**
  * Renders one glyph from the keycap-icon table ({@link keycapIcons.ts}): its mdi
@@ -61,6 +61,21 @@ function SideBadge({ side }: { side: "L" | "R" }) {
   );
 }
 
+/**
+ * Cap face for a layer key: the stacked-layers glyph ({@link LAYER_ICON}) followed
+ * by the target layer number, in place of the raw "MO(2)" / "L2" text. Used both for
+ * pure layer-switch caps (MO/TG/TT/OSL/TO/DF/PDF) and for the hold band of a
+ * Layer-Tap dual-role cap, so a layer reads the same everywhere.
+ */
+function LayerFace({ layer }: { layer: number }) {
+  return (
+    <span className="key-face-badged key-layer-face">
+      <CapGlyph spec={LAYER_ICON} />
+      <span className="key-layer-num">{layer}</span>
+    </span>
+  );
+}
+
 /** Basic modifier keycode for one flag of a Mod-Tap hold, given the hold's side. */
 const HOLD_MOD_BASIC: Record<"ctrl" | "shift" | "alt" | "gui", { L: string; R: string }> = {
   ctrl: { L: "KC_LCTRL", R: "KC_RCTRL" },
@@ -74,14 +89,17 @@ const HOLD_MOD_BASIC: Record<"ctrl" | "shift" | "alt" | "gui", { L: string; R: s
  * the same way a plain modifier cap does — one {@link SideBadge} for the shared
  * left/right side, then each modifier's OS-style glyph (so a macOS `RGui` hold
  * shows Ⓡ + ⌘ instead of the text "RGui"), following the 系统修饰键 setting via
- * {@link capIcon}. Layer-Tap holds (and any non-mod hold) keep the plain short
- * label supplied in `fallback` (e.g. "L2").
+ * {@link capIcon}. A Layer-Tap hold shows the {@link LayerFace} (layers icon + layer
+ * number). Any other hold keeps the plain short label supplied in `fallback`.
  */
 function HoldFace({ qmkId, fallback }: { qmkId: string; fallback: string }) {
   const { keyDisplay } = useKeyDisplay();
   const info = holdInfo(qmkId);
-  if (!info || info.type !== "mod") {
+  if (!info) {
     return <>{fallback}</>;
+  }
+  if (info.type === "layer") {
+    return <LayerFace layer={info.layer} />;
   }
 
   const active = (["ctrl", "shift", "alt", "gui"] as const).filter((m) => info[m]);
@@ -139,6 +157,13 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
         </span>
       </span>
     );
+  }
+
+  // Pure layer-switch caps (MO/TG/…) show the layers icon + target layer number
+  // rather than the raw "MO(2)" text (Layer-Tap is dual-role, handled above).
+  const layerSwitch = layerSwitchInfo(qmkId);
+  if (layerSwitch) {
+    return <LayerFace layer={layerSwitch.layer} />;
   }
 
   // Macro caps (M0…M15) show the macro icon followed by the slot number rather

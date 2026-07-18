@@ -585,30 +585,24 @@ body {
   height: calc(1.5rem * var(--key-font-scale, 1) * 0.85);
 }
 
-/* Layer-switch cap face: the stacked-layers glyph with the target layer number
-   badged on its lower-right corner. The number is knocked out in the keycap face
-   color over a currentColor chip so it stays legible whatever the 字体颜色 is. */
+/* Layer cap face: the stacked-layers glyph followed inline by the target layer
+   number (shared by pure layer-switch caps and Layer-Tap hold bands). Layout comes
+   from .key-face-badged (inline-flex + gap); the number just tucks tight to the icon. */
 .key-layer-face {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  gap: 0;
 }
 
 .key-layer-num {
-  position: absolute;
-  right: -0.35em;
-  bottom: -0.3em;
-  min-width: 1.05em;
-  padding: 0 0.15em;
-  box-sizing: border-box;
-  border-radius: 0.55em;
-  background: currentColor;
-  color: light-dark(#f2f2f2, #3a3a3a);
-  font-size: 0.62em;
   font-weight: 700;
-  line-height: 1.35;
-  text-align: center;
+  line-height: 1;
+}
+
+/* In a Layer-Tap hold band the layers glyph is sized in em so it tracks the band's
+   0.8em font (like .key-hold-mods), instead of the board's larger rem cap icon. */
+.key-dual-hold .key-layer-face .key-icon,
+.keyboard-layout .key-dual-hold .key-layer-face .key-icon {
+  width: 1.15em;
+  height: 1.15em;
 }
 
 /* Left/right modifier face: the side badge sits inline before the glyph/text. */
@@ -707,14 +701,18 @@ body {
 .keyboard-layout .key-dual-hold {
   /* Hold band takes 2/5 (40%) of the cap height; the tap half flexes into the
      rest. Labels here are always short (a modifier name or "L"+digit), so plain
-     nowrap + clip is enough — no ellipsis machinery needed. */
+     nowrap + clip is enough — no ellipsis machinery needed. Inset slightly from
+     the cap edges so its own border + rounded corners read as a distinct pill. */
   flex: 0 0 40%;
   align-self: stretch;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1em;
   padding: 1px 2px;
-  border-radius: 0 0 4px 4px;
+  margin: 0 2px 2px;
+  border: 1px solid light-dark(rgba(0, 0, 0, 0.28), rgba(255, 255, 255, 0.32));
+  border-radius: 4px;
   box-sizing: border-box;
   overflow: hidden;
   white-space: nowrap;

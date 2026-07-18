@@ -39,7 +39,7 @@ export const MACRO_ICON: CapIcon = { icon: "mdi:script-text-outline", scale: 0.7
  * Layer-switch cap glyph (MO/TG/TT/OSL/TO/DF/PDF): the stacked-layers icon that
  * carries the target layer number badge, in place of the raw "MO(2)" text.
  */
-export const LAYER_ICON: CapIcon = { icon: "mdi:layers" };
+export const LAYER_ICON: CapIcon = { icon: "mdi:layers-outline" };
 
 /** Boxed L/R side badge (Ⓛ / Ⓡ) prepended to left/right modifier caps. */
 export function sideBadgeIcon(side: "L" | "R"): CapIcon {
@@ -56,8 +56,12 @@ export function sideBadgeIcon(side: "L" | "R"): CapIcon {
  * - Shift (⇧) and Caps (⇪) use their glyph in both modes — the symbols are cross-platform.
  */
 const CAP_ICONS: Record<string, CapIcon | ((mac: boolean) => CapIcon | null)> = {
-  KC_LGUI: (mac) => ({ icon: mac ? "mdi:apple-keyboard-command" : "mdi:microsoft-windows", scale: SYMBOL }),
-  KC_RGUI: (mac) => ({ icon: mac ? "mdi:apple-keyboard-command" : "mdi:microsoft-windows", scale: SYMBOL }),
+  // ⌘ reads heavier than the other symbols, so the macOS command glyph shrinks a
+  // bit more than the shared SYMBOL default; the Windows logo keeps SYMBOL.
+  KC_LGUI: (mac) =>
+    mac ? { icon: "mdi:apple-keyboard-command", scale: 0.68 } : { icon: "mdi:microsoft-windows", scale: SYMBOL },
+  KC_RGUI: (mac) =>
+    mac ? { icon: "mdi:apple-keyboard-command", scale: 0.68 } : { icon: "mdi:microsoft-windows", scale: SYMBOL },
   KC_LSHIFT: { icon: "mdi:apple-keyboard-shift", scale: SYMBOL },
   KC_RSHIFT: { icon: "mdi:apple-keyboard-shift", scale: SYMBOL },
   KC_CAPSLOCK: { icon: "mdi:apple-keyboard-caps", scale: SYMBOL },
@@ -70,10 +74,10 @@ const CAP_ICONS: Record<string, CapIcon | ((mac: boolean) => CapIcon | null)> = 
   KC_ESCAPE: { icon: "mdi:keyboard-esc", scale: SYMBOL },
   KC_SPACE: { icon: "mdi:keyboard-space", scale: SYMBOL },
   KC_TAB: { icon: "mdi:keyboard-tab", scale: SYMBOL },
-  KC_UP: { icon: "mdi:keyboard-arrow-up", scale: SYMBOL },
-  KC_DOWN: { icon: "mdi:keyboard-arrow-down", scale: SYMBOL },
-  KC_LEFT: { icon: "mdi:keyboard-arrow-left", scale: SYMBOL },
-  KC_RIGHT: { icon: "mdi:keyboard-arrow-right", scale: SYMBOL },
+  KC_UP: { icon: "mdi:arrow-up-thin", scale: SYMBOL },
+  KC_DOWN: { icon: "mdi:arrow-down-thin", scale: SYMBOL },
+  KC_LEFT: { icon: "mdi:arrow-left-thin", scale: SYMBOL },
+  KC_RIGHT: { icon: "mdi:arrow-right-thin", scale: SYMBOL },
 };
 
 /**

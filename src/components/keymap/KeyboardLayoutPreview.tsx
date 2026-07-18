@@ -1,9 +1,7 @@
 import { useMemo, type CSSProperties } from "react";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
-import { layerSwitchInfo } from "../../protocol/keycodes.ts";
 import type { Keyboard } from "../../protocol/keyboard.ts";
-import { CapGlyph, KeycapFace } from "./KeycapFace.tsx";
-import { LAYER_ICON } from "./keycapIcons.ts";
+import { KeycapFace } from "./KeycapFace.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
 
 /** Cap size in px per KLE unit, keyed by the display-size setting. */
@@ -166,21 +164,6 @@ export function appearanceMetrics(
 }
 
 /**
- * Cap face for a pure layer-switch key (MO/TG/TT/OSL/TO/DF/PDF): the stacked-
- * layers glyph — the same icon the 快捷配置 layer-switch cards use — with the
- * target layer number badged on it, in place of the raw "MO(2)" text. Layer-Tap
- * caps are left to {@link KeycapFace}'s dual-role split (they carry a tap key).
- */
-function LayerKeycapFace({ layer }: { layer: number }) {
-  return (
-    <span className="key-layer-face">
-      <CapGlyph spec={LAYER_ICON} />
-      <span className="key-layer-num">{layer}</span>
-    </span>
-  );
-}
-
-/**
  * Read-only rendering of the connected board's physical layout — same geometry
  * pipeline as {@link KeyboardLayout}, but non-interactive (`pointer-events:none`)
  * and captioned with the given layer's labels so the board is recognizable. Used
@@ -262,7 +245,6 @@ export function KeyboardLayoutPreview({
           .filter(({ key }) => !key.decal)
           .map(({ key, shiftX, shiftY }) => {
             const qmkId = keyboard.getKey(layer, key.row, key.col);
-            const layerSwitch = layerSwitchInfo(qmkId);
             return (
               <div
                 key={`${key.row},${key.col}@${key.x},${key.y}`}
@@ -280,7 +262,7 @@ export function KeyboardLayoutPreview({
                     }}
                   />
                 )}
-                {layerSwitch ? <LayerKeycapFace layer={layerSwitch.layer} /> : <KeycapFace qmkId={qmkId} />}
+                <KeycapFace qmkId={qmkId} />
               </div>
             );
           })}
