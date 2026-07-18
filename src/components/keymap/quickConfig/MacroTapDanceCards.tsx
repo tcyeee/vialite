@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import { useToast } from "../../../contexts/toast.tsx";
@@ -10,22 +11,28 @@ export interface ComboGroup {
   titleKey: MessageKey;
   entries: KeycodeDef[];
   /** Number of slots already configured, for the "共计(used/total)个" badge. */
-  used: number;
+  used?: number;
   /** Total slots available on the device. */
-  total: number;
+  total?: number;
   /**
    * Per-slot "already configured" flags, indexed like {@link entries}. Slots
    * marked true get a dot on their numbered tile. Absent on {@link info} cards.
    */
   configured?: boolean[];
   /** Jump to this category's dedicated editor page (the hover "编辑" action). */
-  onEdit: () => void;
+  onEdit?: () => void;
   /**
    * Marks a purely informational card (Combo): it never expands and has no
    * keycodes to assign. Clicking it pops a toast explaining that combos apply
    * automatically. Its {@link entries} are ignored.
    */
   info?: boolean;
+  /**
+   * Custom expanded body (the Multi-Function card). When present the card grows
+   * to show this node instead of the numbered slot grid, and skips the
+   * used/total badge and the hover "编辑" action. {@link entries} are ignored.
+   */
+  custom?: ReactNode;
 }
 
 interface Props {
@@ -39,6 +46,7 @@ const THEMES = [
   { bg: "#3E5C6E", watermark: "MACRO" },
   { bg: "#73575E", watermark: "TAP DANCE" },
   { bg: "#4A5C4E", watermark: "COMBO" },
+  { bg: "#5C5470", watermark: "MULTI" },
 ] as const;
 
 /**
@@ -50,6 +58,7 @@ const CARD_ICONS: Partial<Record<MessageKey, string>> = {
   groupMacros: "mdi:script-text-outline",
   groupTapDance: "mdi:animation",
   groupCombo: "mdi:vector-combine",
+  groupMultiFunction: "mdi:apps",
 };
 
 /** A soft two-corner dot pattern echoing the Tap Dance preview cards. */
@@ -69,9 +78,9 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
 
   const cards: ExpandableCardDef[] = groups.map((group, i) => {
     const theme = THEMES[i % THEMES.length];
-    // The Combo card is informational only: it never expands, so it's never
-    // "empty" (which would dim/disable a category card).
-    const empty = !group.info && group.entries.length === 0;
+    // The Combo (info) and Multi-Function (custom) cards carry no keycode slots,
+    // so they're never "empty" (which would dim/disable a category card).
+    const empty = !group.info && !group.custom && group.entries.length === 0;
     return {
       key: group.titleKey,
       bg: theme.bg,
@@ -107,28 +116,32 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
           </span>
         </div>
       ),
-      overlay: empty ? undefined : (
-        <button
-          type="button"
-          className="absolute right-3 bottom-3 z-10 text-xs font-medium text-white/80 opacity-0 transition-opacity group-hover/expandcard:opacity-100 hover:text-white"
-          onClick={(e) => {
-            e.stopPropagation();
-            group.onEdit();
-          }}
-        >
-          {t("comboCardEdit")} →
-        </button>
-      ),
+      overlay:
+        empty || group.custom ? undefined : (
+          <button
+            type="button"
+            className="absolute right-3 bottom-3 z-10 text-xs font-medium text-white/80 opacity-0 transition-opacity group-hover/expandcard:opacity-100 hover:text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              group.onEdit?.();
+            }}
+          >
+            {t("comboCardEdit")} →
+          </button>
+        ),
       hint: group.info
         ? t("comboCardInfoHint")
-        : empty
-          ? "—"
-          : `${t("comboCardReveal")} · ${t("comboCardUsed", { used: group.used, total: group.total })}`,
+        : group.custom
+          ? t("comboCardReveal")
+          : empty
+            ? "—"
+            : `${t("comboCardReveal")} · ${t("comboCardUsed", { used: group.used ?? 0, total: group.total ?? 0 })}`,
       // Combos take effect on creation with no key binding, so the card just
       // explains that via a toast instead of expanding.
       onActivate: group.info ? () => showToast(t("comboAutoApply"), "info") : undefined,
-      body:
-        group.info || empty
+      body: group.custom
+        ? () => group.custom
+        : group.info || empty
           ? undefined
           : () => (
               <div className="combo-num-grid flex flex-wrap gap-2">

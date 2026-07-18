@@ -611,6 +611,8 @@ const MESSAGES = {
   categoryLighting: { en: "Lighting", zh: "灯光" },
   categoryCustom: { en: "Custom", zh: "自定义" },
   categoryKeyboardFunction: { en: "Keyboard Function", zh: "键盘功能" },
+  categoryKeyboardConfig: { en: "Keyboard Config", zh: "键盘配置" },
+  categoryOther: { en: "Other", zh: "其他" },
 
   // Category-level function descriptions shown in the cascade selector's info panel.
   cascadeDescIso: {
@@ -751,6 +753,7 @@ const MESSAGES = {
   // Sub-groups within the merged "Macros / Tap Dance" tab
   groupMacros: { en: "Macros", zh: "宏" },
   groupTapDance: { en: "Tap Dance", zh: "Tap Dance" },
+  groupMultiFunction: { en: "Multi-Function", zh: "多功能" },
 
   // Combo-keys tab: the two expandable category cards
   comboCardReveal: { en: "Click to reveal", zh: "点击展开" },

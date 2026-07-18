@@ -6,6 +6,7 @@ import { KeycodeCascadeSelector } from "../KeycodeCascadeSelector.tsx";
 import type { Keyboard } from "../../../protocol/keyboard.ts";
 import { quantumHelp } from "./quantumHelp.ts";
 import { ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
+import { TileRevealBody } from "./TileRevealBody.tsx";
 
 /** A labelled block of keycodes shown within an expanded card. */
 export interface QuantumCardSection {
@@ -36,6 +37,13 @@ interface Props {
   onPick: (entry: KeycodeDef) => void;
   /** Connected device, for the inner-key cascade selector's macro / tap-dance previews. */
   keyboard: Keyboard;
+  /**
+   * view-transition-name prefix for the underlying column. Defaults to
+   * `"quantumcard"`; override it when a second instance renders on the same page
+   * (the "Other" card, relocated to the 其他 column) so the two don't collide on
+   * a shared transition name.
+   */
+  idPrefix?: string;
 }
 
 /** Background colors cycled across the Quantum cards (up to five groups). */
@@ -103,7 +111,7 @@ function layerTemplates(entries: KeycodeDef[]): number[] {
  * card keeps the flat reveal. Uses the shared {@link ExpandableCardColumn},
  * matching the Fn/Media/Mouse and Combo Keys columns.
  */
-export function QuantumCards({ groups, onPick, keyboard }: Props) {
+export function QuantumCards({ groups, onPick, keyboard, idPrefix = "quantumcard" }: Props) {
   const { t, lang } = useI18n();
   // Composer state — shared, since only one card is ever open at a time; reset
   // whenever the open card changes (via ExpandableCardColumn's onExpandedChange).
@@ -117,39 +125,6 @@ export function QuantumCards({ groups, onPick, keyboard }: Props) {
     setSide("L");
     setLayer(null);
     setBasic(null);
-  };
-
-  /**
-   * A single assignable keycode button; `j` drives the staggered reveal
-   * animation. Uses the "Keyboard Function" tab's uniform tile look (fixed
-   * height, soft translucent border/fill), translated to white for the card's
-   * colored background. When help text exists for the keycode, a corner HelpIcon
-   * is overlaid; the badge stops click propagation so hovering never assigns.
-   */
-  const keyButton = (entry: KeycodeDef, j: number) => {
-    const help = quantumHelp(entry.qmkId, lang);
-    const button = (
-      <button
-        key={entry.qmkId}
-        className={`combo-item btn btn-sm h-14 min-w-[4.5rem] border border-white/20 bg-white/[0.06] py-1 leading-tight font-normal whitespace-pre-line text-white normal-case hover:border-white/40 hover:bg-white/15${
-          entry.masked ? " italic" : ""
-        }`}
-        style={{ animationDelay: `${Math.min(j * 25, 300)}ms` }}
-        title={entry.title ?? entry.qmkId}
-        onClick={() => onPick(entry)}
-      >
-        {entry.label || entry.qmkId}
-      </button>
-    );
-    if (!help) return button;
-    return (
-      <div key={entry.qmkId} className="relative">
-        {button}
-        <span className="absolute top-0.5 right-0.5" onClick={(e) => e.stopPropagation()}>
-          <HelpIcon text={help} variant="light" />
-        </span>
-      </div>
-    );
   };
 
   /** The expanded in-card composer for a Modifiers/Mod-Tap or Layer-Tap card. */
@@ -270,6 +245,11 @@ export function QuantumCards({ groups, onPick, keyboard }: Props) {
       key: group.titleKey,
       bg: CARD_BG[i % CARD_BG.length],
       disabled: empty,
+      // The "Other" card opens exactly like the Media card (see FnMediaMouseCards):
+      // a fixed 810×430 box whose uniform no-wrap tiles scroll within that height.
+      ...(kind === "other"
+        ? { expandedWidth: "w-[810px]", expandedHeight: "430px", expandedOffsetY: 100 }
+        : {}),
       header: (
         <div className="flex items-center gap-1.5 font-bold tracking-tight">
           <span>{t(group.titleKey)}</span>
@@ -287,34 +267,23 @@ export function QuantumCards({ groups, onPick, keyboard }: Props) {
         ? undefined
         : kind !== "other"
           ? () => composer(group, kind)
-          : group.sections
-            ? () => (
-                <div className="flex flex-col gap-3">
-                  {group.sections!.map((section, s) => (
-                    <div key={section.titleKey} className="flex flex-col gap-2">
-                      <div className="flex items-center gap-1 text-xs font-semibold tracking-wide uppercase opacity-60">
-                        <span>{t(section.titleKey)}</span>
-                        {section.helpKey && <HelpIcon text={t(section.helpKey)} variant="light" />}
-                      </div>
-                      <div className="combo-num-grid flex flex-wrap gap-2">
-                        {section.entries.map((entry, j) => keyButton(entry, s === 0 ? j : j + 4))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            : () => (
-                <div className="combo-num-grid flex flex-wrap gap-2">
-                  {group.entries.map((entry, j) => keyButton(entry, j))}
-                </div>
-              ),
+          : // The "Other" card mirrors the Media card: one flat wrap of uniform
+            // no-wrap tiles with a portaled hover tooltip (via TileRevealBody),
+            // dropping the per-section headers and multi-line `keyButton` look.
+            () => (
+              <TileRevealBody
+                entries={group.entries}
+                onPick={onPick}
+                helpFor={(entry) => quantumHelp(entry.qmkId, lang) ?? undefined}
+              />
+            ),
     };
   });
 
   return (
     <ExpandableCardColumn
       cards={cards}
-      idPrefix="quantumcard"
+      idPrefix={idPrefix}
       expandedWidth="w-[26rem]"
       growLeft
       onExpandedChange={resetComposer}

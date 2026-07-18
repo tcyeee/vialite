@@ -14,15 +14,17 @@ import {
   CATEGORY_KEYS,
   KEYCODE_HELP,
   LAYER_GROUPS,
-  LAYER_GROUP_OTHER,
   QUANTUM_GROUPS,
   QUANTUM_GROUP_MISC,
   deviceCategories,
 } from "../keycodeMeta.ts";
-import { LayerCategoryCards } from "./LayerCategoryCards.tsx";
 import { LayerKeyPicker } from "./LayerKeyPicker.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
 import { QuantumCards } from "./QuantumCards.tsx";
+import {
+  KeyboardFunctionCards,
+  type KeyboardFnCardGroup,
+} from "./KeyboardFunctionCards.tsx";
 
 /** Categories hidden from the inline homepage picker. Quantum is not a tab of its
  *  own: it's folded into the Combo Keys tab as a labelled section (below). */
@@ -98,26 +100,6 @@ function comboMeta(
     onEdit: () => onNavigate("macro"),
     configured,
   };
-}
-
-/**
- * Split the flat "Layers" list into one labelled block per layer-switch
- * function (MO, TG, …), with anything else (FN_MO13/FN_MO23) trailing under a
- * catch-all "Other" heading.
- */
-function layerGroups(): KeycodeGroup[] {
-  const src = entriesOf("Layers");
-  const groups: KeycodeGroup[] = LAYER_GROUPS
-    .map(({ titleKey, helpKey, match }) => ({
-      titleKey,
-      helpKey,
-      entries: src.filter((e) => match(e.qmkId)),
-    }))
-    .filter((g) => g.entries.length > 0);
-  const rest = src.filter((e) => !LAYER_GROUPS.some((g) => g.match(e.qmkId)));
-  if (rest.length > 0)
-    groups.push({ titleKey: LAYER_GROUP_OTHER.titleKey, helpKey: LAYER_GROUP_OTHER.helpKey, entries: rest });
-  return groups;
 }
 
 /**
@@ -198,11 +180,32 @@ const VISIBLE_CATEGORIES = (() => {
 const QUANTUM_CARD_GROUPS = quantumGroups();
 
 /**
- * Layer-switch cards (MO, TG, …), precomputed once. Rendered as a labelled
- * column inside the Basic tab's far-right region rather than as a standalone
- * "Layers" tab (see {@link QuickConfigPanel}).
+ * The Quantum column's own cards (Modifiers, Mod-Tap, Layer-Tap) — everything
+ * except the catch-all "Other" card, which is relocated to the end of the 其他
+ * (categoryOther) column below.
  */
-const LAYER_CARD_GROUPS = layerGroups();
+const QUANTUM_MAIN_GROUPS = QUANTUM_CARD_GROUPS.filter((g) => g.titleKey !== "groupQuantumOther");
+
+/**
+ * The leftover Layer keycodes (FN_MO13/FN_MO23) that matched none of the six
+ * per-type layer-switch groups. The dedicated 层切换 column was removed (层按键's
+ * two-step picker covers the per-type cards), so these two fn keys are folded
+ * into the Quantum "Other" card below instead.
+ */
+const LAYER_OTHER_ENTRIES = entriesOf("Layers").filter(
+  (e) => !LAYER_GROUPS.some((g) => g.match(e.qmkId)),
+);
+
+/**
+ * The Quantum "Other" card (One-Shot Mods + misc quantum keycodes), pulled out
+ * of the Quantum column and appended to the 其他 column. Kept rendered by
+ * {@link QuantumCards} so it keeps its `quantumHelp` tooltips and reveal layout.
+ * The leftover Layer fn keys ({@link LAYER_OTHER_ENTRIES}) are appended to its
+ * flat reveal so the removed 层切换 column's keycodes stay reachable.
+ */
+const QUANTUM_OTHER_GROUPS = QUANTUM_CARD_GROUPS.filter(
+  (g) => g.titleKey === "groupQuantumOther",
+).map((g) => ({ ...g, entries: [...g.entries, ...LAYER_OTHER_ENTRIES] }));
 
 /** Editor pages the Combo Keys cards can jump to via their hover "编辑" action. */
 export type ComboEditTarget = "macro" | "tapdance" | "combo";
@@ -271,12 +274,27 @@ export function QuickConfigPanel({
   // Custom keycodes are folded into the "Keyboard Function" tab (below), so keep
   // only any other future device categories to append separately.
   const otherDevice = device.filter((c) => c.name !== "Tap Dance" && c.name !== "Custom");
-  // Lighting and the device's Custom keycodes share one "Keyboard Function" tab,
-  // shown as two labelled sections (灯光 / 自定义). Custom only exists once a
-  // device exposing it is connected, so its section is dropped when absent.
-  const keyboardFnGroups: KeycodeGroup[] = [
-    { titleKey: "categoryLighting", entries: entriesOf("Lighting") },
-    ...(custom ? [{ titleKey: "categoryCustom" as MessageKey, entries: custom.entries }] : []),
+  // The "Keyboard Function" column's two expandable cards: Lighting (灯光) and
+  // the device's Custom keycodes, retitled "键盘配置" (Keyboard Config). Custom
+  // only exists once a device exposing it is connected, so its card is dropped
+  // when absent.
+  const keyboardFnCardGroups: KeyboardFnCardGroup[] = [
+    {
+      titleKey: "categoryLighting",
+      helpKey: "cascadeDescLighting",
+      icon: "mdi:lightbulb-on-outline",
+      entries: entriesOf("Lighting"),
+    },
+    ...(custom
+      ? [
+          {
+            titleKey: "categoryKeyboardConfig" as MessageKey,
+            helpKey: "cascadeDescCustom" as MessageKey,
+            icon: "mdi:tune-variant",
+            entries: custom.entries,
+          },
+        ]
+      : []),
   ];
   // The Macros + Tap Dance cards that used to fill a dedicated "Combo Keys" tab,
   // now folded into the Basic tab's far-right column next to the Quantum cards.
@@ -474,9 +492,39 @@ export function QuickConfigPanel({
                         },
                       ]
                     : []),
+                  // 多功能: a custom-body card that expands to arbitrary content
+                  // rather than a keycode slot grid.
+                  {
+                    titleKey: "groupMultiFunction" as MessageKey,
+                    entries: [],
+                    custom: <div className="text-lg font-medium">hellowold</div>,
+                  },
                 ]}
                 onPick={pick}
               />
+            </div>
+            {/* 其他 (Other): the Lighting (灯光) and Keyboard Config (键盘配置,
+                the device's Custom keycodes) cards, rendered as the same
+                expandable colored cards the Fn/Media/Mouse column uses. */}
+            <div>
+              <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryOther")}</h4>
+              <KeyboardFunctionCards groups={keyboardFnCardGroups} onPick={pick} />
+              {/* The Quantum "其他" card, relocated here as the column's last card
+                  (its own column, keyed off a distinct idPrefix so the two Quantum
+                  card instances don't share a view-transition-name). */}
+              {QUANTUM_OTHER_GROUPS.length > 0 && (
+                <QuantumCards
+                  idPrefix="quantumothercard"
+                  groups={QUANTUM_OTHER_GROUPS.map((g) => ({
+                    titleKey: g.titleKey!,
+                    helpKey: g.helpKey,
+                    entries: g.entries,
+                    sections: g.sections,
+                  }))}
+                  onPick={pick}
+                  keyboard={keyboard}
+                />
+              )}
             </div>
             <div>
               <h4 className="mb-1 flex items-center gap-1 text-sm font-semibold">
@@ -484,7 +532,7 @@ export function QuickConfigPanel({
                 <HelpIcon text={t("cascadeDescQuantum")} />
               </h4>
               <QuantumCards
-                groups={QUANTUM_CARD_GROUPS.map((g) => ({
+                groups={QUANTUM_MAIN_GROUPS.map((g) => ({
                   titleKey: g.titleKey!,
                   helpKey: g.helpKey,
                   entries: g.entries,
@@ -494,69 +542,10 @@ export function QuickConfigPanel({
                 keyboard={keyboard}
               />
             </div>
-            {/* 层切换 (Layers), folded in from its former standalone tab. Its
-                seven cards lay out as two columns (4 + 3), so the width is left
-                to the card grid rather than pinned to a single narrow column. */}
-            <div>
-              <h4 className="mb-1 flex items-center gap-1 text-sm font-semibold">
-                <span className="opacity-70">{t("categoryLayers")}</span>
-                <HelpIcon text={t("cascadeDescLayers")} />
-              </h4>
-              <LayerCategoryCards
-                groups={LAYER_CARD_GROUPS.map((g) => ({
-                  titleKey: g.titleKey!,
-                  helpKey: g.helpKey,
-                  entries: g.entries,
-                }))}
-                onPick={pick}
-              />
-            </div>
-            {/* 键盘功能 (Keyboard Function): Lighting + the device's Custom
-                keycodes, folded in from its former standalone tab. Each group's
-                tiles flow top-to-bottom in a height-capped column and wrap into
-                a new column on overflow, so this block stays as short as its
-                neighbours instead of towering as one tall single-column list. */}
-            <div>
-              <h4 className="mb-1 text-sm font-semibold opacity-70">
-                {t("categoryKeyboardFunction")}
-              </h4>
-              {/* 灯光 and 自定义 sit side by side (Custom to the right of
-                  Lighting) rather than stacked. Each group's tiles flow
-                  top-to-bottom, six rows to a column, then wrap into a new
-                  column. A CSS grid with `grid-flow-col` + a fixed row count
-                  lays the columns out as explicit tracks whose combined width
-                  the container reports, so nothing overflows onto the
-                  neighbouring group — unlike `flex-col flex-wrap` / CSS
-                  multi-column, whose width collapses when there's no definite
-                  container width, spilling the extra columns as overlap. */}
-              <div className="mt-3 flex items-start gap-6">
-                {keyboardFnGroups.map((group) => (
-                  <div key={group.titleKey ?? ""}>
-                    {group.titleKey && (
-                      <h5 className="mb-1 text-xs font-semibold opacity-60">{t(group.titleKey)}</h5>
-                    )}
-                    <div className="grid grid-flow-col grid-rows-6 gap-x-3 gap-y-2">
-                      {group.entries.map((entry) =>
-                        tileWithHelp(entry, group.titleKey === "categoryLighting"),
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       )}
-      {activeCat.name === "Layers" && activeCat.groups ? (
-        <LayerCategoryCards
-          groups={activeCat.groups.map((g) => ({
-            titleKey: g.titleKey!,
-            helpKey: g.helpKey,
-            entries: g.entries,
-          }))}
-          onPick={pick}
-        />
-      ) : activeCat.groups
+      {activeCat.groups
         ? activeCat.groups.map((group) => (
             <div key={group.titleKey ?? ""} className="mt-3">
               {group.titleKey && (
