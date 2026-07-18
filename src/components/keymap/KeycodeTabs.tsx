@@ -32,9 +32,7 @@ const HIDDEN_CATEGORIES: ReadonlySet<string> = new Set([
   "Quantum",
 ]);
 
-/** Name of the tab that folds Fn keys, Media and Mouse into one. */
-const MERGED_NAME = "Fn/Media/Mouse";
-/** Source categories merged under {@link MERGED_NAME}, in list order. */
+/** Source categories folded into the Basic tab as the vertical Fn/Media/Mouse cards. */
 const MERGE_SOURCES: ReadonlySet<string> = new Set(["Fn keys", "Media", "Mouse"]);
 
 /** Name of the tab that folds the Macros list and the device's Tap Dance slots into one. */
@@ -161,32 +159,27 @@ function quantumGroups(): KeycodeGroup[] {
 }
 
 /**
+ * The three Fn/Media/Mouse groups, shown as vertically-stacked expandable cards
+ * inside the Basic tab (they used to live in a dedicated "Function" tab). Ordered
+ * F13–F24, Mouse, then Media; the F-keys render in a 3×4 grid once expanded.
+ */
+const FN_MEDIA_MOUSE_GROUPS: KeycodeGroup[] = [
+  { titleKey: "groupFnKeys", entries: entriesOf("Fn keys"), grid: true },
+  { titleKey: "groupMouse", entries: entriesOf("Mouse") },
+  { titleKey: "groupMedia", entries: entriesOf("Media") },
+];
+
+/**
  * Visible tabs for the inline picker: hidden categories dropped, and the three
- * small Fn/Media/Mouse groups collapsed into a single {@link MERGED_NAME} tab
- * placed where the first of them (Fn keys) would have appeared. That merged tab
- * lays its keys out in three labelled sub-groups: the F13–F24 keys in a 3×4
- * grid, the mouse keys, then everything else.
+ * small Fn/Media/Mouse groups pulled out entirely — they're rendered inside the
+ * Basic tab (see {@link FN_MEDIA_MOUSE_GROUPS}) rather than as a tab of their own.
  */
 const VISIBLE_CATEGORIES = (() => {
   const out: VisibleCategory[] = [];
-  let mergedAdded = false;
   for (const c of KEYCODE_CATEGORIES) {
     if (HIDDEN_CATEGORIES.has(c.name)) continue;
-    if (MERGE_SOURCES.has(c.name)) {
-      if (!mergedAdded) {
-        mergedAdded = true;
-        out.push({
-          name: MERGED_NAME,
-          entries: [],
-          groups: [
-            { titleKey: "groupFnKeys", entries: entriesOf("Fn keys"), grid: true },
-            { titleKey: "groupMouse", entries: entriesOf("Mouse") },
-            { titleKey: "groupMedia", entries: entriesOf("Media") },
-          ],
-        });
-      }
-      continue;
-    }
+    // Folded into the Basic tab as vertical cards, not a standalone tab.
+    if (MERGE_SOURCES.has(c.name)) continue;
     out.push({
       name: c.name,
       entries: c.entries,
@@ -298,13 +291,13 @@ export function KeycodeTabs({
     return c;
   });
   const ordered: VisibleCategory[] = [...base, ...otherDevice];
-  // Place the Combo Keys (Macros / Tap Dance) tab immediately after the
-  // Function (Fn/Media/Mouse) tab.
+  // Place the Combo Keys (Macros / Tap Dance) tab immediately after the Basic
+  // tab, which now absorbs the former Function (Fn/Media/Mouse) cards.
   const macroIdx = ordered.findIndex((c) => c.name === MACRO_TD_NAME || c.name === "Macros");
-  const fnIdx = ordered.findIndex((c) => c.name === MERGED_NAME);
-  if (macroIdx !== -1 && fnIdx !== -1 && macroIdx !== fnIdx + 1) {
+  const basicIdx = ordered.findIndex((c) => c.name === "Basic");
+  if (macroIdx !== -1 && basicIdx !== -1 && macroIdx !== basicIdx + 1) {
     const [macro] = ordered.splice(macroIdx, 1);
-    ordered.splice(ordered.findIndex((c) => c.name === MERGED_NAME) + 1, 0, macro);
+    ordered.splice(ordered.findIndex((c) => c.name === "Basic") + 1, 0, macro);
   }
   const allCategories: VisibleCategory[] = ordered;
   const activeCat = allCategories.find((c) => c.name === active) ?? allCategories[0];
@@ -407,21 +400,37 @@ export function KeycodeTabs({
         </div>
       )}
       {isBasic && (
-        <BasicKeyboardGrid onPick={(qmkId) => pick({ qmkId, label: qmkId })} />
-      )}
-      {isBasic && (
-        <div className="mt-4">
-          <h4 className="mb-1 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
-          <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
-            <span>{t("autoAdvance")}</span>
-            <HelpIcon text={t("autoAdvanceHelp")} />
-            <input
-              type="checkbox"
-              className="toggle toggle-sm toggle-primary"
-              checked={autoAdvance}
-              onChange={(e) => onAutoAdvanceChange(e.target.checked)}
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          {/* Left column: physical keyboard grid + special keys (both inside
+              BasicKeyboardGrid) followed by the config-settings block. */}
+          <div>
+            <BasicKeyboardGrid onPick={(qmkId) => pick({ qmkId, label: qmkId })} />
+            <div className="mt-4">
+              <h4 className="mb-1 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
+              <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
+                <span>{t("autoAdvance")}</span>
+                <HelpIcon text={t("autoAdvanceHelp")} />
+                <input
+                  type="checkbox"
+                  className="toggle toggle-sm toggle-primary"
+                  checked={autoAdvance}
+                  onChange={(e) => onAutoAdvanceChange(e.target.checked)}
+                />
+              </label>
+            </div>
+          </div>
+          {/* Right column: the vertical Fn/Media/Mouse cards. */}
+          <div className="mt-4 lg:mt-0">
+            <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryFnMediaMouse")}</h4>
+            <FnMediaMouseCards
+              groups={FN_MEDIA_MOUSE_GROUPS.map((g) => ({
+                titleKey: g.titleKey!,
+                helpKey: g.helpKey,
+                entries: g.entries,
+              }))}
+              onPick={pick}
             />
-          </label>
+          </div>
         </div>
       )}
       {activeCat.name === MACRO_TD_NAME && activeCat.groups ? (
@@ -472,15 +481,6 @@ export function KeycodeTabs({
         </>
       ) : activeCat.name === "Layers" && activeCat.groups ? (
         <LayerCategoryCards
-          groups={activeCat.groups.map((g) => ({
-            titleKey: g.titleKey!,
-            helpKey: g.helpKey,
-            entries: g.entries,
-          }))}
-          onPick={pick}
-        />
-      ) : activeCat.name === MERGED_NAME && activeCat.groups ? (
-        <FnMediaMouseCards
           groups={activeCat.groups.map((g) => ({
             titleKey: g.titleKey!,
             helpKey: g.helpKey,

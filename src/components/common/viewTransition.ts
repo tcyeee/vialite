@@ -5,11 +5,21 @@
  * `update` must apply its changes synchronously — pass `() => flushSync(() => setState(...))` when
  * driving it from React state, so the DOM is committed before the transition snapshots the result.
  */
-export function startViewTransition(update: () => void): void {
-  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+/** A minimal handle over the browser transition; `finished` resolves once the animation ends. */
+export interface ViewTransitionHandle {
+  finished: Promise<void>;
+}
+
+export function startViewTransition(update: () => void): ViewTransitionHandle {
+  const doc = document as Document & {
+    startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+  };
   if (typeof doc.startViewTransition === "function") {
-    doc.startViewTransition(update);
-  } else {
-    update();
+    const transition = doc.startViewTransition(update);
+    // Skipped/interrupted transitions reject `finished`; normalise to a resolve
+    // so callers can always rely on it firing after the animation settles.
+    return { finished: transition.finished.catch(() => undefined) };
   }
+  update();
+  return { finished: Promise.resolve() };
 }

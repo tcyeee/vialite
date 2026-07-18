@@ -164,20 +164,20 @@ export function BasicKeyboardGrid({ onPick }: Props) {
         <h4 className="mb-2 text-sm font-semibold opacity-70">{t("specialKeys")}</h4>
         <div className="flex flex-wrap gap-2">
           <button
-            className="btn btn-sm btn-outline"
+            className="btn btn-sm btn-soft"
             title={t("clearNoTitle")}
             onClick={() => onPick("KC_NO")}
           >
             {t("specialClear")}
           </button>
           <button
-            className="btn btn-sm btn-outline"
+            className="btn btn-sm btn-soft"
             title={t("clearTransTitle")}
             onClick={() => onPick("KC_TRNS")}
           >
             {t("specialTransparent")}
           </button>
-          <button className="btn btn-sm btn-outline" onClick={() => setAnyOpen(true)}>
+          <button className="btn btn-sm btn-soft" onClick={() => setAnyOpen(true)}>
             {t("specialAny")}
           </button>
         </div>
