@@ -491,7 +491,7 @@ const MESSAGES = {
     en: "TD({n}) is configured but not yet placed on any key.",
     zh: "TD({n}) 已配置,但还没有放置到任何按键上。",
   },
-  tapDanceAdd: { en: "Add tap dance", zh: "添加点击舞步" },
+  tapDanceAdd: { en: "Add tap dance", zh: "添加 Tap Dance" },
   tapDanceRenumber: { en: "Change slot number", zh: "更换槽位编号" },
   tapDanceEmpty: { en: "No tap dances configured yet.", zh: "还没有配置任何点击舞步。" },
   tapDanceFull: {
@@ -521,7 +521,7 @@ const MESSAGES = {
     zh: "确定删除这个组合键吗?",
   },
   comboActive: { en: "Active", zh: "已生效" },
-  comboAdd: { en: "Add combo", zh: "添加组合键" },
+  comboAdd: { en: "Add combo", zh: "添加 Combo" },
   comboRenumber: { en: "Change slot number", zh: "更换槽位编号" },
   comboEmpty: { en: "No combos configured yet.", zh: "还没有配置任何组合键。" },
   comboFull: {
@@ -932,6 +932,17 @@ const MESSAGES = {
     en: "No modifier selected — clearing all removes the hold and the cap becomes a plain key.",
     zh: "未选择修饰键——全部取消将移除长按,按键变为普通键。",
   },
+  // Fire-together (masked-modifier) editor: the dashed-band cards.
+  holdComboTitle: { en: "Combined modifiers", zh: "组合修饰键" },
+  holdComboIntro: {
+    en: "A single press fires the tap key together with the checked modifiers.",
+    zh: "单次按下会让点按键与勾选的修饰键同时触发。",
+  },
+  holdComboUnsupported: {
+    en: "This modifier combination has no fire-together form on this side.",
+    zh: "该修饰键组合在此侧没有「同时触发」形式。",
+  },
+  holdClearKey: { en: "Clear key", zh: "清空按键" },
 } as const satisfies Record<string, Record<Lang, string>>;
 
 export type MessageKey = keyof typeof MESSAGES;

@@ -103,7 +103,10 @@ function ComboPreviewCard({
             {t("comboActive")}
           </div>
           <div className="card-body relative flex flex-col pb-3">
-            <div className="mb-4 font-mono text-4xl font-bold tracking-tight">CB-{index}</div>
+            <div className="mb-4 flex items-center gap-2 font-mono text-4xl font-bold tracking-tight">
+              <Icon icon="mdi:vector-combine" className="h-9 w-9" />
+              {index}
+            </div>
             <div className="grid grid-cols-2 gap-y-3">
               {entry.keys.map((qmkId, i) => (
                 <div key={i}>
@@ -131,7 +134,7 @@ function ComboPreviewCard({
                   index={index}
                   count={comboCount}
                   usedIndices={usedIndices}
-                  prefix="CB"
+                  icon="mdi:vector-combine"
                   title={t("comboRenumber")}
                   onMove={(toIdx) => onMove?.(toIdx)}
                 />

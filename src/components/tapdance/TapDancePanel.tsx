@@ -112,7 +112,10 @@ function TapDancePreviewCard({
             {t(assigned ? "tapDanceAssigned" : "tapDanceUnassigned")}
           </div>
           <div className="card-body relative flex flex-col pb-3">
-            <div className="mb-4 font-mono text-4xl font-bold tracking-tight">TD-{index}</div>
+            <div className="mb-4 flex items-center gap-2 font-mono text-4xl font-bold tracking-tight">
+              <Icon icon="mdi:animation" className="h-9 w-9" />
+              {index}
+            </div>
             <div className="grid grid-cols-2 gap-y-3">
               {PREVIEW_STATES.map(({ labelKey, field }) => (
                 <div key={field}>
@@ -140,7 +143,7 @@ function TapDancePreviewCard({
                   index={index}
                   count={tapDanceCount}
                   usedIndices={usedIndices}
-                  prefix="TD"
+                  icon="mdi:animation"
                   title={t("tapDanceRenumber")}
                   onMove={(toIdx) => onMove?.(toIdx)}
                 />

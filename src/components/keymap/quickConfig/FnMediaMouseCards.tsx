@@ -45,6 +45,12 @@ export interface FnCardGroup {
   watermark?: string;
   /** A top-right action on the expanded card (e.g. the Mouse card's "详细设置" jump). */
   expandedAction?: ReactNode;
+  /**
+   * Force the card dimmed and non-interactive regardless of content. Set by
+   * QuickConfigPanel when a dual-role cap's tap half is selected — only basic
+   * keycodes are valid there, so the Layer card is greyed out.
+   */
+  disabled?: boolean;
 }
 
 interface Props {
@@ -277,7 +283,7 @@ export function FnMediaMouseCards({ groups, onPick }: Props) {
     return {
       key: group.titleKey,
       bg: CARD_BG[i % CARD_BG.length],
-      disabled: empty,
+      disabled: empty || group.disabled,
       expandedAction: group.expandedAction,
       // Placeholder cards adopt the Macros-style dot pattern (see CARD_PATTERN).
       ...(group.placeholder ? { cardClassName: CARD_PATTERN } : {}),

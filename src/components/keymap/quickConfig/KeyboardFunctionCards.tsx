@@ -28,6 +28,12 @@ export interface KeyboardFnCardGroup {
    * whose keycode count varies.
    */
   expandedUncapped?: boolean;
+  /**
+   * Force the card dimmed and non-interactive regardless of content. Set by
+   * QuickConfigPanel when a dual-role cap's tap half is selected — Lighting /
+   * Config / More produce non-basic keycodes that can't be a dual-role tap.
+   */
+  disabled?: boolean;
   entries: KeycodeDef[];
 }
 
@@ -133,7 +139,7 @@ export function KeyboardFunctionCards({ groups, onPick }: Props) {
     return {
       key: group.titleKey,
       bg: CARD_BG[i % CARD_BG.length],
-      disabled: empty,
+      disabled: empty || group.disabled,
       expandedWidth: group.expandedWidth ?? "w-[550px]",
       // Auto-height cards leave expandedHeight unset so the card sizes to content.
       expandedHeight: group.expandedUncapped ? undefined : "320px",

@@ -677,6 +677,9 @@ function App() {
                           autoAdvance={autoAdvance}
                           onAutoAdvanceChange={setAutoAdvance}
                           disabled={!selected}
+                          // 选中双功能键的上半区(tap)时,只允许基础键码:除「功能」
+                          // 列前三张卡片外的所有卡片置灰不可交互。
+                          dualRoleTap={selected?.kind === "key" && selected.part === "tap"}
                         />
                       </div>
                     </section>

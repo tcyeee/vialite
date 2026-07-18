@@ -187,6 +187,13 @@ interface Props {
   onAutoAdvanceChange: (value: boolean) => void;
   /** 未选中按键:在基础按键的模拟键盘上浮出「请先选择按键」提示。 */
   disabled?: boolean;
+  /**
+   * 选中了双功能键(dualRole)的上半部分(轻触/tap 半区)时置 true。此时该半区只能
+   * 是基础键码,所以除「功能」列前三张卡片(F13~F24 / 鼠标 / 媒体,连同基础模拟键盘)
+   * 之外的所有卡片——层按键、宏 / TapDance / 组合 / 多功能、灯光 / 键盘配置 / 更多——
+   * 全部置灰且不可交互。
+   */
+  dualRoleTap?: boolean;
 }
 
 /**
@@ -204,6 +211,7 @@ export function QuickConfigPanel({
   autoAdvance,
   onAutoAdvanceChange,
   disabled = false,
+  dualRoleTap = false,
 }: Props) {
   const { t } = useI18n();
   // The "详细设置" pill shown at the top-right of an expanded card, jumping to the
@@ -270,6 +278,7 @@ export function QuickConfigPanel({
       // Nudge the enlarged card up 33px from the 150px default.
       expandedOffsetY: 0,
       entries: entriesOf("Lighting"),
+      disabled: dualRoleTap,
     },
     ...(custom
       ? [
@@ -278,6 +287,7 @@ export function QuickConfigPanel({
             icon: "mdi:tune-variant",
             expandedOffsetY: 50,
             entries: custom.entries,
+            disabled: dualRoleTap,
           },
         ]
       : []),
@@ -294,6 +304,7 @@ export function QuickConfigPanel({
             // Grow to fit its keycodes instead of a fixed 320px box.
             expandedUncapped: true,
             entries: OTHER_CARD_ENTRIES,
+            disabled: dualRoleTap,
           },
         ]
       : []),
@@ -469,6 +480,8 @@ export function QuickConfigPanel({
                   entries: [],
                   icon: "mdi:layers-outline",
                   watermark: "LAYER",
+                  // 层键不是基础键码,不能作为双功能键的轻触半区。
+                  disabled: dualRoleTap,
                   placeholder: (
                     <LayerKeyPicker
                       layerEntries={entriesOf("Layers")}
@@ -494,6 +507,7 @@ export function QuickConfigPanel({
                     titleKey: g.titleKey!,
                     entries: g.entries,
                     ...comboMeta(keyboard, g.titleKey!, onNavigate),
+                    disabled: dualRoleTap,
                   })),
                   // Combo is a third, non-expandable info card — combos apply on
                   // creation with no key binding, so it has no keycodes to
@@ -509,6 +523,7 @@ export function QuickConfigPanel({
                           total: keyboard.comboCount,
                           onEdit: () => onNavigate("combo"),
                           info: true,
+                          disabled: dualRoleTap,
                         },
                       ]
                     : []),
@@ -517,6 +532,7 @@ export function QuickConfigPanel({
                   {
                     titleKey: "groupMultiFunction" as MessageKey,
                     entries: [],
+                    disabled: dualRoleTap,
                     // Jumps to the QMK Settings "轻触与长按 (Tap-Hold)" section.
                     expandedAction: detailSettingsAction("tapHoldSettingsTitle"),
                     custom: (

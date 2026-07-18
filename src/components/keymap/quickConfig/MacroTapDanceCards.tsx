@@ -35,6 +35,12 @@ export interface ComboGroup {
   custom?: ReactNode;
   /** A top-right action on the expanded card (e.g. the Multi-Function "详细设置" jump). */
   expandedAction?: ReactNode;
+  /**
+   * Force the card dimmed and non-interactive regardless of content. Set by
+   * QuickConfigPanel when a dual-role cap's tap half is selected — Macros / Tap
+   * Dance / Combo / Multi-Function can't be nested as a dual-role tap.
+   */
+  disabled?: boolean;
 }
 
 interface Props {
@@ -86,7 +92,7 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
     return {
       key: group.titleKey,
       bg: theme.bg,
-      disabled: empty,
+      disabled: empty || group.disabled,
       expandedAction: group.expandedAction,
       cardClassName: CARD_PATTERN,
       // Per-card sizing/position of the enlarged copy. Macros and Tap Dance both

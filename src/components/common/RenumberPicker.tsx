@@ -9,8 +9,8 @@ interface Props {
   count: number;
   /** Slot numbers occupied by another entry — greyed out and non-selectable. */
   usedIndices: Set<number>;
-  /** Label prefix shown on the trigger, e.g. "TD" or "CB". */
-  prefix: string;
+  /** Iconify icon shown on the trigger before the slot number, e.g. the tap-dance / combo glyph. */
+  icon: string;
   /** Tooltip / accessible title for the trigger. */
   title: string;
   /** Move the entry to a different (free) slot number. */
@@ -30,7 +30,7 @@ interface Props {
  * `:focus-within` and would fight the JS `open` state), and the grid is unmounted while closed so
  * there's no stale-click window.
  */
-export function RenumberPicker({ index, count, usedIndices, prefix, title, onMove }: Props) {
+export function RenumberPicker({ index, count, usedIndices, icon, title, onMove }: Props) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -67,11 +67,12 @@ export function RenumberPicker({ index, count, usedIndices, prefix, title, onMov
       <button
         ref={triggerRef}
         type="button"
-        className="flex cursor-pointer items-center gap-0.5 text-lg font-bold tracking-tight text-neutral-900 hover:text-primary"
+        className="flex cursor-pointer items-center gap-1 text-lg font-bold tracking-tight text-neutral-900 hover:text-primary"
         title={title}
         onClick={() => setOpen((o) => !o)}
       >
-        {prefix}-{index}
+        <Icon icon={icon} className="h-5 w-5" />
+        {index}
         <Icon icon="mdi:chevron-down" className="h-4 w-4 opacity-60" />
       </button>
       {open &&

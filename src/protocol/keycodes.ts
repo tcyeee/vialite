@@ -1595,6 +1595,37 @@ export function buildModTap(
   return serialize(deserialize(`MT(${names.join("|")},${tap})`));
 }
 
+/**
+ * Builds a fire-together masked-modifier qmk_id (`LSFT(kc)`, `C_S(kc)`,
+ * `HYPR(kc)`…) from a modifier selection + tap key: the modifiers fire *together
+ * with* the tap on a single press, unlike {@link buildModTap}'s genuine hold.
+ * The mask shares Mod-Tap's bit layout (Ctrl/Shift/Alt/GUI in bits 8-11, the
+ * right-side flag in bit 12), so this just lays the mask over the inner basic
+ * keycode and serializes. With no modifier selected the mask is meaningless, so
+ * it collapses to the plain tap key (dropping the fire-together role).
+ *
+ * NOTE: not every mask has a canonical VIA name — most right-side *combinations*
+ * (and left-side Ctrl+Shift+GUI / Shift+Alt+GUI) have none — so the result can
+ * be a raw `0x..` code that no longer parses as dual-role. Callers that need a
+ * nameable combo should reject a result where
+ * `keyBehavior(result).kind !== "modCombo"`.
+ */
+export function buildModCombo(
+  mods: { ctrl: boolean; shift: boolean; alt: boolean; gui: boolean; side: "L" | "R" },
+  tap: string,
+): string {
+  let mask = 0;
+  if (mods.ctrl) mask |= 0x01;
+  if (mods.shift) mask |= 0x02;
+  if (mods.alt) mask |= 0x04;
+  if (mods.gui) mask |= 0x08;
+  if (mask === 0) {
+    return tap;
+  }
+  if (mods.side === "R") mask |= 0x10;
+  return serialize(((mask << 8) | (deserialize(tap) & 0xff)) >>> 0);
+}
+
 /** Basic modifier keycode → its Mod-Tap MOD_ constant (both spellings mapped). */
 const HOLD_MOD_FROM_BASIC: Record<string, string> = {
   KC_LCTRL: "MOD_LCTL", KC_LCTL: "MOD_LCTL",
