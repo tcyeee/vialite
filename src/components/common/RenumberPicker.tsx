@@ -78,6 +78,7 @@ export function RenumberPicker({ index, count, usedIndices, prefix, title, onMov
         createPortal(
           <div
             ref={menuRef}
+            data-lenis-prevent
             style={{ position: "fixed", top: pos.top, left: pos.left }}
             className="z-50 grid max-h-72 w-72 grid-cols-5 gap-1.5 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
           >

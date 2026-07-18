@@ -12,7 +12,7 @@ import type { MessageKey } from "../../contexts/i18n.tsx";
  * that shows a key, its label, its description, or a category/sub-category
  * heading reads from here (or from `protocol/keycodes.ts` for the raw keycode
  * tables + `label()`), never from a table inlined in a component — so the
- * quick-config tabs ({@link ./KeycodeTabs}) and the cascade selector
+ * quick-config tabs ({@link ./quickConfig/QuickConfigPanel}) and the cascade selector
  * ({@link ./KeycodeCascadeSelector}) all classify + describe identically.
  *
  * Descriptions stay as i18n `MessageKey`s (a UI concern) rather than living in
@@ -198,7 +198,7 @@ export const QUANTUM_GROUP_MISC: KeycodeGroupMeta = {
  * Per-keycode description copy for individual keys not covered by a group
  * description — currently the Lighting keys shown in the "Keyboard Function"
  * tab. Custom (device) keycodes carry their own `title` instead and aren't
- * listed here. Shared by the quick-config tabs ({@link ../KeycodeTabs}) and the
+ * listed here. Shared by the quick-config tabs ({@link ./quickConfig/QuickConfigPanel}) and the
  * cascade selector ({@link ./KeycodeCascadeSelector}) so both describe a key
  * identically.
  */

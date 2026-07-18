@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useI18n } from "../../contexts/i18n.tsx";
-import { deserialize, serialize } from "../../protocol/keycodes.ts";
-import { HelpIcon } from "../common/HelpIcon.tsx";
+import { useI18n } from "../../../contexts/i18n.tsx";
+import { deserialize, serialize } from "../../../protocol/keycodes.ts";
+import { HelpIcon } from "../../common/HelpIcon.tsx";
 
 /**
  * A full, simulated 89-key keyboard for quick basic-key assignment, laid out
@@ -13,7 +13,7 @@ import { HelpIcon } from "../common/HelpIcon.tsx";
  * Keys are placed on a unit grid (`U` rem per 1u key) via absolute positioning,
  * the way physical-layout editors work, so the staggered rows line up exactly.
  * Each button carries only its `KC_` id; picking is handled by the parent
- * (KeycodeTabs) so it shares the same masked-template / auto-advance flow as the
+ * (QuickConfigPanel) so it shares the same masked-template / auto-advance flow as the
  * rest of the palette.
  */
 
@@ -128,8 +128,8 @@ export function BasicKeyboardGrid({ onPick }: Props) {
   };
 
   return (
-    <div className="mt-4">
-      <h4 className="mb-2 text-sm font-semibold opacity-70">{t("groupBasicBoard")}</h4>
+    <div>
+      <h4 className="mb-3 text-sm font-semibold opacity-70">{t("groupBasicBoard")}</h4>
       <div className="overflow-x-auto pb-2">
         <div className="w-fit rounded-lg border border-base-content/30 bg-base-200 p-2">
           <div

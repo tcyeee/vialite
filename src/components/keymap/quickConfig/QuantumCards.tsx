@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { flushSync } from "react-dom";
-import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
-import { deserialize, label as kcLabel, type KeycodeDef } from "../../protocol/keycodes.ts";
-import { HelpIcon } from "../common/HelpIcon.tsx";
-import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
-import type { Keyboard } from "../../protocol/keyboard.ts";
-import { startViewTransition } from "../common/viewTransition.ts";
+import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
+import { deserialize, label as kcLabel, type KeycodeDef } from "../../../protocol/keycodes.ts";
+import { HelpIcon } from "../../common/HelpIcon.tsx";
+import { KeycodeCascadeSelector } from "../KeycodeCascadeSelector.tsx";
+import type { Keyboard } from "../../../protocol/keyboard.ts";
 import { quantumHelp } from "./quantumHelp.ts";
+import { ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
 
 /** A labelled block of keycodes shown within an expanded card. */
 export interface QuantumCardSection {
@@ -33,7 +32,7 @@ export interface QuantumCardGroup {
 
 interface Props {
   groups: QuantumCardGroup[];
-  /** Assign the composed/picked keycode (routed through KeycodeTabs' pick handler). */
+  /** Assign the composed/picked keycode (routed through QuickConfigPanel's pick handler). */
   onPick: (entry: KeycodeDef) => void;
   /** Connected device, for the inner-key cascade selector's macro / tap-dance previews. */
   keyboard: Keyboard;
@@ -96,44 +95,36 @@ function layerTemplates(entries: KeycodeDef[]): number[] {
 }
 
 /**
- * The Quantum tab's landing view: one card per sub-category (One-Shot Mods,
- * Modifiers, Mod-Tap, Layer-Tap, Other). The three composite cards (Modifiers,
- * Mod-Tap, Layer-Tap) expand into an in-card composer — pick the modifier stack
- * (or target layer) on the left and a basic key on the mini 104-board, preview
- * the result, then apply — so both halves are chosen in one place instead of
- * hunting for the inner key on another tab. The "Other" card keeps the flat
- * reveal. Only one card is open at a time. Mirrors {@link FnMediaMouseCards} and
- * {@link LayerCategoryCards}.
+ * The Quantum cards inside the Basic tab: one card per sub-category (One-Shot
+ * Mods, Modifiers, Mod-Tap, Layer-Tap, Other). The three composite cards
+ * (Modifiers, Mod-Tap, Layer-Tap) float open into an in-card composer — pick the
+ * modifier stack (or target layer) plus a basic key on the mini board, preview
+ * the result, then apply — so both halves are chosen in one place. The "Other"
+ * card keeps the flat reveal. Uses the shared {@link ExpandableCardColumn},
+ * matching the Fn/Media/Mouse and Combo Keys columns.
  */
 export function QuantumCards({ groups, onPick, keyboard }: Props) {
   const { t, lang } = useI18n();
-  const [expanded, setExpanded] = useState<string | null>(null);
-  // Composer state — shared, since only one card is ever open at a time.
+  // Composer state — shared, since only one card is ever open at a time; reset
+  // whenever the open card changes (via ExpandableCardColumn's onExpandedChange).
   const [mods, setMods] = useState<ModState>(NO_MODS);
   const [side, setSide] = useState<"L" | "R">("L");
   const [layer, setLayer] = useState<number | null>(null);
   const [basic, setBasic] = useState<string | null>(null);
 
-  /** Toggle a card open/closed (resetting the composer), animating via a View Transition. */
-  const toggle = (titleKey: string) => {
-    startViewTransition(() =>
-      flushSync(() => {
-        setExpanded((cur) => (cur === titleKey ? null : titleKey));
-        setMods(NO_MODS);
-        setSide("L");
-        setLayer(null);
-        setBasic(null);
-      }),
-    );
+  const resetComposer = () => {
+    setMods(NO_MODS);
+    setSide("L");
+    setLayer(null);
+    setBasic(null);
   };
 
   /**
    * A single assignable keycode button; `j` drives the staggered reveal
    * animation. Uses the "Keyboard Function" tab's uniform tile look (fixed
    * height, soft translucent border/fill), translated to white for the card's
-   * colored background. When help text exists for the keycode, a corner
-   * HelpIcon is overlaid (mirroring the "Keyboard Function" tiles); the badge
-   * stops click propagation so hovering for help never assigns the keycode.
+   * colored background. When help text exists for the keycode, a corner HelpIcon
+   * is overlaid; the badge stops click propagation so hovering never assigns.
    */
   const keyButton = (entry: KeycodeDef, j: number) => {
     const help = quantumHelp(entry.qmkId, lang);
@@ -202,7 +193,7 @@ export function QuantumCards({ groups, onPick, keyboard }: Props) {
       }`;
 
     return (
-      <div className="flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-col gap-4">
         {/* Step 1 — the modifier stack, or the target layer. */}
         <div className="flex flex-col gap-2">
           <div className={stepClass}>{t(kind === "mod" ? "quantumPickMods" : "quantumPickLayer")}</div>
@@ -267,93 +258,69 @@ export function QuantumCards({ groups, onPick, keyboard }: Props) {
             {t("quantumApply")}
           </button>
           {hint && <span className="text-xs opacity-60">{hint}</span>}
-          <button
-            className="btn btn-sm btn-ghost ml-auto self-start text-white/70 hover:bg-white/15 hover:text-white"
-            onClick={() => toggle(group.titleKey)}
-          >
-            {t("comboCardBack")}
-          </button>
         </div>
       </div>
     );
   };
 
-  return (
-    <div className="mt-3 flex flex-wrap gap-4">
-      {groups.map((group, i) => {
-        const isOpen = expanded === group.titleKey;
-        const empty = group.entries.length === 0;
-        const kind = kindOf(group.titleKey);
-        return (
-          <div
-            key={group.titleKey}
-            // Each card sets its own viewTransitionName, so every card is its
-            // own stacking context; the cascade selector's popover is therefore
-            // trapped inside this card and would be painted over by later cards
-            // in the DOM. Lift the expanded card above its siblings so its
-            // popover can overflow on top of them (only one is ever open).
-            className={`group/quantumcard card relative select-none text-brand-background transition-shadow ${
-              isOpen ? "z-20 w-full" : "w-56"
-            } ${empty ? "cursor-default opacity-60" : "cursor-pointer hover:shadow-lg"}`}
-            style={{ backgroundColor: CARD_BG[i % CARD_BG.length], viewTransitionName: `quantumcard-${i}` }}
-            onClick={() => !empty && toggle(group.titleKey)}
-          >
-            <div className="badge badge-sm absolute top-3 right-3 z-10 border-none bg-white/20 font-medium text-white">
-              {t("comboCardCount", { n: group.entries.length })}
-            </div>
-            <div className="card-body relative gap-3 p-5">
-              <div className="flex items-center gap-1.5 text-xl font-bold tracking-tight">
-                <span>{t(group.titleKey)}</span>
-                {group.helpKey && (
-                  <span onClick={(e) => e.stopPropagation()}>
-                    <HelpIcon text={t(group.helpKey)} variant="light" />
-                  </span>
-                )}
-              </div>
-
-              {!isOpen ? (
-                <div className="text-xs tracking-widest uppercase opacity-40">
-                  {empty ? "—" : t(kind === "other" ? "comboCardReveal" : "quantumCardConfigure")}
-                </div>
-              ) : kind !== "other" ? (
-                composer(group, kind)
-              ) : group.sections ? (
-                <div className="flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
-                  {group.sections.map((section, s) => (
+  const cards: ExpandableCardDef[] = groups.map((group, i) => {
+    const empty = group.entries.length === 0;
+    const kind = kindOf(group.titleKey);
+    return {
+      key: group.titleKey,
+      bg: CARD_BG[i % CARD_BG.length],
+      disabled: empty,
+      header: (
+        <div className="flex items-center gap-1.5 text-xl font-bold tracking-tight">
+          <span>{t(group.titleKey)}</span>
+          {group.helpKey && (
+            <span onClick={(e) => e.stopPropagation()}>
+              <HelpIcon text={t(group.helpKey)} variant="light" />
+            </span>
+          )}
+        </div>
+      ),
+      overlay: (
+        <div className="badge badge-sm absolute top-3 right-3 z-10 border-none bg-white/20 font-medium text-white">
+          {t("comboCardCount", { n: group.entries.length })}
+        </div>
+      ),
+      hint: empty ? "—" : t(kind === "other" ? "comboCardReveal" : "quantumCardConfigure"),
+      body: empty
+        ? undefined
+        : kind !== "other"
+          ? () => composer(group, kind)
+          : group.sections
+            ? () => (
+                <div className="flex flex-col gap-3">
+                  {group.sections!.map((section, s) => (
                     <div key={section.titleKey} className="flex flex-col gap-2">
                       <div className="flex items-center gap-1 text-xs font-semibold tracking-wide uppercase opacity-60">
                         <span>{t(section.titleKey)}</span>
-                        {section.helpKey && (
-                          <HelpIcon text={t(section.helpKey)} variant="light" />
-                        )}
+                        {section.helpKey && <HelpIcon text={t(section.helpKey)} variant="light" />}
                       </div>
                       <div className="combo-num-grid flex flex-wrap gap-2">
                         {section.entries.map((entry, j) => keyButton(entry, s === 0 ? j : j + 4))}
                       </div>
                     </div>
                   ))}
-                  <button
-                    className="btn btn-sm btn-ghost self-start text-white/70 hover:bg-white/15 hover:text-white"
-                    onClick={() => toggle(group.titleKey)}
-                  >
-                    {t("comboCardBack")}
-                  </button>
                 </div>
-              ) : (
-                <div className="combo-num-grid flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+              )
+            : () => (
+                <div className="combo-num-grid flex flex-wrap gap-2">
                   {group.entries.map((entry, j) => keyButton(entry, j))}
-                  <button
-                    className="btn btn-sm btn-ghost ml-auto self-start text-white/70 hover:bg-white/15 hover:text-white"
-                    onClick={() => toggle(group.titleKey)}
-                  >
-                    {t("comboCardBack")}
-                  </button>
                 </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+              ),
+    };
+  });
+
+  return (
+    <ExpandableCardColumn
+      cards={cards}
+      idPrefix="quantumcard"
+      expandedWidth="w-[26rem]"
+      growLeft
+      onExpandedChange={resetComposer}
+    />
   );
 }

@@ -5,6 +5,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { Icon } from "@iconify/react";
+import { useLenis } from "lenis/react";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 
 type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
@@ -252,6 +253,7 @@ function SidebarNav({
   onAfterClick,
 }: SidebarNavProps) {
   const { t } = useI18n();
+  const lenis = useLenis();
   return (
     <nav className="flex flex-col gap-2">
       {NAV_ITEMS.map(({ kind, mode: itemMode, labelKey, icon }, index) => {
@@ -315,7 +317,18 @@ function SidebarNav({
                         key={sectionKey}
                         type="button"
                         onClick={() => {
-                          document.getElementById(sectionKey)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          const target = document.getElementById(sectionKey);
+                          if (target) {
+                            // Route the jump through Lenis so it shares the page's inertia easing.
+                            // Falls back to a native scroll if Lenis isn't mounted (e.g. reduced motion).
+                            if (lenis) {
+                              // offset clears the sticky navbar (h-16); immediate honours reduced motion.
+                              const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                              lenis.scrollTo(target, { offset: -80, immediate: reduceMotion });
+                            } else {
+                              target.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }
+                          }
                           onAfterClick?.();
                         }}
                         className={
@@ -448,6 +461,7 @@ export function SidebarDrawer({
         }
       />
       <aside
+        data-lenis-prevent
         className={
           "fixed bottom-0 left-0 top-16 z-40 flex w-[min(82vw,320px)] flex-col overflow-y-auto rounded-r-[2rem] bg-brand-background px-6 py-6 shadow-2xl transition-transform duration-300 ease-out " +
           (open ? "translate-x-0" : "-translate-x-full")

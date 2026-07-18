@@ -537,7 +537,7 @@ export function KeycodeCascadeSelector({
             <div className="flex items-start gap-2">
             {/* Selection columns (category / middle / sub) grouped into one card. */}
             <div className="flex overflow-hidden rounded-box bg-base-100 shadow ring-1 ring-base-content/10">
-            <ul className="menu menu-sm max-h-72 w-36 flex-nowrap overflow-y-auto border-r border-base-content/10 p-1">
+            <ul data-lenis-prevent className="menu menu-sm max-h-72 w-36 flex-nowrap overflow-y-auto border-r border-base-content/10 p-1">
               {categories.map((c) => (
                 <li key={c.name}>
                   <button
@@ -557,7 +557,7 @@ export function KeycodeCascadeSelector({
             {/* Middle column: revealed only once a category is active, so opening
                 shows just the category column (progressive left→right drill-in). */}
             {activeCat !== null && (
-            <ul className="menu menu-sm max-h-72 w-44 flex-nowrap overflow-y-auto p-1">
+            <ul data-lenis-prevent className="menu menu-sm max-h-72 w-44 flex-nowrap overflow-y-auto p-1">
               {activeMiddle.map((item) =>
                 item.kind === "leaf" ? (
                   <li key={item.entry.qmkId}>
@@ -605,7 +605,7 @@ export function KeycodeCascadeSelector({
                 target layer for MO/TG/…). Only rendered when a group is active,
                 pushing the info panel to the 4th level. */}
             {activeGroup && (
-              <ul className="menu menu-sm max-h-72 w-32 flex-nowrap overflow-y-auto border-l border-base-content/10 p-1">
+              <ul data-lenis-prevent className="menu menu-sm max-h-72 w-32 flex-nowrap overflow-y-auto border-l border-base-content/10 p-1">
                 {activeGroup.entries.map((sub) => (
                   <li key={sub.entry.qmkId}>
                     <button
@@ -631,7 +631,7 @@ export function KeycodeCascadeSelector({
                 Only shown while the pointer is over a level-2+ item (a described
                 keycode) — hovering just a category leaves it hidden. */}
             {activeEntry && (
-            <div className="max-h-72 w-52 overflow-y-auto rounded-box bg-base-100 p-3 shadow ring-1 ring-base-content/10">
+            <div data-lenis-prevent className="max-h-72 w-52 overflow-y-auto rounded-box bg-base-100 p-3 shadow ring-1 ring-base-content/10">
                 <div className="flex flex-col gap-3">
                   {/* 1. Keycode encoding — always first. */}
                   <div>

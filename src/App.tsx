@@ -6,7 +6,7 @@ import { KeyboardLayout, type KeyPart } from "./components/keymap/KeyboardLayout
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
-import { KeycodeTabs } from "./components/keymap/KeycodeTabs.tsx";
+import { QuickConfigPanel } from "./components/keymap/quickConfig/QuickConfigPanel.tsx";
 import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
@@ -475,6 +475,10 @@ function App() {
       {connected && (
         <div
           key="config"
+          // During the rise transition this becomes a fixed, self-scrolling overlay; tell Lenis to
+          // leave it alone. Omitted otherwise — on the normal page this div wraps everything, and a
+          // permanent data-lenis-prevent here would stop Lenis from scrolling the page at all.
+          {...(inTransition ? { "data-lenis-prevent": "" } : {})}
           className={
             inTransition
               ? "fixed inset-0 z-50 overflow-y-auto bg-white dark:bg-black/30 dark:backdrop-blur-md"
@@ -504,7 +508,7 @@ function App() {
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
           />
-      <div className="p-4 md:p-6">
+      <div className="p-4 pt-0 md:p-6 md:pt-0">
         <div className="mx-auto max-w-[1600px]">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6 lg:gap-8 xl:gap-10 2xl:gap-12">
             <Sidebar
@@ -521,7 +525,7 @@ function App() {
             />
             <main className="min-w-0 flex-1 p-6 md:p-8">
               <div key={mode} className="page-transition">
-              {mode !== "site" && (
+              {mode !== "site" && mode !== "keymap" && (
               <div className="mb-6 flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-brand-on-surface">
                   {mode === "matrix"
@@ -536,9 +540,7 @@ function App() {
                             ? t("navKeyboardColor")
                             : mode === "advanced"
                               ? t("navAdvanced")
-                              : mode === "io"
-                                ? t("navImportExport")
-                                : t("keyboardLayoutTitle")}
+                              : t("navImportExport")}
                 </h1>
                 {mode === "macro" && <HelpIcon text={t("macroHint")} />}
                 {mode === "tapdance" && <HelpIcon text={t("tapDanceHint")} />}
@@ -597,7 +599,7 @@ function App() {
                     />
                   ) : selected ? (
                     <section className="mt-6">
-                      <KeycodeTabs
+                      <QuickConfigPanel
                         onPick={handleAssign}
                         keyboard={keyboard}
                         onNavigate={navigate}

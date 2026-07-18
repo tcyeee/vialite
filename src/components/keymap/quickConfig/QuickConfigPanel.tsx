@@ -3,10 +3,11 @@ import {
   KEYCODE_CATEGORIES,
   isBasicQmkId,
   type KeycodeDef,
-} from "../../protocol/keycodes.ts";
-import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
-import type { Keyboard } from "../../protocol/keyboard.ts";
-import { HelpIcon } from "../common/HelpIcon.tsx";
+} from "../../../protocol/keycodes.ts";
+import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
+import type { Keyboard } from "../../../protocol/keyboard.ts";
+import { HelpIcon } from "../../common/HelpIcon.tsx";
+import { useHorizontalWheelScroll } from "../../common/useHorizontalWheelScroll.ts";
 import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
 import { BasicKeyboardGrid } from "./BasicKeyboardGrid.tsx";
 import {
@@ -17,7 +18,7 @@ import {
   QUANTUM_GROUPS,
   QUANTUM_GROUP_MISC,
   deviceCategories,
-} from "./keycodeMeta.ts";
+} from "../keycodeMeta.ts";
 import { LayerCategoryCards } from "./LayerCategoryCards.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
 import { QuantumCards } from "./QuantumCards.tsx";
@@ -34,9 +35,6 @@ const HIDDEN_CATEGORIES: ReadonlySet<string> = new Set([
 
 /** Source categories folded into the Basic tab as the vertical Fn/Media/Mouse cards. */
 const MERGE_SOURCES: ReadonlySet<string> = new Set(["Fn keys", "Media", "Mouse"]);
-
-/** Name of the tab that folds the Macros list and the device's Tap Dance slots into one. */
-const MACRO_TD_NAME = "Macros/Tap Dance";
 
 /** Name of the tab that folds Lighting and the device's Custom keycodes into one. */
 const KEYBOARD_FN_NAME = "Keyboard Function";
@@ -180,11 +178,13 @@ const VISIBLE_CATEGORIES = (() => {
     if (HIDDEN_CATEGORIES.has(c.name)) continue;
     // Folded into the Basic tab as vertical cards, not a standalone tab.
     if (MERGE_SOURCES.has(c.name)) continue;
-    out.push({
-      name: c.name,
-      entries: c.entries,
-      groups: c.name === "Layers" ? layerGroups() : undefined,
-    });
+    // The Macros/Tap Dance/Combo + Quantum cards also live inside the Basic tab
+    // (its far-right columns), so Macros is no longer a tab of its own.
+    if (c.name === "Macros") continue;
+    // Layers (层切换) and Lighting → Keyboard Function (键盘功能) are likewise
+    // folded into the Basic tab's far-right columns, not standalone tabs.
+    if (c.name === "Layers" || c.name === "Lighting") continue;
+    out.push({ name: c.name, entries: c.entries });
   }
   return out;
 })();
@@ -192,9 +192,16 @@ const VISIBLE_CATEGORIES = (() => {
 /**
  * Quantum sub-category cards, precomputed once (the display entries are
  * version-independent). Rendered as a labelled section inside the Combo Keys tab
- * rather than as a standalone tab (see {@link KeycodeTabs}).
+ * rather than as a standalone tab (see {@link QuickConfigPanel}).
  */
 const QUANTUM_CARD_GROUPS = quantumGroups();
+
+/**
+ * Layer-switch cards (MO, TG, …), precomputed once. Rendered as a labelled
+ * column inside the Basic tab's far-right region rather than as a standalone
+ * "Layers" tab (see {@link QuickConfigPanel}).
+ */
+const LAYER_CARD_GROUPS = layerGroups();
 
 /** Editor pages the Combo Keys cards can jump to via their hover "编辑" action. */
 export type ComboEditTarget = "macro" | "tapdance" | "combo";
@@ -218,7 +225,7 @@ interface Props {
  * (the auto-advance toggle). Masked templates (Layer-Tap, Mod-Tap, …) set a
  * pending state and wait for the user to click an inner basic key.
  */
-export function KeycodeTabs({
+export function QuickConfigPanel({
   onPick,
   keyboard,
   onNavigate,
@@ -229,6 +236,10 @@ export function KeycodeTabs({
   const [active, setActive] = useState(VISIBLE_CATEGORIES[0].name);
   const [pending, setPending] = useState<KeycodeDef | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  // The Basic tab lays its keyboard grid + three card columns out in one wide
+  // row; on large screens that row scrolls horizontally, and a vertical mouse
+  // wheel over it is turned into a horizontal pan (see the hook).
+  const basicRowRef = useHorizontalWheelScroll<HTMLDivElement>();
 
   const pick = (entry: KeycodeDef) => {
     setHint(null);
@@ -266,40 +277,14 @@ export function KeycodeTabs({
     { titleKey: "categoryLighting", entries: entriesOf("Lighting") },
     ...(custom ? [{ titleKey: "categoryCustom" as MessageKey, entries: custom.entries }] : []),
   ];
-  const base = VISIBLE_CATEGORIES.map((c): VisibleCategory => {
-    // The Macros category becomes the "Combo Keys" tab: a Macros card, the
-    // device's Tap Dance slots (when present) as a second card, plus a Quantum
-    // section appended at render time. Named "Combo Keys" regardless of tap dance
-    // since it now covers macros / tap dance / combo / quantum together.
-    if (c.name === "Macros") {
-      return {
-        name: MACRO_TD_NAME,
-        entries: [],
-        groups: [
-          { titleKey: "groupMacros", entries: c.entries },
-          ...(tapDance
-            ? [{ titleKey: "groupTapDance" as MessageKey, entries: tapDance.entries }]
-            : []),
-        ],
-      };
-    }
-    // Rename Lighting to the merged "Keyboard Function" tab and attach the
-    // Lighting + Custom sub-groups.
-    if (c.name === "Lighting") {
-      return { name: KEYBOARD_FN_NAME, entries: [], groups: keyboardFnGroups };
-    }
-    return c;
-  });
-  const ordered: VisibleCategory[] = [...base, ...otherDevice];
-  // Place the Combo Keys (Macros / Tap Dance) tab immediately after the Basic
-  // tab, which now absorbs the former Function (Fn/Media/Mouse) cards.
-  const macroIdx = ordered.findIndex((c) => c.name === MACRO_TD_NAME || c.name === "Macros");
-  const basicIdx = ordered.findIndex((c) => c.name === "Basic");
-  if (macroIdx !== -1 && basicIdx !== -1 && macroIdx !== basicIdx + 1) {
-    const [macro] = ordered.splice(macroIdx, 1);
-    ordered.splice(ordered.findIndex((c) => c.name === "Basic") + 1, 0, macro);
-  }
-  const allCategories: VisibleCategory[] = ordered;
+  // The Macros + Tap Dance cards that used to fill a dedicated "Combo Keys" tab,
+  // now folded into the Basic tab's far-right column next to the Quantum cards.
+  // Tap Dance only exists once a device exposing it is connected.
+  const comboKeyGroups: KeycodeGroup[] = [
+    { titleKey: "groupMacros", entries: entriesOf("Macros") },
+    ...(tapDance ? [{ titleKey: "groupTapDance" as MessageKey, entries: tapDance.entries }] : []),
+  ];
+  const allCategories: VisibleCategory[] = [...VISIBLE_CATEGORIES, ...otherDevice];
   const activeCat = allCategories.find((c) => c.name === active) ?? allCategories[0];
   const isBasic = activeCat.name === "Basic";
   // The Basic tab renders the physical keyboard grid instead of a flat list, so
@@ -372,20 +357,22 @@ export function KeycodeTabs({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div role="tablist" className="tabs tabs-box w-fit">
-          {allCategories.map((cat) => (
-            <button
-              key={cat.name}
-              role="tab"
-              className={`tab${cat.name === activeCat.name ? " tab-active" : ""}`}
-              onClick={() => setActive(cat.name)}
-            >
-              {CATEGORY_KEYS[cat.name] ? t(CATEGORY_KEYS[cat.name]) : cat.name}
-            </button>
-          ))}
+      {allCategories.length > 1 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div role="tablist" className="tabs tabs-box w-fit">
+            {allCategories.map((cat) => (
+              <button
+                key={cat.name}
+                role="tab"
+                className={`tab${cat.name === activeCat.name ? " tab-active" : ""}`}
+                onClick={() => setActive(cat.name)}
+              >
+                {CATEGORY_KEYS[cat.name] ? t(CATEGORY_KEYS[cat.name]) : cat.name}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       {pending && (
         <div className="alert alert-info alert-soft mt-3 flex items-center py-1 text-sm">
           <span>{t("pickInnerKey", { template: pending.qmkId.replace("kc", "…") })}</span>
@@ -400,7 +387,10 @@ export function KeycodeTabs({
         </div>
       )}
       {isBasic && (
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div
+          ref={basicRowRef}
+          className="flex flex-col gap-6 lg:flex-row lg:flex-nowrap lg:items-start lg:overflow-x-auto"
+        >
           {/* Left column: physical keyboard grid + special keys (both inside
               BasicKeyboardGrid) followed by the config-settings block. */}
           <div>
@@ -419,7 +409,7 @@ export function KeycodeTabs({
               </label>
             </div>
           </div>
-          {/* Right column: the vertical Fn/Media/Mouse cards. */}
+          {/* Middle column: the vertical Fn/Media/Mouse cards. */}
           <div className="mt-4 lg:mt-0">
             <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryFnMediaMouse")}</h4>
             <FnMediaMouseCards
@@ -431,55 +421,109 @@ export function KeycodeTabs({
               onPick={pick}
             />
           </div>
+          {/* Far-right: the former Combo Keys tab, folded in as two columns —
+              Macros / Tap Dance / Combo on the left, Quantum on the right. Kept
+              side-by-side on large screens (where the whole Basic row scrolls
+              horizontally); only allowed to stack on narrow viewports. */}
+          <div className="mt-4 flex flex-wrap gap-6 lg:mt-0 lg:flex-nowrap">
+            <div>
+              <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryMacrosTapDance")}</h4>
+              <MacroTapDanceCards
+                groups={[
+                  ...comboKeyGroups.map((g) => ({
+                    titleKey: g.titleKey!,
+                    entries: g.entries,
+                    ...comboMeta(keyboard, g.titleKey!, onNavigate),
+                  })),
+                  // Combo is a third, non-expandable info card — combos apply on
+                  // creation with no key binding, so it has no keycodes to
+                  // assign. Shown only when the device exposes combo slots.
+                  ...(keyboard.comboCount > 0
+                    ? [
+                        {
+                          titleKey: "groupCombo" as MessageKey,
+                          entries: [],
+                          used: keyboard.comboEntries.filter(
+                            (e) => e.output !== "KC_NO" || e.keys.some((k) => k !== "KC_NO"),
+                          ).length,
+                          total: keyboard.comboCount,
+                          onEdit: () => onNavigate("combo"),
+                          info: true,
+                        },
+                      ]
+                    : []),
+                ]}
+                onPick={pick}
+              />
+            </div>
+            <div>
+              <h4 className="mb-1 flex items-center gap-1 text-sm font-semibold">
+                <span className="opacity-70">{t("categoryQuantum")}</span>
+                <HelpIcon text={t("cascadeDescQuantum")} />
+              </h4>
+              <QuantumCards
+                groups={QUANTUM_CARD_GROUPS.map((g) => ({
+                  titleKey: g.titleKey!,
+                  helpKey: g.helpKey,
+                  entries: g.entries,
+                  sections: g.sections,
+                }))}
+                onPick={pick}
+                keyboard={keyboard}
+              />
+            </div>
+            {/* 层切换 (Layers), folded in from its former standalone tab. Its
+                seven cards lay out as two columns (4 + 3), so the width is left
+                to the card grid rather than pinned to a single narrow column. */}
+            <div>
+              <h4 className="mb-1 flex items-center gap-1 text-sm font-semibold">
+                <span className="opacity-70">{t("categoryLayers")}</span>
+                <HelpIcon text={t("cascadeDescLayers")} />
+              </h4>
+              <LayerCategoryCards
+                groups={LAYER_CARD_GROUPS.map((g) => ({
+                  titleKey: g.titleKey!,
+                  helpKey: g.helpKey,
+                  entries: g.entries,
+                }))}
+                onPick={pick}
+              />
+            </div>
+            {/* 键盘功能 (Keyboard Function): Lighting + the device's Custom
+                keycodes, folded in from its former standalone tab. Each group's
+                tiles flow top-to-bottom in a height-capped column and wrap into
+                a new column on overflow, so this block stays as short as its
+                neighbours instead of towering as one tall single-column list. */}
+            <div>
+              <h4 className="mb-1 text-sm font-semibold opacity-70">
+                {t("categoryKeyboardFunction")}
+              </h4>
+              {/* 灯光 and 自定义 sit side by side (Custom to the right of
+                  Lighting) rather than stacked. Each group's tiles flow
+                  top-to-bottom, six rows to a column, then wrap into a new
+                  column. A CSS grid with `grid-flow-col` + a fixed row count
+                  lays the columns out as explicit tracks whose combined width
+                  the container reports, so nothing overflows onto the
+                  neighbouring group — unlike `flex-col flex-wrap` / CSS
+                  multi-column, whose width collapses when there's no definite
+                  container width, spilling the extra columns as overlap. */}
+              <div className="mt-3 flex items-start gap-6">
+                {keyboardFnGroups.map((group) => (
+                  <div key={group.titleKey ?? ""}>
+                    {group.titleKey && (
+                      <h5 className="mb-1 text-xs font-semibold opacity-60">{t(group.titleKey)}</h5>
+                    )}
+                    <div className="grid grid-flow-col grid-rows-6 gap-x-3 gap-y-2">
+                      {group.entries.map(tileWithHelp)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
-      {activeCat.name === MACRO_TD_NAME && activeCat.groups ? (
-        <>
-        <MacroTapDanceCards
-          groups={[
-            ...activeCat.groups.map((g) => ({
-              titleKey: g.titleKey!,
-              entries: g.entries,
-              ...comboMeta(keyboard, g.titleKey!, onNavigate),
-            })),
-            // Combo is a third, non-expandable info card — combos apply on
-            // creation with no key binding, so it has no keycodes to assign.
-            // Shown only when the device exposes combo slots.
-            ...(keyboard.comboCount > 0
-              ? [
-                  {
-                    titleKey: "groupCombo" as MessageKey,
-                    entries: [],
-                    used: keyboard.comboEntries.filter(
-                      (e) => e.output !== "KC_NO" || e.keys.some((k) => k !== "KC_NO"),
-                    ).length,
-                    total: keyboard.comboCount,
-                    onEdit: () => onNavigate("combo"),
-                    info: true,
-                  },
-                ]
-              : []),
-          ]}
-          onPick={pick}
-        />
-        <div className="mt-6">
-          <h4 className="mb-1 flex items-center gap-1 text-sm font-semibold">
-            <span className="opacity-70">{t("categoryQuantum")}</span>
-            <HelpIcon text={t("cascadeDescQuantum")} />
-          </h4>
-          <QuantumCards
-            groups={QUANTUM_CARD_GROUPS.map((g) => ({
-              titleKey: g.titleKey!,
-              helpKey: g.helpKey,
-              entries: g.entries,
-              sections: g.sections,
-            }))}
-            onPick={pick}
-            keyboard={keyboard}
-          />
-        </div>
-        </>
-      ) : activeCat.name === "Layers" && activeCat.groups ? (
+      {activeCat.name === "Layers" && activeCat.groups ? (
         <LayerCategoryCards
           groups={activeCat.groups.map((g) => ({
             titleKey: g.titleKey!,

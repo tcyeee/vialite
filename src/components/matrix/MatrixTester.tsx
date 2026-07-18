@@ -133,7 +133,7 @@ export function MatrixTester({ keyboard }: Props) {
     <div className="matrix-tester">
       <p className="mb-3">{t("matrixInstructions")}</p>
       <div className="mockup-window w-fit max-w-full border border-base-300 bg-base-100">
-        <div className="overflow-auto border-t border-base-300 p-4">
+        <div data-lenis-prevent className="overflow-auto border-t border-base-300 p-4">
           <div
             className="keyboard-layout"
             style={{ width: Math.max(...rightEdges) * UNIT, height: Math.max(...bottomEdges) * UNIT }}

@@ -684,7 +684,7 @@ const MESSAGES = {
   groupBasicFKeys: { en: "F-keys", zh: "F 功能键" },
   groupBasicEditing: { en: "Editing", zh: "编辑/导航" },
   groupBasicMods: { en: "Modifiers", zh: "修饰键" },
-  groupBasicBoard: { en: "Keyboard", zh: "键盘布局" },
+  groupBasicBoard: { en: "Basic Keys", zh: "基础按键" },
 
   // Special-keys section below the simulated keyboard (clear / transparent / any)
   specialKeys: { en: "Special Keys", zh: "特殊按键" },
@@ -706,7 +706,6 @@ const MESSAGES = {
   comboCardCount: { en: "{n} available", zh: "共 {n} 个" },
   comboCardUsed: { en: "Total ({used}/{total})", zh: "共计 ({used}/{total}) 个" },
   comboCardEmpty: { en: "None on this device", zh: "此设备暂无" },
-  comboCardBack: { en: "Back", zh: "返回" },
   comboSlotConfigured: { en: "Already configured", zh: "已配置" },
   layerCardCommon: { en: "Common", zh: "常用" },
   comboCardEdit: { en: "Edit", zh: "编辑" },

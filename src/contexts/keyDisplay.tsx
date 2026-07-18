@@ -1,7 +1,7 @@
 // User preference for how modifier/OS-specific keycaps are labelled (e.g. GUI
-// shown as ⌘ vs the Windows key). Reserved for future use — nothing consumes
-// `keyDisplay` yet, but the choice is persisted so the eventual keycap renderer
-// can read it. Mirrors theme.tsx's persisted-choice pattern.
+// shown as ⌘ vs the Windows key). Consumed by KeycapFace via capIconName to pick
+// per-OS modifier glyphs; the choice is persisted so it survives reloads. Mirrors
+// theme.tsx's persisted-choice pattern.
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
