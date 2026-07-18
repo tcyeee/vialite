@@ -247,8 +247,16 @@ export function QuantumCards({ groups, onPick, keyboard, idPrefix = "quantumcard
       disabled: empty,
       // The "Other" card opens exactly like the Media card (see FnMediaMouseCards):
       // a fixed 810×430 box whose uniform no-wrap tiles scroll within that height.
+      // The "Other" card's floating copy is nudged up 30px (100→56) and right 55px.
+      // This column is growLeft (right-anchored), so its expandedOffsetX maps to
+      // marginLeft on a right-pinned box — a negative value moves it rightward.
       ...(kind === "other"
-        ? { expandedWidth: "w-[810px]", expandedHeight: "430px", expandedOffsetY: 100 }
+        ? {
+            expandedWidth: "w-[810px]",
+            expandedHeight: "430px",
+            expandedOffsetY: -30,
+            expandedOffsetX: 0,
+          }
         : {}),
       header: (
         <div className="flex items-center gap-1.5 font-bold tracking-tight">

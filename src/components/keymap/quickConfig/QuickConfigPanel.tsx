@@ -281,7 +281,6 @@ export function QuickConfigPanel({
   const keyboardFnCardGroups: KeyboardFnCardGroup[] = [
     {
       titleKey: "categoryLighting",
-      helpKey: "cascadeDescLighting",
       icon: "mdi:lightbulb-on-outline",
       entries: entriesOf("Lighting"),
     },
@@ -289,8 +288,10 @@ export function QuickConfigPanel({
       ? [
           {
             titleKey: "categoryKeyboardConfig" as MessageKey,
-            helpKey: "cascadeDescCustom" as MessageKey,
             icon: "mdi:tune-variant",
+            // Nudge the enlarged card down/right so it clears its neighbours.
+            expandedOffsetY: 33,
+            expandedOffsetX: 54,
             entries: custom.entries,
           },
         ]
@@ -515,9 +516,9 @@ export function QuickConfigPanel({
               {QUANTUM_OTHER_GROUPS.length > 0 && (
                 <QuantumCards
                   idPrefix="quantumothercard"
+                  // No helpKey: this relocated "Other" card drops its header help icon.
                   groups={QUANTUM_OTHER_GROUPS.map((g) => ({
                     titleKey: g.titleKey!,
-                    helpKey: g.helpKey,
                     entries: g.entries,
                     sections: g.sections,
                   }))}

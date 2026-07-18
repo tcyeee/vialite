@@ -275,13 +275,14 @@ export function ExpandableCardColumn({
                     card.expandedHeight || card.expandedUncapped
                       ? undefined
                       : (containerH ?? undefined),
-                  marginLeft: card.expandedOffsetX,
-                  // Vertical position nudge as a transform (not margin) so it works
-                  // regardless of anchor edge — a `bottom-0`-anchored card ignores
-                  // marginTop. Composed with the middle card's -50% centering.
+                  // Both position nudges are transforms (not margins) so they work
+                  // regardless of anchor edge — a `right-0`-anchored card ignores
+                  // marginLeft and a `bottom-0`-anchored card ignores marginTop.
+                  // Composed with the middle card's -50% centering.
                   transform:
                     [
                       i === (cards.length - 1) / 2 ? "translateY(-50%)" : "",
+                      card.expandedOffsetX ? `translateX(${card.expandedOffsetX}px)` : "",
                       card.expandedOffsetY ? `translateY(${card.expandedOffsetY}px)` : "",
                     ]
                       .filter(Boolean)

@@ -4,7 +4,6 @@ import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
 import { KEYCODE_HELP } from "../keycodeMeta.ts";
-import { HelpIcon } from "../../common/HelpIcon.tsx";
 import { ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
 
 /**
@@ -15,10 +14,12 @@ import { ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardCo
 export interface KeyboardFnCardGroup {
   /** Translation key for the card heading. */
   titleKey: MessageKey;
-  /** Translation key for a hover help tooltip shown next to the heading. */
-  helpKey?: MessageKey;
   /** mdi icon shown in the card heading, matching the Fn/Media/Mouse cards' glyphs. */
   icon?: string;
+  /** Per-card vertical nudge (px) of the enlarged card; positive moves it down. */
+  expandedOffsetY?: number;
+  /** Per-card horizontal nudge (px) of the enlarged card; positive moves it right. */
+  expandedOffsetX?: number;
   entries: KeycodeDef[];
 }
 
@@ -125,19 +126,16 @@ export function KeyboardFunctionCards({ groups, onPick }: Props) {
       key: group.titleKey,
       bg: CARD_BG[i % CARD_BG.length],
       disabled: empty,
-      expandedWidth: "w-[420px]",
-      expandedHeight: "360px",
+      expandedWidth: "w-[550px]",
+      expandedHeight: "320px",
+      expandedOffsetY: 150,
+      expandedOffsetX: 0,
       header: (
         <div className="flex items-center gap-1.5 font-bold tracking-tight">
           {group.icon && (
             <Icon icon={group.icon} className="h-6 w-6 shrink-0 opacity-90" aria-hidden="true" />
           )}
           <span>{t(group.titleKey)}</span>
-          {group.helpKey && (
-            <span onClick={(e) => e.stopPropagation()}>
-              <HelpIcon text={t(group.helpKey)} variant="light" />
-            </span>
-          )}
         </div>
       ),
       hint: empty
