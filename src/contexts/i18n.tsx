@@ -942,6 +942,14 @@ const MESSAGES = {
     en: "This modifier combination has no fire-together form on this side.",
     zh: "该修饰键组合在此侧没有「同时触发」形式。",
   },
+  holdModUnsupported: {
+    en: "This modifier combination has no matching keycode.",
+    zh: "该修饰键组合没有对应的键码。",
+  },
+  holdSelectAtLeastOne: {
+    en: "Select at least one modifier — the key is cleared when you leave.",
+    zh: "至少选择一个修饰键——离开此界面后按键将被清空。",
+  },
   holdClearKey: { en: "Clear key", zh: "清空按键" },
 } as const satisfies Record<string, Record<Lang, string>>;
 
