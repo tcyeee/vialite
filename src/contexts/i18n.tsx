@@ -766,19 +766,7 @@ const MESSAGES = {
     en: "After choosing a category, click the top or bottom half of a key on the keyboard above to continue configuring it.",
     zh: "选择分类以后,在上方键盘中,点击按键的上半部分和下半部分进行下一步配置",
   },
-  // Banner shown while a Multi-Function category is armed, waiting for a key-half click.
-  multiFuncPickModified: {
-    en: "Click a key's bottom half to add Ctrl+Alt, or its top half for Hyper, then write it to the selected key.",
-    zh: "点击按键下半部分叠加 左Ctrl+左Alt,上半部分叠加 Hyper,写入所选按键",
-  },
-  multiFuncPickTapHold: {
-    en: "Click a key's bottom half for tap = key / hold = Layer 0, or its top half for hold = Shift.",
-    zh: "点击按键下半部分:短按该键 / 长按 Layer0;上半部分:长按 Shift",
-  },
-  multiFuncHalfHoldMod: { en: "Add Ctrl+Alt", zh: "叠加 左Ctrl+左Alt" },
-  multiFuncHalfHyper: { en: "Add Hyper", zh: "叠加 Hyper" },
-  multiFuncHalfHoldLayer: { en: "Tap key / hold Layer 0", zh: "短按该键 / 长按 Layer0" },
-  multiFuncHalfHoldShift: { en: "Tap key / hold Shift", zh: "短按该键 / 长按 Shift" },
+  detailSettings: { en: "Detailed settings", zh: "详细设置" },
 
   // Combo-keys tab: the two expandable category cards
   comboCardReveal: { en: "Click to reveal", zh: "点击展开" },

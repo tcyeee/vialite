@@ -43,6 +43,8 @@ export interface FnCardGroup {
   placeholder?: ReactNode;
   /** Faint rotated watermark text shown behind a {@link placeholder} card. */
   watermark?: string;
+  /** A top-right action on the expanded card (e.g. the Mouse card's "详细设置" jump). */
+  expandedAction?: ReactNode;
 }
 
 interface Props {
@@ -276,6 +278,7 @@ export function FnMediaMouseCards({ groups, onPick }: Props) {
       key: group.titleKey,
       bg: CARD_BG[i % CARD_BG.length],
       disabled: empty,
+      expandedAction: group.expandedAction,
       // Placeholder cards adopt the Macros-style dot pattern (see CARD_PATTERN).
       ...(group.placeholder ? { cardClassName: CARD_PATTERN } : {}),
       // Nudge every enlarged Fn/Media/Mouse card 20px left of its anchored edge.

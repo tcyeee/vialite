@@ -100,6 +100,19 @@ body {
   font-size: 15px;
   color: var(--color-brand-on-surface);
   background: var(--color-brand-background);
+  /* Disable text selection app-wide — this is a device configurator, not a
+     document, so drag-selecting keycap labels / UI chrome is just noise. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Re-enable selection where typing/editing actually happens, so form fields
+   and any explicitly editable content still behave normally. */
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Waiting-for-connection hero: gentle float + squash-bounce button press. */

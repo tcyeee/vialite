@@ -21,6 +21,12 @@ export interface ExpandableCardDef {
   header: ReactNode;
   /** Absolutely-positioned overlays shown on the collapsed card only (badge, hover action). */
   overlay?: ReactNode;
+  /**
+   * A top-right action shown on the floating (expanded) card only — e.g. a "详细设置"
+   * link that jumps to the matching QMK Settings section. Its own clicks are kept
+   * from bubbling to the card's close-on-click, so the caller's handler runs alone.
+   */
+  expandedAction?: ReactNode;
   /** Absolutely-positioned decoration shown in both states (e.g. a watermark). */
   decor?: ReactNode;
   /** The collapsed subtitle line ("Click to reveal" / "—" / …). */
@@ -291,6 +297,11 @@ export function ExpandableCardColumn({
                 onClick={() => close()}
               >
                 {card.decor}
+                {card.expandedAction && (
+                  <div className="absolute right-4 top-4 z-20" onClick={(e) => e.stopPropagation()}>
+                    {card.expandedAction}
+                  </div>
+                )}
                 <div
                   className={`card-body relative min-h-0 flex-1 gap-5 overflow-hidden ${
                     card.expandedPadding ?? "p-6"

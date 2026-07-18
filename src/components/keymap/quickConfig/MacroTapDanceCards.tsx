@@ -33,6 +33,8 @@ export interface ComboGroup {
    * used/total badge and the hover "编辑" action. {@link entries} are ignored.
    */
   custom?: ReactNode;
+  /** A top-right action on the expanded card (e.g. the Multi-Function "详细设置" jump). */
+  expandedAction?: ReactNode;
 }
 
 interface Props {
@@ -85,6 +87,7 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
       key: group.titleKey,
       bg: theme.bg,
       disabled: empty,
+      expandedAction: group.expandedAction,
       cardClassName: CARD_PATTERN,
       // Per-card sizing/position of the enlarged copy. Macros and Tap Dance both
       // open to a fixed 177px width nudged 20px left of their anchored edge; the

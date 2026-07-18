@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLenis } from "lenis/react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
 import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
@@ -108,6 +109,9 @@ function App() {
   // order) so a run of keys can be configured without re-clicking each cap.
   const [autoAdvance, setAutoAdvance] = useState(false);
   const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
+  // Page-level smooth-scroller, shared with the sidebar TOC so a "详细设置" jump into
+  // the Advanced page lands with the same inertia easing.
+  const lenis = useLenis();
   const [qmkPendingCount, setQmkPendingCount] = useState(0);
   const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
   // Keyboard mutates its internal keymap in place; bumping this forces a
@@ -246,6 +250,49 @@ function App() {
       setSelected(null);
     }
   }, []);
+
+  // A QMK Settings section a quick-config card asked to jump to ("详细设置"): remembered
+  // across the navigation to the Advanced page, then consumed by the effect below once
+  // that section has actually rendered (its `<section id={titleKey}>` exists in the DOM).
+  const pendingQmkScrollRef = useRef<MessageKey | null>(null);
+  const openQmkSection = useCallback(
+    (section: MessageKey) => {
+      pendingQmkScrollRef.current = section;
+      navigate("advanced");
+    },
+    [navigate],
+  );
+
+  // Scroll to the pending QMK section once the Advanced page has mounted and reported
+  // its sections (qmkSections). Mirrors the sidebar TOC's Lenis-or-native jump, but the
+  // page has *just* switched to Advanced, so its full height isn't laid out yet: Lenis
+  // still holds the previous (shorter) page's scroll range and would clamp the jump
+  // short. Wait two animation frames for layout to settle, force Lenis to re-measure
+  // (`resize`), then scroll — and keep the target pending (don't clear the ref) until
+  // that actually runs, so a re-render mid-wait retries instead of dropping the jump.
+  useEffect(() => {
+    const section = pendingQmkScrollRef.current;
+    if (mode !== "advanced" || section === null) return;
+    const target = document.getElementById(section);
+    if (!target) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        pendingQmkScrollRef.current = null;
+        if (lenis) {
+          lenis.resize();
+          lenis.scrollTo(target, { offset: -80, force: true, immediate: reduceMotion });
+        } else {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [mode, qmkSections, lenis]);
 
   // Reconnect to an already-authorized keyboard on page load, so returning
   // users don't have to go through the device chooser every time. Status
@@ -603,6 +650,7 @@ function App() {
                         onPick={handleAssign}
                         keyboard={keyboard}
                         onNavigate={navigate}
+                        onOpenQmkSection={openQmkSection}
                         autoAdvance={autoAdvance}
                         onAutoAdvanceChange={setAutoAdvance}
                       />
