@@ -72,19 +72,15 @@ export function LayerCategoryCards({ groups, onPick }: Props) {
           )}
         </div>
       ),
-      overlay: (
-        <>
-          {group.titleKey === "groupLayerMO" && (
-            <div className="badge badge-sm absolute -top-2 -left-2 z-20 border-none bg-amber-400 font-semibold text-brand-background shadow">
-              {t("layerCardCommon")}
-            </div>
-          )}
-          <div className="badge badge-sm absolute top-3 right-3 z-10 border-none bg-white/20 font-medium text-white">
-            {t("comboCardCount", { n: group.entries.length })}
+      overlay:
+        group.titleKey === "groupLayerMO" ? (
+          <div className="badge badge-sm absolute -top-2 -left-2 z-20 border-none bg-amber-400 font-semibold text-brand-background shadow">
+            {t("layerCardCommon")}
           </div>
-        </>
-      ),
-      hint: empty ? "—" : t("comboCardReveal"),
+        ) : undefined,
+      hint: empty
+        ? "—"
+        : `${t("comboCardReveal")} · ${t("comboCardCount", { n: group.entries.length })}`,
       body: empty
         ? undefined
         : () => (

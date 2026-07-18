@@ -280,12 +280,9 @@ export function QuantumCards({ groups, onPick, keyboard }: Props) {
           )}
         </div>
       ),
-      overlay: (
-        <div className="badge badge-sm absolute top-3 right-3 z-10 border-none bg-white/20 font-medium text-white">
-          {t("comboCardCount", { n: group.entries.length })}
-        </div>
-      ),
-      hint: empty ? "—" : t(kind === "other" ? "comboCardReveal" : "quantumCardConfigure"),
+      hint: empty
+        ? "—"
+        : `${t(kind === "other" ? "comboCardReveal" : "quantumCardConfigure")} · ${t("comboCardCount", { n: group.entries.length })}`,
       body: empty
         ? undefined
         : kind !== "other"

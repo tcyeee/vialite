@@ -73,28 +73,23 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
           </span>
         </div>
       ),
-      overlay: (
-        <>
-          <div className="badge badge-sm absolute top-3 right-3 z-10 border-none bg-white/20 font-medium text-white">
-            {empty
-              ? t("comboCardEmpty")
-              : t("comboCardUsed", { used: group.used, total: group.total })}
-          </div>
-          {!empty && (
-            <button
-              type="button"
-              className="absolute right-3 bottom-3 z-10 text-xs font-medium text-white/80 opacity-0 transition-opacity group-hover/expandcard:opacity-100 hover:text-white"
-              onClick={(e) => {
-                e.stopPropagation();
-                group.onEdit();
-              }}
-            >
-              {t("comboCardEdit")} →
-            </button>
-          )}
-        </>
+      overlay: empty ? undefined : (
+        <button
+          type="button"
+          className="absolute right-3 bottom-3 z-10 text-xs font-medium text-white/80 opacity-0 transition-opacity group-hover/expandcard:opacity-100 hover:text-white"
+          onClick={(e) => {
+            e.stopPropagation();
+            group.onEdit();
+          }}
+        >
+          {t("comboCardEdit")} →
+        </button>
       ),
-      hint: group.info ? t("comboCardInfoHint") : empty ? "—" : t("comboCardReveal"),
+      hint: group.info
+        ? t("comboCardInfoHint")
+        : empty
+          ? "—"
+          : `${t("comboCardReveal")} · ${t("comboCardUsed", { used: group.used, total: group.total })}`,
       // Combos take effect on creation with no key binding, so the card just
       // explains that via a toast instead of expanding.
       onActivate: group.info ? () => showToast(t("comboAutoApply"), "info") : undefined,

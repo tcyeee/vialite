@@ -47,12 +47,9 @@ export function FnMediaMouseCards({ groups, onPick }: Props) {
           )}
         </div>
       ),
-      overlay: (
-        <div className="badge badge-sm absolute top-3 right-3 z-10 border-none bg-white/20 font-medium text-white">
-          {t("comboCardCount", { n: group.entries.length })}
-        </div>
-      ),
-      hint: empty ? "—" : t("comboCardReveal"),
+      hint: empty
+        ? "—"
+        : `${t("comboCardReveal")} · ${t("comboCardCount", { n: group.entries.length })}`,
       body: empty
         ? undefined
         : () => (
