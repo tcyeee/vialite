@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useI18n } from "../../../contexts/i18n.tsx";
 import { deserialize, serialize } from "../../../protocol/keycodes.ts";
-import { HelpIcon } from "../../common/HelpIcon.tsx";
 
 /**
  * A full, simulated 89-key keyboard for quick basic-key assignment, laid out
@@ -198,10 +197,8 @@ export function BasicKeyboardGrid({ onPick, disabled = false }: Props) {
 
       <dialog className={`modal${anyOpen ? " modal-open" : ""}`}>
         <div className="modal-box">
-          <h3 className="flex items-center gap-1 text-base font-semibold">
-            <span>{t("anyKeycodeHeading")}</span>
-            <HelpIcon text={t("anyKeyPlaceholder")} />
-          </h3>
+          <h3 className="text-base font-semibold">{t("anyKeycodeHeading")}</h3>
+          <p className="mt-1 text-sm opacity-60">{t("anyKeyPlaceholder")}</p>
           <input
             type="text"
             className="input input-bordered mt-4 w-full"
