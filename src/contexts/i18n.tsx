@@ -585,6 +585,7 @@ const MESSAGES = {
     en: "Display size of the keyboard preview. Same setting as “Display size” on the Personalization page.",
     zh: "键盘预览区域的显示尺寸,与个性化页面的「显示尺寸」为同一项配置。",
   },
+  goConfigure: { en: "Configure", zh: "去配置" },
   previewStyle: { en: "Preview style", zh: "配置预览样式" },
   previewStyleHelp: {
     en: "Open the Personalization page to tune keycap, case, and font styling.",
@@ -785,7 +786,10 @@ const MESSAGES = {
   detailSettings: { en: "Detailed settings", zh: "详细设置" },
 
   // Combo-keys tab: the two expandable category cards
-  comboCardReveal: { en: "Click to reveal", zh: "点击展开" },
+  // Blank in English on purpose: the card's click affordance reads clearly
+  // enough without a prompt, so the hint line shows only the detail (count /
+  // usage). `cardHint()` drops the empty part.
+  comboCardReveal: { en: "", zh: "点击展开" },
   comboCardCount: { en: "{n} available", zh: "共 {n} 个" },
   comboCardUsed: { en: "Total ({used}/{total})", zh: "共计 ({used}/{total}) 个" },
   comboCardEmpty: { en: "None on this device", zh: "此设备暂无" },

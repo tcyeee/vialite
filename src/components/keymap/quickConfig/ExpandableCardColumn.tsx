@@ -3,6 +3,16 @@ import { flushSync } from "react-dom";
 import { startViewTransition } from "../../common/viewTransition.ts";
 
 /**
+ * Join a card hint's parts with " · ", dropping empty ones — the English
+ * `comboCardReveal` is deliberately blank (the click affordance is obvious
+ * enough there), so a hint may consist of the detail alone. Falls back to "—"
+ * when nothing is left.
+ */
+export function cardHint(...parts: (string | undefined)[]): string {
+  return parts.filter(Boolean).join(" · ") || "—";
+}
+
+/**
  * One card in a {@link ExpandableCardColumn}. The card renders collapsed in the
  * column; clicking it (when {@link body} is present) grows a floating enlarged
  * copy on top of its neighbours — the collapsed footprint stays as a placeholder
@@ -29,7 +39,7 @@ export interface ExpandableCardDef {
   expandedAction?: ReactNode;
   /** Absolutely-positioned decoration shown in both states (e.g. a watermark). */
   decor?: ReactNode;
-  /** The collapsed subtitle line ("Click to reveal" / "—" / …). */
+  /** The collapsed subtitle line (reveal prompt + detail / "—" / …). */
   hint?: ReactNode;
   /** Per-card override of the floating card's width (else the column default). */
   expandedWidth?: string;

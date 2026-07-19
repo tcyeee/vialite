@@ -10,6 +10,7 @@ import { usePreviewAppearance } from "../../../contexts/previewAppearance.tsx";
 import type { PreviewSize } from "../KeyboardLayoutPreview.tsx";
 import type { Keyboard } from "../../../protocol/keyboard.ts";
 import { HelpIcon } from "../../common/HelpIcon.tsx";
+import { SettingsRow } from "../../qmk/QmkSettingsPanel.tsx";
 import { useHorizontalWheelScroll } from "../../common/useHorizontalWheelScroll.ts";
 import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
 import { BasicKeyboardGrid } from "./BasicKeyboardGrid.tsx";
@@ -450,49 +451,71 @@ export function QuickConfigPanel({
               disabled={disabled}
             />
             <div className={`mt-4${dim}`}>
-              <h4 className="mb-1 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
-              <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
-                <span>{t("autoAdvance")}</span>
-                <HelpIcon text={t("autoAdvanceHelp")} />
-                <input
-                  type="checkbox"
-                  className="toggle toggle-sm toggle-primary"
-                  checked={autoAdvance}
-                  onChange={(e) => onAutoAdvanceChange(e.target.checked)}
-                />
-              </label>
-              <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
-                <span>{t("previewScale")}</span>
-                <HelpIcon text={t("previewScaleHelp")} />
-                <input
-                  type="range"
-                  min={0}
-                  max={PREVIEW_SIZES.length - 1}
-                  step={1}
-                  value={previewSizeIndex}
-                  onChange={(e) =>
-                    setPreviewSize(
-                      PREVIEW_SIZES[
-                        Math.min(PREVIEW_SIZES.length - 1, Math.max(0, Number(e.target.value)))
-                      ],
-                    )
+              <h4 className="mb-2 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
+              {/* Same grouped-`list` look as the 个性化 / 网站设置 pages, so a
+                  setting reads identically wherever it surfaces. */}
+              <ul className="list rounded-box border border-brand-outline/30">
+                <SettingsRow
+                  icon={<Icon icon="mdi:cursor-default-click-outline" className="h-4.5 w-4.5" />}
+                  label={t("autoAdvance")}
+                  help={t("autoAdvanceHelp")}
+                  control={
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-sm toggle-primary"
+                      checked={autoAdvance}
+                      onChange={(e) => onAutoAdvanceChange(e.target.checked)}
+                      aria-label={t("autoAdvance")}
+                    />
                   }
-                  className="range range-primary range-xs w-32"
-                  aria-label={t("previewScale")}
                 />
-                <span className="w-6 shrink-0 text-right tabular-nums opacity-70">
-                  {PREVIEW_SIZE_LABELS[previewSize]}
-                </span>
-              </label>
-              <button
-                type="button"
-                className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm"
-                onClick={() => onNavigate("color")}
-              >
-                <span>{t("previewStyle")}</span>
-                <HelpIcon text={t("previewStyleHelp")} />
-                <Icon icon="mdi:chevron-right" className="text-base opacity-70" aria-hidden="true" />
-              </button>
+                <SettingsRow
+                  icon={<Icon icon="mdi:arrow-expand-all" className="h-4.5 w-4.5" />}
+                  label={t("previewScale")}
+                  help={t("previewScaleHelp")}
+                  control={
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={0}
+                        max={PREVIEW_SIZES.length - 1}
+                        step={1}
+                        value={previewSizeIndex}
+                        onChange={(e) =>
+                          setPreviewSize(
+                            PREVIEW_SIZES[
+                              Math.min(
+                                PREVIEW_SIZES.length - 1,
+                                Math.max(0, Number(e.target.value)),
+                              )
+                            ],
+                          )
+                        }
+                        className="range range-primary range-xs w-28"
+                        aria-label={t("previewScale")}
+                      />
+                      <span className="w-6 shrink-0 text-right text-sm tabular-nums text-brand-on-surface-variant">
+                        {PREVIEW_SIZE_LABELS[previewSize]}
+                      </span>
+                    </div>
+                  }
+                />
+                <SettingsRow
+                  icon={<Icon icon="mdi:palette-outline" className="h-4.5 w-4.5" />}
+                  label={t("previewStyle")}
+                  help={t("previewStyleHelp")}
+                  control={
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm gap-1"
+                      onClick={() => onNavigate("color")}
+                    >
+                      {t("goConfigure")}
+                      <Icon icon="mdi:chevron-right" className="text-base" aria-hidden="true" />
+                    </button>
+                  }
+                />
+              </ul>
               {/* 仅用于将快捷配置区域的高度撑起来的占位块。 */}
               <div className="h-[200px]" aria-hidden="true" />
             </div>

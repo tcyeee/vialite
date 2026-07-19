@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
 import { KEYCODE_HELP } from "../keycodeMeta.ts";
-import { ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
+import { cardHint, ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
 
 /**
  * One "Keyboard Function" category shown as an expandable card: the device's
@@ -157,7 +157,7 @@ export function KeyboardFunctionCards({ groups, onPick }: Props) {
       ),
       hint: empty
         ? "—"
-        : `${t("comboCardReveal")} · ${t("comboCardCount", { n: group.entries.length })}`,
+        : cardHint(t("comboCardReveal"), t("comboCardCount", { n: group.entries.length })),
       body: empty ? undefined : () => <KeyList entries={group.entries} onPick={onPick} />,
     };
   });

@@ -4,7 +4,7 @@ import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
 import { KEYCODE_HELP } from "../keycodeMeta.ts";
 import { HelpIcon } from "../../common/HelpIcon.tsx";
-import { ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
+import { cardHint, ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
 import { TileRevealBody } from "./TileRevealBody.tsx";
 
 /** One function-key category shown as an expandable card (F13–F24, Mouse, Media). */
@@ -315,8 +315,8 @@ export function FnMediaMouseCards({ groups, onPick }: Props) {
       hint: empty
         ? "—"
         : group.placeholder
-          ? t("comboCardReveal")
-          : `${t("comboCardReveal")} · ${t("comboCardCount", { n: group.entries.length })}`,
+          ? cardHint(t("comboCardReveal"))
+          : cardHint(t("comboCardReveal"), t("comboCardCount", { n: group.entries.length })),
       // F13–F24 opens as a fixed 6-column grid (12 keys → 2 tidy rows), and the
       // Mouse card as its bespoke cross layout. Both use symmetric padding and no
       // scroll gutter so all four margins around the tiles stay equal; the Mouse

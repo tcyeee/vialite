@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import { useToast } from "../../../contexts/toast.tsx";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
-import { ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
+import { cardHint, ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
 
 /** One expandable category shown as a card (Macros or Tap Dance). */
 export interface ComboGroup {
@@ -144,10 +144,13 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
       hint: group.info
         ? t("comboCardInfoHint")
         : group.custom
-          ? t("comboCardReveal")
+          ? cardHint(t("comboCardReveal"))
           : empty
             ? "—"
-            : `${t("comboCardReveal")} · ${t("comboCardUsed", { used: group.used ?? 0, total: group.total ?? 0 })}`,
+            : cardHint(
+                t("comboCardReveal"),
+                t("comboCardUsed", { used: group.used ?? 0, total: group.total ?? 0 }),
+              ),
       // Combos take effect on creation with no key binding, so the card just
       // explains that via a toast instead of expanding.
       onActivate: group.info ? () => showToast(t("comboAutoApply"), "info") : undefined,
