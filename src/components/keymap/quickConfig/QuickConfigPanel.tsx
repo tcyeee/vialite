@@ -428,7 +428,7 @@ export function QuickConfigPanel({
       {isBasic && (
         <div
           ref={basicRowRef}
-          className="flex flex-col gap-6 lg:flex-row lg:flex-nowrap lg:items-start lg:overflow-x-auto"
+          className="scrollbar-hide flex flex-col gap-6 lg:flex-row lg:flex-nowrap lg:items-start lg:overflow-x-auto"
         >
           {/* Left column: physical keyboard grid + special keys (both inside
               BasicKeyboardGrid) followed by the config-settings block. */}
@@ -437,7 +437,7 @@ export function QuickConfigPanel({
               onPick={(qmkId) => pick({ qmkId, label: qmkId })}
               disabled={disabled}
             />
-            <div className={`mt-4 pb-[200px]${dim}`}>
+            <div className={`mt-4${dim}`}>
               <h4 className="mb-1 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
               <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
                 <span>{t("autoAdvance")}</span>
@@ -449,6 +449,8 @@ export function QuickConfigPanel({
                   onChange={(e) => onAutoAdvanceChange(e.target.checked)}
                 />
               </label>
+              {/* 仅用于将快捷配置区域的高度撑起来的占位块。 */}
+              <div className="h-[200px]" aria-hidden="true" />
             </div>
           </div>
           {/* Middle column: the vertical Fn/Media/Mouse cards. */}

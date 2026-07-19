@@ -115,6 +115,17 @@ textarea,
   user-select: text;
 }
 
+/* Hide the horizontal scrollbar chrome while keeping the element scrollable
+   (wheel/trackpad/drag still work). Used by the 快捷配置 panel's overflow-x
+   rows so the scrollbar doesn't sit under the keyboard/card content. */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* old Edge */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
+}
+
 /* Waiting-for-connection hero: gentle float + squash-bounce button press. */
 @keyframes kawaii-float {
   0%,

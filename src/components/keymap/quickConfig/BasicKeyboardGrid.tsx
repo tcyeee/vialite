@@ -131,7 +131,7 @@ export function BasicKeyboardGrid({ onPick, disabled = false }: Props) {
   return (
     <div>
       <h4 className="mb-3 text-sm font-semibold opacity-70">{t("groupBasicBoard")}</h4>
-      <div className="overflow-x-auto pb-2">
+      <div className="scrollbar-hide overflow-x-auto pb-2">
         <div className="relative w-fit rounded-lg border border-base-content/30 bg-base-200 p-2">
           <div
             // 置灰只作用于按键本身,提示徽标作为兄弟节点渲染在外层(见下),
