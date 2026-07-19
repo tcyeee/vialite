@@ -18,7 +18,7 @@ import { KeyboardColorPanel } from "./components/color/KeyboardColorPanel.tsx";
 import { SiteSettingsPanel } from "./components/site/SiteSettingsPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
-import { useI18n, type MessageKey, type Translate } from "./contexts/i18n.tsx";
+import { useI18n, type MessageKey } from "./contexts/i18n.tsx";
 import { Keyboard, probeVial } from "./protocol/keyboard.ts";
 import { dualRole, withTap } from "./protocol/keycodes.ts";
 import { HidTransport, ProtocolError, type ProtocolErrorCode } from "./protocol/transport.ts";
@@ -78,17 +78,28 @@ const CONNECT_ERROR_KEY: Record<ProtocolErrorCode, MessageKey> = {
 };
 
 /**
- * Turns a connect failure into a message to show on the waiting page. Errors
+ * A connect failure captured as an i18n key + params rather than an
+ * already-translated string, so the message re-renders in the current language
+ * when the user flips the language toggle mid-error (a resolved string would
+ * stay frozen in whatever language it was built in).
+ */
+interface ConnectErrorInfo {
+  key: MessageKey;
+  params?: Record<string, string | number>;
+}
+
+/**
+ * Turns a connect failure into a descriptor to show on the waiting page. Errors
  * the protocol layer tagged with a code get a fully translated explanation;
  * anything else (a DOM/WebHID exception, an xz or JSON failure on a corrupt
  * definition) keeps its English technical detail inside a translated frame —
  * still more useful than nothing, and the console has the full context.
  */
-function describeConnectError(err: unknown, t: Translate): string {
+function describeConnectError(err: unknown): ConnectErrorInfo {
   if (err instanceof ProtocolError && err.code) {
-    return t(CONNECT_ERROR_KEY[err.code], err.params);
+    return { key: CONNECT_ERROR_KEY[err.code], params: err.params };
   }
-  return t("errConnectFailed", { error: err instanceof Error ? err.message : String(err) });
+  return { key: "errConnectFailed", params: { error: err instanceof Error ? err.message : String(err) } };
 }
 
 function App() {
@@ -99,7 +110,7 @@ function App() {
   // already-authorized device — doesn't flash the full WaitingForConnection
   // landing page on a refresh that's about to silently reconnect.
   const [status, setStatus] = useState<ConnectionStatus>("reconnecting");
-  const [error, setError] = useState<string | null>(null);
+  const [errorInfo, setErrorInfo] = useState<ConnectErrorInfo | null>(null);
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
   const [productName, setProductName] = useState<string | undefined>();
   const [layer, setLayer] = useState(0);
@@ -155,7 +166,7 @@ function App() {
         setProductName(undefined);
         setSelected(null);
         setStatus("idle");
-        setError(t("keyboardDisconnected"));
+        setErrorInfo({ key: "keyboardDisconnected" });
         setQmkPendingCount(0);
         setQmkLeaveRequested(false);
         qmkPendingNavigationRef.current = null;
@@ -172,7 +183,7 @@ function App() {
       setQmkPendingCount(0);
       setQmkLeaveRequested(false);
       qmkPendingNavigationRef.current = null;
-      setError(null);
+      setErrorInfo(null);
       setStatus("connected");
       track("connect/success", transport.productName ?? "Unknown keyboard");
       // Only the manual connect flow (from the visible waiting page) plays the
@@ -191,19 +202,19 @@ function App() {
     }
     connectInFlightRef.current = true;
     setStatus("connecting");
-    setError(null);
+    setErrorInfo(null);
     try {
       const transport = await HidTransport.requestDevice();
       await attachTransport(transport, true);
     } catch (err) {
       console.error("[vialite] manual connect failed:", err);
       await teardown();
-      setError(describeConnectError(err, t));
+      setErrorInfo(describeConnectError(err));
       setStatus("error");
     } finally {
       connectInFlightRef.current = false;
     }
-  }, [attachTransport, teardown, t]);
+  }, [attachTransport, teardown]);
 
   const handleDisconnect = useCallback(async () => {
     // Revoke the WebHID grant so auto-reconnect on the next page load won't
@@ -214,7 +225,7 @@ function App() {
       await transport.forget().catch(() => {});
     }
     await teardown();
-    setError(null);
+    setErrorInfo(null);
     setStatus("idle");
     setQmkSections([]);
     setQmkPendingCount(0);
@@ -517,6 +528,10 @@ function App() {
       </div>
     );
   }
+
+  // Resolve the stored error descriptor here (not when it's set) so switching
+  // language re-renders it in the newly chosen language.
+  const error = errorInfo ? t(errorInfo.key, errorInfo.params) : null;
 
   const connected = status === "connected";
   const inTransition = transition !== "none";

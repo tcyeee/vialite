@@ -559,6 +559,11 @@ const MESSAGES = {
     en: "This page was loaded over plain HTTP. WebHID only works over HTTPS (or on localhost) — please reopen the site via an https:// address.",
     zh: "当前页面通过不安全的连接(HTTP)加载。WebHID 仅在 HTTPS 页面(或 localhost)上可用,请改用 https:// 地址重新访问。",
   },
+  browserInappTitle: { en: "Open in a real browser", zh: "请在浏览器中打开" },
+  browserInappDesc: {
+    en: "You're viewing this inside an app's built-in browser, which can't open the WebHID device picker. Tap the menu (⋯) and choose \"Open in browser\", then use desktop Chrome, Edge, or Opera.",
+    zh: "你正在应用内置浏览器中浏览本页面,它无法弹出 WebHID 设备选择窗口。请点击右上角菜单(⋯)选择“在浏览器中打开”,并使用电脑版 Chrome、Edge 或 Opera 访问。",
+  },
   // Shown on the connect screen alongside the debug-log toggle when something
   // has gone wrong, pointing at how the toggle helps.
   connectDebugPrompt: {

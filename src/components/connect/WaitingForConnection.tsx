@@ -1,10 +1,18 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@iconify/react";
-import { useI18n } from "../../contexts/i18n.tsx";
+import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
-import { getSupportStatus } from "../../browserSupport.ts";
+import { getSupportStatus, type SupportStatus } from "../../browserSupport.ts";
 import { DebugLogToggle } from "../common/DebugLogToggle.tsx";
 import type { ConnectionStatus } from "./DeviceConnect.tsx";
+
+// The banner shown for each way the browser can't do WebHID; `supported` never
+// renders one. Keyed so the text re-translates live on a language switch.
+const UNSUPPORTED_BANNER: Record<Exclude<SupportStatus, "supported">, { title: MessageKey; desc: MessageKey }> = {
+  insecure: { title: "browserInsecureTitle", desc: "browserInsecureDesc" },
+  inapp: { title: "browserInappTitle", desc: "browserInappDesc" },
+  unsupported: { title: "browserUnsupportedTitle", desc: "browserUnsupportedDesc" },
+};
 
 interface Props {
   status: ConnectionStatus;
@@ -145,19 +153,15 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
         <div className="mx-auto max-w-lg space-y-4 transition-opacity duration-300" style={fadeStyle}>
           <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">{t("waitingTitle")}</h1>
 
-          {!supported && (
+          {support !== "supported" && (
             <div
               role="alert"
               className="flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 text-left"
             >
               <Icon icon="mdi:alert-outline" className="mt-0.5 h-6 w-6 shrink-0 text-warning" />
               <div className="min-w-0">
-                <p className="font-semibold text-brand-on-surface">
-                  {t(support === "insecure" ? "browserInsecureTitle" : "browserUnsupportedTitle")}
-                </p>
-                <p className="text-sm text-brand-on-surface-variant">
-                  {t(support === "insecure" ? "browserInsecureDesc" : "browserUnsupportedDesc")}
-                </p>
+                <p className="font-semibold text-brand-on-surface">{t(UNSUPPORTED_BANNER[support].title)}</p>
+                <p className="text-sm text-brand-on-surface-variant">{t(UNSUPPORTED_BANNER[support].desc)}</p>
               </div>
             </div>
           )}

@@ -10,8 +10,12 @@ import { useI18n } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { UnlockDialog } from "../common/UnlockDialog.tsx";
 import { track } from "../../analytics.ts";
+import { hasSecondRect, placeLayout } from "../keymap/layoutGeometry.ts";
+import { shapeStyle } from "../keymap/KeyboardLayoutPreview.tsx";
 
 const UNIT = 54; // same scale as KeyboardLayout
+// Gap between adjacent caps (the old code baked this in as `width * UNIT - 4`).
+const INSET = 4;
 
 const POLL_INTERVAL_MS = 50;
 
@@ -118,16 +122,10 @@ export function MatrixTester({ keyboard }: Props) {
     );
   }
 
-  const rightEdges = [
-    ...keyboard.keys.map((k) => k.x + k.width),
-    ...keyboard.encoders.map((e) => e.x + e.width),
-    0,
-  ];
-  const bottomEdges = [
-    ...keyboard.keys.map((k) => k.y + k.height),
-    ...keyboard.encoders.map((e) => e.y + e.height),
-    0,
-  ];
+  // Run the same geometry pipeline as the other boards so rotated ("倾斜") keys,
+  // layout-option variants and ISO-Enter second rects render in the right place
+  // — the old code positioned keys from raw x/y and dropped the rotation entirely.
+  const placed = placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices);
 
   return (
     <div className="matrix-tester">
@@ -136,38 +134,43 @@ export function MatrixTester({ keyboard }: Props) {
         <div data-lenis-prevent className="overflow-auto border-t border-base-300 p-4">
           <div
             className="keyboard-layout"
-            style={{ width: Math.max(...rightEdges) * UNIT, height: Math.max(...bottomEdges) * UNIT }}
+            style={{ width: placed.width * UNIT + INSET, height: placed.height * UNIT + INSET }}
           >
-            {keyboard.keys.map((key, i) => {
-              const pos = `${key.row},${key.col}`;
-              const state = pressed.has(pos) ? " pressed" : tested.has(pos) ? " tested" : "";
-              return (
-                // Several KLE keys can share one matrix position (layout-option
-                // alternates like ISO/ANSI Enter), so `pos` isn't unique here.
-                <div
-                  key={`${pos}-${i}`}
-                  className={`matrix-key${state}`}
-                  title={pos}
-                  style={{
-                    left: key.x * UNIT,
-                    top: key.y * UNIT,
-                    width: key.width * UNIT - 4,
-                    height: key.height * UNIT - 4,
-                  }}
-                />
-              );
-            })}
-            {keyboard.encoders.map((encoder) => (
+            {placed.keys
+              .filter(({ key }) => !key.decal)
+              .map(({ key, shiftX, shiftY }, i) => {
+                const pos = `${key.row},${key.col}`;
+                const state = pressed.has(pos) ? " pressed" : tested.has(pos) ? " tested" : "";
+                return (
+                  // Several KLE keys can share one matrix position (layout-option
+                  // alternates like ISO/ANSI Enter), so `pos` isn't unique here.
+                  <div
+                    key={`${pos}-${i}`}
+                    className={`matrix-key${state}`}
+                    title={pos}
+                    style={shapeStyle(key, shiftX, shiftY, UNIT, INSET, 0)}
+                  >
+                    {hasSecondRect(key) && (
+                      <span
+                        className={`matrix-key${state}`}
+                        style={{
+                          position: "absolute",
+                          left: key.x2 * UNIT,
+                          top: key.y2 * UNIT,
+                          width: key.width2 * UNIT - INSET,
+                          height: key.height2 * UNIT - INSET,
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            {placed.encoders.map(({ encoder, shiftX, shiftY }) => (
               <div
                 key={`encoder-${encoder.index}`}
                 className="encoder"
                 title={`Encoder ${encoder.index}`}
-                style={{
-                  left: encoder.x * UNIT,
-                  top: encoder.y * UNIT,
-                  width: encoder.width * UNIT - 4,
-                  height: encoder.height * UNIT - 4,
-                }}
+                style={shapeStyle(encoder, shiftX, shiftY, UNIT, INSET, 0)}
               />
             ))}
           </div>
