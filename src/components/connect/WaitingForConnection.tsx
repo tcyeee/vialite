@@ -81,12 +81,10 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
   // attempt, or one that's taking suspiciously long — surfaces the debug-log
   // toggle (the same switch as on the 网站设置 page) so users can turn on verbose
   // logging and retry without leaving here.
+  // Same trigger drives the bottom-right troubleshooting corner (diagnostics +
+  // debug-log toggle): an unsupported browser, a failed connect, or one that's
+  // dragging on long enough to look stuck.
   const showDebug = !supported || status === "error" || slowConnect;
-  // Any actual problem surfaced on screen (unsupported browser, a failed
-  // connect, or an error message) reveals a corner diagnostics panel with the
-  // browser and build identity, so a bug report carries enough to triage it.
-  // A merely slow attempt isn't yet a reported error, so it's excluded here.
-  const hasProblem = !supported || status === "error" || !!error;
   const browser = useState(getBrowserInfo)[0];
   // ISO build stamp → the viewer's locale/timezone; guard against a malformed
   // value so the panel can never throw on this last-resort screen.
@@ -196,46 +194,44 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
             </div>
           )}
 
-          <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">{t("waitingTitle")}</h1>
+          {/* When the browser itself is the blocker (in-app WebView, insecure
+              context, no WebHID) there's nothing to detect, so the title and
+              Detect button are hidden entirely — the warning banner above is the
+              whole message. They return once the browser is capable. */}
+          {supported && (
+            <>
+              <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">{t("waitingTitle")}</h1>
 
-          <div className="pt-4">
-            <button
-              type="button"
-              className="mx-auto flex items-center gap-3 rounded-2xl bg-primary px-8 py-4 text-xl font-bold text-primary-content shadow-none transition hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-primary"
-              onClick={onConnect}
-              disabled={connecting || !supported}
-            >
-              {connecting ? (
-                <Icon icon="mdi:loading" className="h-6 w-6 animate-spin" />
-              ) : (
-                <Icon icon="mdi:magnify" className="h-6 w-6" />
-              )}
-              <span>{connecting ? t("connecting") : t("detectDevice")}</span>
-            </button>
-          </div>
-
-          {error && <p className="error text-sm font-medium">{error}</p>}
-
-          {showDebug && (
-            <div className="mt-2 flex items-center gap-3 rounded-2xl border border-brand-outline/30 bg-brand-surface-variant/30 px-4 py-3 text-left">
-              <Icon icon="mdi:bug-outline" className="h-5 w-5 shrink-0 text-brand-on-surface-variant" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-brand-on-surface">{t("debugLogTitle")}</p>
-                <p className="text-xs text-brand-on-surface-variant">{t("connectDebugPrompt")}</p>
+              <div className="pt-4">
+                <button
+                  type="button"
+                  className="mx-auto flex items-center gap-3 rounded-2xl bg-primary px-8 py-4 text-xl font-bold text-primary-content shadow-none transition hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-primary"
+                  onClick={onConnect}
+                  disabled={connecting}
+                >
+                  {connecting ? (
+                    <Icon icon="mdi:loading" className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <Icon icon="mdi:magnify" className="h-6 w-6" />
+                  )}
+                  <span>{connecting ? t("connecting") : t("detectDevice")}</span>
+                </button>
               </div>
-              <DebugLogToggle />
-            </div>
+
+              {error && <p className="error text-sm font-medium">{error}</p>}
+            </>
           )}
         </div>
       </div>
 
-      {/* Bottom-right diagnostics: only appears once something has gone wrong,
-          giving the user the browser + build identity to quote in a report. Kept
-          deliberately low-key — subdued colors, no z-index so it sits under the
-          interactive UI — since it's a troubleshooting aid, not primary content. */}
-      {hasProblem && (
+      {/* Bottom-right troubleshooting corner: the diagnostics readout and the
+          debug-log toggle merged into one low-key panel. Shown on the same
+          condition as the debug toggle used to be (`showDebug`) — an unsupported
+          browser, a failed connect, or a suspiciously slow one. Kept subdued and
+          with no z-index so it sits under the interactive UI. */}
+      {showDebug && (
         <div
-          className="fixed right-4 bottom-4 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-outline/20 bg-brand-surface-variant/20 px-3 py-2 text-left text-[11px] leading-tight text-brand-on-surface-variant/70 transition-opacity duration-300"
+          className="fixed right-4 bottom-4 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-outline/20 bg-brand-surface-variant/20 px-3 py-2 text-left text-[11px] leading-tight text-brand-on-surface-variant/70 transition-opacity duration-300"
           style={fadeStyle}
         >
           <div className="mb-1 flex items-center gap-1.5">
@@ -261,6 +257,14 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
                 copied. */}
             <dd className="truncate font-mono">{navigator.userAgent}</dd>
           </dl>
+          <div className="mt-2 flex items-center gap-2 border-t border-brand-outline/15 pt-2">
+            <Icon icon="mdi:bug-outline" className="h-3.5 w-3.5 shrink-0 opacity-60" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium opacity-80">{t("debugLogTitle")}</p>
+              <p className="opacity-60">{t("connectDebugPrompt")}</p>
+            </div>
+            <DebugLogToggle className="toggle toggle-primary toggle-sm" />
+          </div>
         </div>
       )}
 
