@@ -1,7 +1,9 @@
-import { Component, lazy, Suspense, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
+import { getSupportStatus } from "../../browserSupport.ts";
+import { DebugLogToggle } from "../common/DebugLogToggle.tsx";
 import type { ConnectionStatus } from "./DeviceConnect.tsx";
 
 interface Props {
@@ -43,6 +45,29 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
   const connecting = status === "connecting";
   const [modelReady, setModelReady] = useState(false);
   const [modelFailed, setModelFailed] = useState(false);
+  // WebHID support is fixed for the page's lifetime, so read it once. When the
+  // browser can't do WebHID at all, detecting a device is pointless — we say so
+  // and disable the button instead of letting it throw on click.
+  const [support] = useState(getSupportStatus);
+  const supported = support === "supported";
+  // A connect attempt that drags on past a second is itself a sign something's
+  // off (a board that won't hand over its vial.json, a stalled handshake), so
+  // once we cross that mark reveal the debug toggle mid-attempt — the user can
+  // enable logging without having to wait for the attempt to fail first.
+  const [slowConnect, setSlowConnect] = useState(false);
+  useEffect(() => {
+    if (status !== "connecting") {
+      setSlowConnect(false);
+      return;
+    }
+    const id = setTimeout(() => setSlowConnect(true), 1000);
+    return () => clearTimeout(id);
+  }, [status]);
+  // Any dead end on this screen — an unsupported browser, a failed connect
+  // attempt, or one that's taking suspiciously long — surfaces the debug-log
+  // toggle (the same switch as on the 网站设置 page) so users can turn on verbose
+  // logging and retry without leaving here.
+  const showDebug = !supported || status === "error" || slowConnect;
 
   // Everything except the 3D model fades out during the zoom exit.
   const fadeStyle = { opacity: zoom ? 0 : 1 };
@@ -120,12 +145,29 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
         <div className="mx-auto max-w-lg space-y-4 transition-opacity duration-300" style={fadeStyle}>
           <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">{t("waitingTitle")}</h1>
 
+          {!supported && (
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 text-left"
+            >
+              <Icon icon="mdi:alert-outline" className="mt-0.5 h-6 w-6 shrink-0 text-warning" />
+              <div className="min-w-0">
+                <p className="font-semibold text-brand-on-surface">
+                  {t(support === "insecure" ? "browserInsecureTitle" : "browserUnsupportedTitle")}
+                </p>
+                <p className="text-sm text-brand-on-surface-variant">
+                  {t(support === "insecure" ? "browserInsecureDesc" : "browserUnsupportedDesc")}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="pt-4">
             <button
               type="button"
-              className="mx-auto flex items-center gap-3 rounded-2xl bg-primary px-8 py-4 text-xl font-bold text-primary-content shadow-none transition hover:bg-primary/85 disabled:cursor-progress disabled:opacity-70"
+              className="mx-auto flex items-center gap-3 rounded-2xl bg-primary px-8 py-4 text-xl font-bold text-primary-content shadow-none transition hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-primary"
               onClick={onConnect}
-              disabled={connecting}
+              disabled={connecting || !supported}
             >
               {connecting ? (
                 <Icon icon="mdi:loading" className="h-6 w-6 animate-spin" />
@@ -137,6 +179,17 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
           </div>
 
           {error && <p className="error text-sm font-medium">{error}</p>}
+
+          {showDebug && (
+            <div className="mt-2 flex items-center gap-3 rounded-2xl border border-brand-outline/30 bg-brand-surface-variant/30 px-4 py-3 text-left">
+              <Icon icon="mdi:bug-outline" className="h-5 w-5 shrink-0 text-brand-on-surface-variant" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-brand-on-surface">{t("debugLogTitle")}</p>
+                <p className="text-xs text-brand-on-surface-variant">{t("connectDebugPrompt")}</p>
+              </div>
+              <DebugLogToggle />
+            </div>
+          )}
         </div>
       </div>
 

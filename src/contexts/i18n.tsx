@@ -549,6 +549,22 @@ const MESSAGES = {
   detectDevice: { en: "Detect device", zh: "检测设备" },
   toggleLanguage: { en: "Switch language", zh: "切换语言" },
   toggleTheme: { en: "Toggle theme", zh: "切换主题" },
+  browserUnsupportedTitle: { en: "Browser not supported", zh: "浏览器不支持" },
+  browserUnsupportedDesc: {
+    en: "Your browser doesn't support WebHID, which Vialite needs to talk to your keyboard. Please use Chrome, Edge, or Opera on desktop — Firefox and Safari don't support WebHID.",
+    zh: "当前浏览器不支持 WebHID,Vialite 需要它才能与键盘通信。请在桌面端使用 Chrome、Edge 或 Opera —— Firefox 和 Safari 目前不支持 WebHID。",
+  },
+  browserInsecureTitle: { en: "Insecure connection", zh: "不安全的连接" },
+  browserInsecureDesc: {
+    en: "This page was loaded over plain HTTP. WebHID only works over HTTPS (or on localhost) — please reopen the site via an https:// address.",
+    zh: "当前页面通过不安全的连接(HTTP)加载。WebHID 仅在 HTTPS 页面(或 localhost)上可用,请改用 https:// 地址重新访问。",
+  },
+  // Shown on the connect screen alongside the debug-log toggle when something
+  // has gone wrong, pointing at how the toggle helps.
+  connectDebugPrompt: {
+    en: "Ran into a problem? Turn on debug logging, retry, then open the browser console (F12) and share what it prints.",
+    zh: "遇到问题?打开调试日志后重试,然后按 F12 打开浏览器控制台,把输出的内容一并反馈。",
+  },
 
   // LayerTabs
   layerN: { en: "Layer {n}", zh: "层 {n}" },
