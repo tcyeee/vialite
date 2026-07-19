@@ -20,6 +20,7 @@ import {
   KeyboardZoom,
   shapeStyle,
 } from "./KeyboardLayoutPreview.tsx";
+import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
 
 /** Which half of a dual-role (tap/hold) cap a click targets. */
@@ -149,29 +150,41 @@ export function KeyboardLayout({
   );
   const plateWidth = placed.width * PITCH + inset;
   const plateHeight = placed.height * PITCH + inset;
+  // Split/rotated layouts get per-cluster SVG outlines instead of the rectangle
+  // the divs below draw; `null` means the layout is plain and the divs are right.
+  const caseShape = useCaseShape({ placed, PITCH, inset, caseThickness, showCase });
 
   const board = (
     <div
-      className={"keyboard-case" + (showCase && depth ? " keyboard-case-shaded" : "")}
+      className={"keyboard-case" + (showCase && depth && !caseShape ? " keyboard-case-shaded" : "")}
       style={{
         padding: caseThickness,
-        background: showCase ? caseColor : "transparent",
-        borderRadius: showCase ? outerRadius : 0,
+        background: showCase && !caseShape ? caseColor : "transparent",
+        borderRadius: showCase && !caseShape ? outerRadius : 0,
         width: "fit-content",
       }}
     >
+      {caseShape && (
+        <KeyboardCaseOutline
+          shape={caseShape}
+          caseColor={caseColor}
+          plateColor={plateColor}
+          depth={depth}
+        />
+      )}
       <div
         className={
           "keyboard-layout" +
           (depth ? " keyboard-layout-shaded" : "") +
+          (caseShape ? " keyboard-layout-outlined" : "") +
           (keycapBorder ? " keyboard-layout-bordered" : "") +
           (selected ? " keyboard-layout-has-selection" : "")
         }
         style={{
           width: plateWidth,
           height: plateHeight,
-          background: plateColor,
-          borderRadius: innerRadius,
+          background: caseShape ? "transparent" : plateColor,
+          borderRadius: caseShape ? 0 : innerRadius,
           // Shared 字体颜色: cascades to `.key`/`.key-icon` (both `color: inherit`).
           color: fontColor,
           "--key-font-scale": FONT_SCALES[fontSize],

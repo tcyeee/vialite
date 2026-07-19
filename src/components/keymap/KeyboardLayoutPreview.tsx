@@ -10,6 +10,7 @@ import type { Keyboard } from "../../protocol/keyboard.ts";
 import type { KeycodeDef } from "../../protocol/keycodes.ts";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
+import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
 
 /** Right-click assign target — one cap, or one encoder rotation direction. */
@@ -353,29 +354,41 @@ export function KeyboardLayoutPreview({
   );
   const plateWidth = placed.width * PITCH + inset;
   const plateHeight = placed.height * PITCH + inset;
+  // Split/rotated layouts get per-cluster SVG outlines instead of the rectangle
+  // the divs below draw; `null` means the layout is plain and the divs are right.
+  const caseShape = useCaseShape({ placed, PITCH, inset, caseThickness, showCase });
 
   const board = (
     <div
-      className={"keyboard-case" + (showCase && depth ? " keyboard-case-shaded" : "")}
+      className={"keyboard-case" + (showCase && depth && !caseShape ? " keyboard-case-shaded" : "")}
       style={{
         padding: caseThickness,
-        background: showCase ? caseColor : "transparent",
-        borderRadius: showCase ? outerRadius : 0,
+        background: showCase && !caseShape ? caseColor : "transparent",
+        borderRadius: showCase && !caseShape ? outerRadius : 0,
         width: "fit-content",
       }}
     >
+      {caseShape && (
+        <KeyboardCaseOutline
+          shape={caseShape}
+          caseColor={caseColor}
+          plateColor={plateColor}
+          depth={depth}
+        />
+      )}
       <div
         className={
           "keyboard-layout" +
           (depth ? " keyboard-layout-shaded" : "") +
+          (caseShape ? " keyboard-layout-outlined" : "") +
           (keycapBorder ? " keyboard-layout-bordered" : "") +
           (menu ? " keyboard-layout-has-selection" : "")
         }
         style={{
           width: plateWidth,
           height: plateHeight,
-          background: plateColor,
-          borderRadius: innerRadius,
+          background: caseShape ? "transparent" : plateColor,
+          borderRadius: caseShape ? 0 : innerRadius,
           // Display-only by default; the caps only need to receive events when
           // there's a right-click menu to open.
           pointerEvents: onContextAssign ? undefined : "none",

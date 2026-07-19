@@ -5,6 +5,12 @@ import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
 import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
 import { KeyboardLayout, type KeyPart } from "./components/keymap/KeyboardLayout.tsx";
 import { KeyboardLayout3D } from "./components/connect/KeyboardLayout3D.tsx";
+import { Preview3DDebugPanel } from "./components/connect/Preview3DDebugPanel.tsx";
+import {
+  loadPreview3DParams,
+  savePreview3DParams,
+  type Preview3DParams,
+} from "./components/connect/preview3dParams.ts";
 import { useAutoFitZoom } from "./components/keymap/autoFitSize.ts";
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
@@ -128,6 +134,7 @@ function App() {
   const [productName, setProductName] = useState<string | undefined>();
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("keymap");
+  const [preview3dParams, setPreview3dParams] = useState<Preview3DParams>(loadPreview3DParams);
   const [selected, setSelected] = useState<Selected | null>(null);
   // When on, assigning a key advances the selection to the next key (reading
   // order) so a run of keys can be configured without re-clicking each cap.
@@ -735,7 +742,22 @@ function App() {
               {/* 纯展示页:只渲染当前图层的 3D 键盘,点击键帽不做任何事(选中态、
                   改键都留在首页的 2D 视图里)。 */}
               {keyboard && mode === "preview3d" && (
-                <KeyboardLayout3D keyboard={keyboard} layer={layer} onKeySelect={() => {}} onEncoderSelect={() => {}} />
+                <>
+                  <KeyboardLayout3D
+                    keyboard={keyboard}
+                    layer={layer}
+                    params={preview3dParams}
+                    onKeySelect={() => {}}
+                    onEncoderSelect={() => {}}
+                  />
+                  <Preview3DDebugPanel
+                    params={preview3dParams}
+                    onChange={(next) => {
+                      setPreview3dParams(next);
+                      savePreview3DParams(next);
+                    }}
+                  />
+                </>
               )}
               {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
               {keyboard && mode === "macro" && (

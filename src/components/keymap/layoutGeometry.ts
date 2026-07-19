@@ -68,6 +68,41 @@ function shapeCorners(s: PhysicalKey | PhysicalEncoder): Pt[] {
   return pts;
 }
 
+/**
+ * Footprint polygons of a placed key/encoder — its rotated corner points, as
+ * one closed polygon per rectangle (ISO-Enter-style caps yield two). Unlike
+ * {@link shapeCorners} the points come back grouped per rectangle and already
+ * shifted into the placed layout's space, which is what the case-outline
+ * clustering in `caseOutline.ts` consumes. `offsetX`/`offsetY` re-center the
+ * result (the 3D view works around the board's midpoint, the 2D view doesn't).
+ */
+export function footprintsOf(
+  s: PhysicalKey | PhysicalEncoder,
+  shiftX: number,
+  shiftY: number,
+  offsetX = 0,
+  offsetY = 0,
+): Pt[][] {
+  const rect = (x: number, y: number, w: number, h: number): Pt[] =>
+    (
+      [
+        [x, y],
+        [x + w, y],
+        [x + w, y + h],
+        [x, y + h],
+      ] as Pt[]
+    ).map(([cx, cy]) => {
+      const [px, py] = rotatePoint(cx, cy, s.rotationAngle, s.rotationX, s.rotationY);
+      return [px + shiftX - offsetX, py + shiftY - offsetY] as Pt;
+    });
+
+  const out = [rect(s.x, s.y, s.width, s.height)];
+  if ("x2" in s && hasSecondRect(s)) {
+    out.push(rect(s.x + s.x2, s.y + s.y2, s.width2, s.height2));
+  }
+  return out;
+}
+
 export function placeLayout(
   keys: PhysicalKey[],
   encoders: PhysicalEncoder[],

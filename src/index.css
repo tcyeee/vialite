@@ -514,7 +514,44 @@ textarea,
 /* Case (外壳): a solid bezel wrapping the plate. Color and thickness (padding)
    are set inline from the panel's settings; no border. */
 .keyboard-case {
+  position: relative;
   border-radius: 10px;
+}
+
+/* 异形配列（分体/Alice 等）的外壳轮廓层：矩形外壳会把分体键盘中间的空白也涂
+   成壳色、又给旋转配列留一圈虚胖的边，所以这类配列改由 SVG 按簇描出真实轮廓
+   （见 KeyboardCaseLayer.tsx），常规配列仍走上面的 div 渲染。填满 .keyboard-case
+   的内容盒，排在 .keyboard-layout 之前，故键帽压在它上面。overflow: visible 让
+   描边与投影不被 viewBox 裁掉。 */
+.keyboard-case-outline {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* 与 .keyboard-case-shaded 的两层外投影同参数，只是 drop-shadow 跟随实际绘制
+   的 alpha 而非盒子——分体键盘因此得到两块各自的投影。 */
+.keyboard-case-outline-shaded {
+  filter:
+    drop-shadow(2px 4px 6px light-dark(rgba(30, 35, 50, 0.16), rgba(0, 0, 0, 0.42)))
+    drop-shadow(4px 10px 20px light-dark(rgba(30, 35, 50, 0.16), rgba(0, 0, 0, 0.5)));
+}
+
+/* 外壳外缘的暖色高光 / 底板内缘的冷色凹槽：描边以轮廓为中心线，再用同一条
+   轮廓做 clip，只留下向内的一半 —— 等价于 CSS 的 inset box-shadow，但跟着轮廓
+   而不是矩形边。方向性（左上受光、右下背光）在任意轮廓上无法用单条描边表达，
+   故这里退化成一圈均匀的高光/凹槽。 */
+.keyboard-case-outline-rim {
+  fill: none;
+  stroke: light-dark(rgba(255, 250, 240, 0.55), rgba(255, 250, 240, 0.14));
+  stroke-width: 3;
+}
+
+.keyboard-case-outline-groove {
+  fill: none;
+  stroke: light-dark(rgba(30, 35, 50, 0.3), rgba(0, 0, 0, 0.5));
+  stroke-width: 4;
 }
 
 /* 外壳同样做出立体感，光源设为左上方偏暖的自然光（太阳/窗光）：上缘/左缘受
@@ -606,6 +643,13 @@ textarea,
     /* 下/右：受光内壁的暖色高光——同样锐利、对比拉高，不再发虚 */
     inset -1.5px -1.5px 1px light-dark(rgba(255, 252, 245, 0.6), rgba(255, 250, 240, 0.16)),
     inset -4px -4px 6px light-dark(rgba(255, 250, 240, 0.28), rgba(255, 250, 240, 0.05));
+}
+
+/* 轮廓模式下底板的矩形凹槽由 SVG 的 .keyboard-case-outline-groove 代劳，但
+   keyboard-layout-shaded 必须保留 —— 键帽的立体感选择器挂在它下面。必须排在
+   .keyboard-layout-shaded 之后：两者特异度相同，靠顺序取胜。 */
+.keyboard-layout-outlined {
+  box-shadow: none;
 }
 
 /* 键盘配色预览：键帽在左上暖光下做出立体感 —— 左上角暖色高光、右下角偏冷
