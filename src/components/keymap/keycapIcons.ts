@@ -56,6 +56,27 @@ export const TAPDANCE_ICON: CapIcon = { icon: "mdi:animation", scale: 0.9 };
  */
 export const MOUSE_ICON: CapIcon = { icon: "mdi:mouse-outline", scale: 0.82 };
 
+/**
+ * Wheel cap glyph (KC_WH_U/D/L/R): the scroll-wheel mouse icon that stands in for the
+ * leading "Wheel" word, paired with the direction arrow — the wheel counterpart to
+ * {@link MOUSE_ICON}, at the same size so the two read as one family.
+ */
+export const WHEEL_ICON: CapIcon = { icon: "mdi:mouse-move-vertical", scale: 0.82 };
+
+/**
+ * Glyph replacing the leading word of a two-line mouse cap label ("Mouse\n↑",
+ * "Wheel\n↓", "Mouse\nSlow"): the pointer icon for cursor-move / acceleration keys,
+ * the wheel icon for scroll keys, `null` for anything else. The trailing line
+ * (arrow or speed word) stays as text next to the glyph — see {@link KeycapFace}.
+ * Part of the 部分按键使用图标重置 (mediaReset) beautification, like
+ * {@link MEDIA_RESET_ICON_IDS}, so it's suppressed when that toggle is off.
+ */
+export function mouseWordIcon(qmkId: string): CapIcon | null {
+  if (/^KC_MS_[UDLR]$/.test(qmkId) || /^KC_ACL[0-2]$/.test(qmkId)) return MOUSE_ICON;
+  if (/^KC_WH_[UDLR]$/.test(qmkId)) return WHEEL_ICON;
+  return null;
+}
+
 /** Boxed L/R side badge (Ⓛ / Ⓡ) prepended to left/right modifier caps. */
 export function sideBadgeIcon(side: "L" | "R"): CapIcon {
   return { icon: side === "L" ? "mdi:alpha-l-box-outline" : "mdi:alpha-r-box-outline" };

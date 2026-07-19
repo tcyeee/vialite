@@ -5,6 +5,7 @@ import { composeLayers, downloadCanvas, frameBoard, nodeToCanvas } from "./layou
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
+import { ColorPicker } from "../common/ColorPicker.tsx";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { LayerTabs } from "../keymap/LayerTabs.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
@@ -58,10 +59,13 @@ function store(key: string, value: string) {
 export function KeyboardColorPanel({
   keyboard,
   onChange,
+  onEditKeymap,
 }: {
   keyboard: Keyboard;
   /** Called after a layout option was written to the device, so the parent re-renders. */
   onChange: () => void;
+  /** Navigates to the 键盘布局 page, where keys are actually assigned. */
+  onEditKeymap: () => void;
 }) {
   const { t } = useI18n();
   const { keyDisplay, setKeyDisplay, mediaReset, setMediaReset } = useKeyDisplay();
@@ -193,53 +197,29 @@ export function KeyboardColorPanel({
     setCaseThickness(value);
   };
 
-  const onCaseColorChange = (value: string) => {
-    setCaseColor(value);
-  };
-
-  const onPlateColorChange = (value: string) => {
-    setPlateColor(value);
-  };
-
-  const onFontColorChange = (value: string) => {
-    setFontColor(value);
-  };
-
   // Commit the picked color to the per-field recent list (most recent first,
-  // deduped, capped at three). Called on the color input's blur — i.e. once the
-  // user finishes picking — so dragging through the swatch doesn't spam history.
-  const rememberCaseColor = (value: string) => {
-    setCaseRecent((prev) => {
-      const next = [
-        value,
-        ...prev.filter((c) => c.toLowerCase() !== value.toLowerCase()),
-      ].slice(0, MAX_RECENT_COLORS);
-      store(CASE_RECENT_KEY, JSON.stringify(next));
-      return next;
-    });
-  };
+  // deduped, capped at three). Called when the picker popover closes — i.e. once
+  // the user finishes picking — so dragging through the spectrum doesn't spam
+  // history.
+  const remember =
+    (
+      key: string,
+      setRecent: React.Dispatch<React.SetStateAction<string[]>>,
+    ): ((value: string) => void) =>
+    (value) => {
+      setRecent((prev) => {
+        const next = [
+          value,
+          ...prev.filter((c) => c.toLowerCase() !== value.toLowerCase()),
+        ].slice(0, MAX_RECENT_COLORS);
+        store(key, JSON.stringify(next));
+        return next;
+      });
+    };
 
-  const rememberPlateColor = (value: string) => {
-    setPlateRecent((prev) => {
-      const next = [
-        value,
-        ...prev.filter((c) => c.toLowerCase() !== value.toLowerCase()),
-      ].slice(0, MAX_RECENT_COLORS);
-      store(PLATE_RECENT_KEY, JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const rememberFontColor = (value: string) => {
-    setFontRecent((prev) => {
-      const next = [
-        value,
-        ...prev.filter((c) => c.toLowerCase() !== value.toLowerCase()),
-      ].slice(0, MAX_RECENT_COLORS);
-      store(FONT_RECENT_KEY, JSON.stringify(next));
-      return next;
-    });
-  };
+  const rememberCaseColor = remember(CASE_RECENT_KEY, setCaseRecent);
+  const rememberPlateColor = remember(PLATE_RECENT_KEY, setPlateRecent);
+  const rememberFontColor = remember(FONT_RECENT_KEY, setFontRecent);
 
   return (
     <div className="flex flex-col gap-4 pb-[30px]">
@@ -300,6 +280,10 @@ export function KeyboardColorPanel({
               >
                 <Icon icon="mdi:content-save-outline" className="h-5 w-5" />
                 {saving ? t("colorSaving") : t("colorSaveAllLayers")}
+              </button>
+              <button type="button" className="btn" onClick={onEditKeymap}>
+                <Icon icon="mdi:keyboard-outline" className="h-5 w-5" />
+                {t("colorEditKeymap")}
               </button>
             </div>
           </div>
@@ -426,17 +410,17 @@ export function KeyboardColorPanel({
               <div className="flex items-center gap-2">
                 <RecentColorSwatches
                   colors={fontRecent}
-                  onPick={onFontColorChange}
+                  onPick={setFontColor}
                   label={t("fontColorTitle")}
                 />
-                <input
-                  type="color"
-                  value={fontColor}
-                  onChange={(e) => onFontColorChange(e.target.value)}
-                  onBlur={(e) => rememberFontColor(e.target.value)}
-                  className="mr-2 h-8 w-14 cursor-pointer rounded border border-brand-outline/40 bg-transparent"
-                  aria-label={t("fontColorTitle")}
-                />
+                <div className="mr-2">
+                  <ColorPicker
+                    value={fontColor}
+                    onChange={setFontColor}
+                    onCommit={rememberFontColor}
+                    label={t("fontColorTitle")}
+                  />
+                </div>
               </div>
             }
           />
@@ -607,18 +591,18 @@ export function KeyboardColorPanel({
               >
                 <RecentColorSwatches
                   colors={caseRecent}
-                  onPick={onCaseColorChange}
+                  onPick={setCaseColor}
                   label={t("caseColorTitle")}
                 />
-                <input
-                  type="color"
-                  value={caseColor}
-                  onChange={(e) => onCaseColorChange(e.target.value)}
-                  onBlur={(e) => rememberCaseColor(e.target.value)}
-                  disabled={caseHidden}
-                  className="mr-2 h-8 w-14 cursor-pointer rounded border border-brand-outline/40 bg-transparent"
-                  aria-label={t("caseColorTitle")}
-                />
+                <div className="mr-2">
+                  <ColorPicker
+                    value={caseColor}
+                    onChange={setCaseColor}
+                    onCommit={rememberCaseColor}
+                    disabled={caseHidden}
+                    label={t("caseColorTitle")}
+                  />
+                </div>
               </div>
             }
           />
@@ -629,17 +613,17 @@ export function KeyboardColorPanel({
               <div className="flex items-center gap-2">
                 <RecentColorSwatches
                   colors={plateRecent}
-                  onPick={onPlateColorChange}
+                  onPick={setPlateColor}
                   label={t("plateColorTitle")}
                 />
-                <input
-                  type="color"
-                  value={plateColor}
-                  onChange={(e) => onPlateColorChange(e.target.value)}
-                  onBlur={(e) => rememberPlateColor(e.target.value)}
-                  className="mr-2 h-8 w-14 cursor-pointer rounded border border-brand-outline/40 bg-transparent"
-                  aria-label={t("plateColorTitle")}
-                />
+                <div className="mr-2">
+                  <ColorPicker
+                    value={plateColor}
+                    onChange={setPlateColor}
+                    onCommit={rememberPlateColor}
+                    label={t("plateColorTitle")}
+                  />
+                </div>
               </div>
             }
           />

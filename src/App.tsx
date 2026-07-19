@@ -707,7 +707,11 @@ function App() {
                 />
               )}
               {keyboard && mode === "color" && (
-                <KeyboardColorPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+                <KeyboardColorPanel
+                  keyboard={keyboard}
+                  onChange={() => forceUpdate((r) => r + 1)}
+                  onEditKeymap={() => navigate("keymap")}
+                />
               )}
               {mode === "site" && <SiteSettingsPanel />}
               {keyboard && mode === "io" && (

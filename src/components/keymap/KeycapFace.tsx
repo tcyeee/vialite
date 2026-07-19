@@ -2,7 +2,7 @@ import { Icon } from "@iconify/react";
 import type { CSSProperties } from "react";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { dualRole, holdInfo, keyBehavior, label as kcLabel, layerSwitchInfo, mediaAbbrev } from "../../protocol/keycodes.ts";
-import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, MEDIA_RESET_ICON_IDS, MOUSE_ICON, sideBadgeIcon, TAPDANCE_ICON } from "./keycapIcons.ts";
+import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, MEDIA_RESET_ICON_IDS, MOUSE_ICON, mouseWordIcon, sideBadgeIcon, TAPDANCE_ICON } from "./keycapIcons.ts";
 
 /**
  * Renders one glyph from the keycap-icon table ({@link keycapIcons.ts}): its mdi
@@ -204,6 +204,21 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
       <span className="key-face-badged key-mouse-face">
         <CapGlyph spec={MOUSE_ICON} label={kcLabel(qmkId)} />
         <span className={className}>{mouseBtn[1]}</span>
+      </span>
+    );
+  }
+
+  // Mouse-motion caps (KC_MS_*, KC_WH_*, KC_ACL*) drop the leading "Mouse"/"Wheel"
+  // word for a pointer / scroll-wheel glyph, keeping only the direction arrow (or
+  // speed word) as text — same icon+text treatment as the button caps above. Part of
+  // the 部分按键使用图标重置 (mediaReset) toggle, so off keeps the full text label.
+  const mouseWord = mediaReset ? mouseWordIcon(qmkId) : null;
+  if (mouseWord) {
+    const rest = kcLabel(qmkId).split("\n").slice(1).join(" ");
+    return (
+      <span className="key-face-badged key-mouse-face">
+        <CapGlyph spec={mouseWord} label={kcLabel(qmkId)} />
+        <span className={className}>{rest}</span>
       </span>
     );
   }

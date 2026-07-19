@@ -1032,3 +1032,28 @@ textarea,
   background: #2a7f2a;
   transition: width 0.2s;
 }
+
+/* react-colorful sizing for the ColorPicker popover. The library ships a fixed
+   200x200 square with its own injected stylesheet; these override it to fill the
+   panel width and use a slightly flatter saturation area, plus round the corners
+   and thicken the hue bar to match daisyUI's control styling. */
+.vialite-color-picker .react-colorful {
+  width: 100%;
+  height: 168px;
+  gap: 0.5rem;
+}
+
+.vialite-color-picker .react-colorful__saturation {
+  border-radius: 0.5rem;
+  border-bottom: none;
+}
+
+.vialite-color-picker .react-colorful__hue {
+  height: 14px;
+  border-radius: 999px;
+}
+
+.vialite-color-picker .react-colorful__pointer {
+  width: 16px;
+  height: 16px;
+}
