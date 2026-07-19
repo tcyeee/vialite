@@ -4,6 +4,7 @@ import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
 import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
 import { KeyboardLayout, type KeyPart } from "./components/keymap/KeyboardLayout.tsx";
+import { KeyboardLayout3D } from "./components/connect/KeyboardLayout3D.tsx";
 import { useAutoFitZoom } from "./components/keymap/autoFitSize.ts";
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
@@ -28,7 +29,7 @@ import { useToast } from "./contexts/toast.tsx";
 import { track } from "./analytics.ts";
 import { debugWarn } from "./debug.ts";
 
-type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
+type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io" | "preview3d";
 
 type Selected =
   | { kind: "key"; row: number; col: number; part?: KeyPart }
@@ -626,8 +627,11 @@ function App() {
                             ? t("navKeyboardColor")
                             : mode === "advanced"
                               ? t("navAdvanced")
-                              : t("navImportExport")}
+                              : mode === "preview3d"
+                                ? t("navPreview3d")
+                                : t("navImportExport")}
                 </h1>
+                {mode === "preview3d" && <HelpIcon text={t("preview3dHint")} />}
                 {mode === "macro" && <HelpIcon text={t("macroHint")} />}
                 {mode === "tapdance" && <HelpIcon text={t("tapDanceHint")} />}
                 {mode === "combo" && <HelpIcon text={t("comboHint")} />}
@@ -727,6 +731,11 @@ function App() {
                     </section>
                   )}
                 </>
+              )}
+              {/* 纯展示页:只渲染当前图层的 3D 键盘,点击键帽不做任何事(选中态、
+                  改键都留在首页的 2D 视图里)。 */}
+              {keyboard && mode === "preview3d" && (
+                <KeyboardLayout3D keyboard={keyboard} layer={layer} onKeySelect={() => {}} onEncoderSelect={() => {}} />
               )}
               {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
               {keyboard && mode === "macro" && (

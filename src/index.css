@@ -688,6 +688,18 @@ textarea,
   opacity: 0.7;
 }
 
+/* Applied to a board for the duration of an image export (see nodeToCanvas).
+   Stripping the selection classes alone isn't enough: `.key`'s `transition:
+   opacity` above means the dimmed caps would merely *begin* fading back to
+   opacity 1, and html-to-image samples computed styles right away — capturing
+   them mid-fade, i.e. still dimmed. Freezing transitions and animations makes
+   the strip take effect in the same frame. */
+.export-static,
+.export-static * {
+  transition: none !important;
+  animation: none !important;
+}
+
 /* Users who prefer reduced motion get a static ring instead of the hue cycle. */
 @media (prefers-reduced-motion: reduce) {
   .keyboard-layout .key.selected,

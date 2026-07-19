@@ -8,7 +8,7 @@ import { Icon } from "@iconify/react";
 import { useLenis } from "lenis/react";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 
-type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io";
+type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io" | "preview3d";
 
 const SIDEBAR_WIDTH_KEY = "vialite-sidebar-width";
 const SIDEBAR_COLLAPSED_KEY = "vialite-sidebar-collapsed";
@@ -99,9 +99,19 @@ function useScrollSpy(sectionIds: string[], active: boolean): string | null {
   return activeId;
 }
 
-type NavKind = "home" | "matrixTest" | "macro" | "tapDance" | "combo" | "keyboardColor" | "advanced" | "site" | "importExport";
+type NavKind =
+  | "home"
+  | "matrixTest"
+  | "macro"
+  | "tapDance"
+  | "combo"
+  | "keyboardColor"
+  | "advanced"
+  | "site"
+  | "importExport"
+  | "preview3d";
 
-const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; icon: string }[] = [
+const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; icon: string; beta?: boolean }[] = [
   { kind: "home", mode: "keymap", labelKey: "navHome", icon: "mdi:home-outline" },
   { kind: "keyboardColor", mode: "color", labelKey: "navKeyboardColor", icon: "mdi:palette-outline" },
   { kind: "macro", mode: "macro", labelKey: "navMacro", icon: "mdi:script-text-outline" },
@@ -110,6 +120,7 @@ const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; icon: st
   { kind: "importExport", mode: "io", labelKey: "navImportExport", icon: "mdi:swap-horizontal" },
   { kind: "matrixTest", mode: "matrix", labelKey: "navMatrixTest", icon: "mdi:view-grid-outline" },
   { kind: "advanced", mode: "advanced", labelKey: "navAdvanced", icon: "mdi:tune-variant" },
+  { kind: "preview3d", mode: "preview3d", labelKey: "navPreview3d", icon: "mdi:cube-outline", beta: true },
   { kind: "site", mode: "site", labelKey: "navSiteSettings", icon: "mdi:web" },
 ];
 
@@ -259,7 +270,7 @@ function SidebarNav({
   const lenis = useLenis();
   return (
     <nav className="flex flex-col gap-2">
-      {NAV_ITEMS.map(({ kind, mode: itemMode, labelKey, icon }, index) => {
+      {NAV_ITEMS.map(({ kind, mode: itemMode, labelKey, icon, beta }, index) => {
         const labelDelay = { "--nav-delay": `${index * 40}ms` } as CSSProperties;
         if (supportedByKind[kind] === false) {
           return (
@@ -302,6 +313,11 @@ function SidebarNav({
               {!collapsed && (
                 <span className={appear ? "nav-label-appear" : undefined} style={labelDelay}>
                   {t(labelKey)}
+                </span>
+              )}
+              {!collapsed && beta && (
+                <span className="badge badge-xs badge-outline shrink-0 border-brand-primary/50 text-[0.625rem] font-semibold uppercase text-brand-primary">
+                  Beta
                 </span>
               )}
             </button>

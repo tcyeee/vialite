@@ -432,6 +432,11 @@ const MESSAGES = {
   navCombo: { en: "Combos", zh: "Combos" },
   navKeyboardColor: { en: "Personalization", zh: "个性化" },
   navAdvanced: { en: "QMK Settings", zh: "QMK 设置" },
+  navPreview3d: { en: "3D Preview", zh: "3D 预览" },
+  preview3dHint: {
+    en: "Renders the connected keyboard's layout in 3D from its vial.json geometry. Drag to orbit, scroll to zoom, click a key to select it.",
+    zh: "根据设备 vial.json 中的布局几何实时生成 3D 键盘。拖拽旋转视角,滚轮缩放,点击键帽可选中。",
+  },
   navSiteSettings: { en: "Website Settings", zh: "网站设置" },
   navImportExport: { en: "Import / Export", zh: "导入导出" },
   comingSoon: { en: "Coming soon", zh: "即将推出" },

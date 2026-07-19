@@ -7,26 +7,85 @@ import { toCanvas } from "html-to-image";
 const SHADOW_PAD = 28;
 
 /**
+ * Selection styling that must never be baked into an exported image: the
+ * highlight ring on the right-clicked cap and the dimming
+ * (`keyboard-layout-has-selection`) it applies to every other cap. The preview
+ * board on the 个性化 page is both the interactive surface *and* the node
+ * rasterized here, so a capture taken while the right-click cascade is open
+ * would otherwise save a half-lit keyboard.
+ */
+const SELECTION_CLASSES = ["keyboard-layout-has-selection", "selected"] as const;
+
+/**
+ * Strip {@link SELECTION_CLASSES} from `node` and its descendants for the
+ * duration of `run`, restoring exactly the elements that had them.
+ *
+ * Done on the live DOM rather than via React state because html-to-image reads
+ * the real nodes: a state update wouldn't be guaranteed to have painted before
+ * the clone runs, and this is a plain synchronous mutation around the capture.
+ *
+ * `.export-static` goes on first and is what actually makes this work. The
+ * dimmed caps carry `transition: opacity 0.2s`, so merely dropping the class
+ * starts a fade rather than resetting opacity — and html-to-image samples
+ * computed styles immediately, catching them still dimmed. Freezing transitions
+ * and animations first makes the strip land in the same frame; the forced
+ * reflow below guarantees the new styles are resolved before the capture reads
+ * them.
+ */
+async function withoutSelectionStyling<T>(
+  node: HTMLElement,
+  run: () => Promise<T>,
+): Promise<T> {
+  const hadExportStatic = node.classList.contains("export-static");
+  node.classList.add("export-static");
+  const stripped: { el: Element; cls: string }[] = [];
+  for (const cls of SELECTION_CLASSES) {
+    for (const el of [node, ...node.querySelectorAll(`.${cls}`)]) {
+      if (el.classList.contains(cls)) {
+        el.classList.remove(cls);
+        stripped.push({ el, cls });
+      }
+    }
+  }
+  // Force a synchronous style/layout flush so the capture can't observe the
+  // pre-strip values.
+  void node.offsetHeight;
+  try {
+    return await run();
+  } finally {
+    for (const { el, cls } of stripped) {
+      el.classList.add(cls);
+    }
+    if (!hadExportStatic) {
+      node.classList.remove("export-static");
+    }
+  }
+}
+
+/**
  * Rasterize a live DOM node (a rendered keyboard preview) to a canvas. Uses a 2×
  * pixel ratio so the exported PNG stays crisp, and `skipFonts` so html-to-image
  * doesn't try to fetch/embed web-font CSS (the keycap labels are system fonts and
  * the on-cap glyphs are inline iconify SVG, so nothing needs embedding — skipping
  * avoids a network round-trip that can hang or fail on a cross-origin stylesheet).
  * A {@link SHADOW_PAD} border is added around the node so the case's drop shadow
- * isn't clipped.
+ * isn't clipped, and any transient selection highlight is stripped for the
+ * duration of the capture (see {@link withoutSelectionStyling}).
  */
 export function nodeToCanvas(node: HTMLElement): Promise<HTMLCanvasElement> {
-  return toCanvas(node, {
-    pixelRatio: 2,
-    skipFonts: true,
-    width: node.offsetWidth + SHADOW_PAD * 2,
-    height: node.offsetHeight + SHADOW_PAD * 2,
-    style: { boxSizing: "content-box", padding: `${SHADOW_PAD}px` },
-    // Skip UI chrome that overlays the board (e.g. the hover save-actions scrim),
-    // which lives inside the captured node but must not be baked into the export.
-    filter: (el) =>
-      !(el instanceof HTMLElement && el.hasAttribute("data-export-hidden")),
-  });
+  return withoutSelectionStyling(node, () =>
+    toCanvas(node, {
+      pixelRatio: 2,
+      skipFonts: true,
+      width: node.offsetWidth + SHADOW_PAD * 2,
+      height: node.offsetHeight + SHADOW_PAD * 2,
+      style: { boxSizing: "content-box", padding: `${SHADOW_PAD}px` },
+      // Skip UI chrome that overlays the board (e.g. the hover save-actions scrim),
+      // which lives inside the captured node but must not be baked into the export.
+      filter: (el) =>
+        !(el instanceof HTMLElement && el.hasAttribute("data-export-hidden")),
+    }),
+  );
 }
 
 /** Trigger a browser download of a canvas as a PNG file. */

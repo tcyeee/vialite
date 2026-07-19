@@ -1,8 +1,21 @@
-import { useMemo, type CSSProperties, type ReactNode } from "react";
+import {
+  useMemo,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
+import type { KeycodeDef } from "../../protocol/keycodes.ts";
 import { KeycapFace } from "./KeycapFace.tsx";
+import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
+
+/** Right-click assign target — one cap, or one encoder rotation direction. */
+export type PreviewContextTarget =
+  | { kind: "key"; row: number; col: number }
+  | { kind: "encoder"; index: number; direction: 0 | 1 };
 
 /**
  * Display size (显示尺寸) is a pure *visual* zoom: the board is always laid out
@@ -264,11 +277,18 @@ export function KeyboardLayoutPreview({
   keyboard,
   layer = 0,
   zoomOverride,
+  onContextAssign,
   ...overrides
 }: {
   keyboard: Keyboard;
   size?: PreviewSize;
   layer?: number;
+  /**
+   * Opt-in right-click assign, the same cascade the interactive board on the
+   * 键盘布局 page offers. Absent (the default) keeps this a pure display board:
+   * caps stay `pointer-events: none` and no menu is wired up.
+   */
+  onContextAssign?: (target: PreviewContextTarget, qmkId: string) => void;
   /**
    * Continuous zoom from auto-fit (`useAutoFitZoom`), which wins over the
    * discrete 预览区域缩放 level. `null`/absent means auto-fit is off or hasn't
@@ -305,6 +325,28 @@ export function KeyboardLayoutPreview({
   } = appearanceMetrics(size, spacing, keycapWidth, caseRadius, caseThickness);
   const zoom = zoomOverride ?? sizeZoom;
   const posClass = fontPositionClass(fontPosition);
+
+  // Right-click assign: the cascade selector anchored at the click point. It
+  // dismisses itself (outside click / Escape / after a pick), so there's no
+  // separate close listener here. Mirrors KeyboardLayout's menu.
+  //
+  // The open menu doubles as the selection state, driving the same
+  // `.selected` / `keyboard-layout-has-selection` styling the interactive board
+  // uses. Unlike that board the highlight is deliberately *ephemeral* — it
+  // clears when the cascade closes — because this preview is also the node
+  // rasterized for the 保存图片 export, and a lingering highlight (plus the
+  // dimming of every other cap) would be baked into the saved PNG.
+  const [menu, setMenu] = useState<
+    { x: number; y: number; target: PreviewContextTarget } | null
+  >(null);
+  const openMenu = (e: ReactMouseEvent, target: PreviewContextTarget) => {
+    if (!onContextAssign) {
+      return;
+    }
+    e.preventDefault();
+    setMenu({ x: e.clientX, y: e.clientY, target });
+  };
+
   const placed = useMemo(
     () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
     [keyboard, keyboard.layoutOptions],
@@ -326,14 +368,17 @@ export function KeyboardLayoutPreview({
         className={
           "keyboard-layout" +
           (depth ? " keyboard-layout-shaded" : "") +
-          (keycapBorder ? " keyboard-layout-bordered" : "")
+          (keycapBorder ? " keyboard-layout-bordered" : "") +
+          (menu ? " keyboard-layout-has-selection" : "")
         }
         style={{
           width: plateWidth,
           height: plateHeight,
           background: plateColor,
           borderRadius: innerRadius,
-          pointerEvents: "none",
+          // Display-only by default; the caps only need to receive events when
+          // there's a right-click menu to open.
+          pointerEvents: onContextAssign ? undefined : "none",
           // Cascades to `.key`/`.key-icon` (both `color: inherit`) so labels and
           // mdi icons pick up the chosen 字体颜色.
           color: fontColor,
@@ -344,10 +389,15 @@ export function KeyboardLayoutPreview({
           .filter(({ key }) => !key.decal)
           .map(({ key, shiftX, shiftY }) => {
             const qmkId = keyboard.getKey(layer, key.row, key.col);
+            const isSelected =
+              menu?.target.kind === "key" &&
+              menu.target.row === key.row &&
+              menu.target.col === key.col;
             return (
               <div
                 key={`${key.row},${key.col}@${key.x},${key.y}`}
-                className={"key" + posClass}
+                className={(isSelected ? "key selected" : "key") + posClass}
+                onContextMenu={(e) => openMenu(e, { kind: "key", row: key.row, col: key.col })}
                 style={shapeStyle(key, shiftX, shiftY, PITCH, inset, inset)}
               >
                 {hasSecondRect(key) && (
@@ -365,27 +415,65 @@ export function KeyboardLayoutPreview({
               </div>
             );
           })}
-        {placed.encoders.map(({ encoder, shiftX, shiftY }) => (
-          <div
-            key={`e${encoder.index},${encoder.direction}@${encoder.x},${encoder.y}`}
-            className="encoder"
-            style={shapeStyle(encoder, shiftX, shiftY, PITCH, inset, inset)}
-          >
-            <span className="encoder-dir">{encoder.direction === 1 ? "↻" : "↺"}</span>
-          </div>
-        ))}
+        {placed.encoders.map(({ encoder, shiftX, shiftY }) => {
+          const isSelected =
+            menu?.target.kind === "encoder" &&
+            menu.target.index === encoder.index &&
+            menu.target.direction === encoder.direction;
+          return (
+            <div
+              key={`e${encoder.index},${encoder.direction}@${encoder.x},${encoder.y}`}
+              className={isSelected ? "encoder selected" : "encoder"}
+              onContextMenu={(e) =>
+                openMenu(e, {
+                  kind: "encoder",
+                  index: encoder.index,
+                  direction: encoder.direction,
+                })
+              }
+              style={shapeStyle(encoder, shiftX, shiftY, PITCH, inset, inset)}
+            >
+              <span className="encoder-dir">{encoder.direction === 1 ? "↻" : "↺"}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 
+  // The cascade is positioned in viewport coordinates, so it stays outside
+  // <KeyboardZoom> — a transformed ancestor would become its containing block
+  // and scale it along with the board.
   return (
-    <KeyboardZoom
-      zoom={zoom}
-      live={zoomOverride != null}
-      width={plateWidth + caseThickness * 2}
-      height={plateHeight + caseThickness * 2}
-    >
-      {board}
-    </KeyboardZoom>
+    <>
+      <KeyboardZoom
+        zoom={zoom}
+        live={zoomOverride != null}
+        width={plateWidth + caseThickness * 2}
+        height={plateHeight + caseThickness * 2}
+      >
+        {board}
+      </KeyboardZoom>
+      {menu && onContextAssign && (
+        // Suppress the browser's native menu for right-clicks inside the cascade
+        // popover; the cascade handles its own dismissal (outside-click/Escape).
+        <div onContextMenu={(e) => e.preventDefault()}>
+          <KeycodeCascadeSelector
+            anchor={{ x: menu.x, y: menu.y }}
+            keyboard={keyboard}
+            value={
+              menu.target.kind === "key"
+                ? keyboard.getKey(layer, menu.target.row, menu.target.col)
+                : keyboard.getEncoder(layer, menu.target.index, menu.target.direction)
+            }
+            onPick={(entry: KeycodeDef) => {
+              onContextAssign(menu.target, entry.qmkId);
+              setMenu(null);
+            }}
+            onClose={() => setMenu(null)}
+          />
+        </div>
+      )}
+    </>
   );
 }

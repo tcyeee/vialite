@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
+import { useToast } from "../../contexts/toast.tsx";
 import { composeLayers, downloadCanvas, frameBoard, nodeToCanvas } from "./layoutImage.ts";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
@@ -15,6 +16,7 @@ import {
   KeyboardLayoutPreview,
   SPACING_LEVELS,
   type FontPosition,
+  type PreviewContextTarget,
   type PreviewSize,
 } from "../keymap/KeyboardLayoutPreview.tsx";
 
@@ -67,6 +69,7 @@ export function KeyboardColorPanel({
   onChange: () => void;
 }) {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const { keyDisplay, setKeyDisplay, mediaReset, setMediaReset } = useKeyDisplay();
   const hasLayoutOptions =
     !!keyboard.layoutLabels &&
@@ -118,6 +121,22 @@ export function KeyboardColorPanel({
       ),
     [keyboard, keyboard.layoutOptions],
   );
+
+  // Right-click assign from the preview board, writing to the layer the preview
+  // is currently showing. `onChange` re-renders the parent afterwards — Keyboard
+  // mutates its keymap in place, so nothing else would signal the new label.
+  const handleContextAssign = async (target: PreviewContextTarget, qmkId: string) => {
+    try {
+      if (target.kind === "key") {
+        await keyboard.setKey(previewLayer, target.row, target.col, qmkId);
+      } else {
+        await keyboard.setEncoder(previewLayer, target.index, target.direction, qmkId);
+      }
+    } catch (err) {
+      showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
+    }
+    onChange();
+  };
 
   const saveCurrentLayer = async () => {
     if (!currentBoardRef.current || saving) {
@@ -254,6 +273,7 @@ export function KeyboardColorPanel({
               keyboard={keyboard}
               layer={previewLayer}
               zoomOverride={autoFitZoom}
+              onContextAssign={handleContextAssign}
             />
           </div>
         </div>
@@ -352,7 +372,7 @@ export function KeyboardColorPanel({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="btn btn-sm btn-primary"
+                  className="btn btn-sm btn-outline"
                   onClick={() => void saveCurrentLayer()}
                   disabled={saving}
                 >

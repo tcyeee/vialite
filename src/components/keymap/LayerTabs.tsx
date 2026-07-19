@@ -106,8 +106,13 @@ export function LayerTabs({ layers, active, onSelect, isConfigured, children }: 
       />
       {/* No border/card frame — the board shows directly. Keyed on the active
           layer so switching tabs remounts the panel and re-fires the appear
-          animation (see .tab-panel-appear in index.css). */}
-      <div key={active} className="tab-panel-appear w-fit">
+          animation (see .tab-panel-appear in index.css).
+          `w-full` (not `w-fit`) matters: the board's overflow-x-auto viewport
+          lives inside here, and auto-fit measures that viewport's width. A
+          shrink-to-fit panel would size itself to the board, so the measurement
+          would just echo the board's own width and never shrink it — and the
+          viewport would never scroll either. */}
+      <div key={active} className="tab-panel-appear w-full">
         {children}
       </div>
     </div>
