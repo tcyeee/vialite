@@ -155,7 +155,8 @@ export function KeyboardLayout({
         className={
           "keyboard-layout" +
           (depth ? " keyboard-layout-shaded" : "") +
-          (keycapBorder ? " keyboard-layout-bordered" : "")
+          (keycapBorder ? " keyboard-layout-bordered" : "") +
+          (selected ? " keyboard-layout-has-selection" : "")
         }
         style={{
           width: plateWidth,

@@ -626,6 +626,25 @@ textarea,
   box-shadow: 0 0 0 2px hsl(var(--sel-hue) 85% 55%);
 }
 
+/* Focus the selection: while a key/encoder is selected, dim every other cap so
+   the animated ring stands out. The selected cap (and, for a dual-role cap, its
+   whole `.key.selected` wrapper) keeps full opacity; hovering a dimmed cap
+   brings it partway back so it still reads as interactive. */
+.keyboard-layout .key,
+.keyboard-layout .encoder {
+  transition: opacity 0.2s ease;
+}
+
+.keyboard-layout-has-selection .key:not(.selected),
+.keyboard-layout-has-selection .encoder:not(.selected) {
+  opacity: 0.35;
+}
+
+.keyboard-layout-has-selection .key:not(.selected):hover,
+.keyboard-layout-has-selection .encoder:not(.selected):hover {
+  opacity: 0.7;
+}
+
 /* Users who prefer reduced motion get a static ring instead of the hue cycle. */
 @media (prefers-reduced-motion: reduce) {
   .keyboard-layout .key.selected,
