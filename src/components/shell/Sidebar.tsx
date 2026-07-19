@@ -181,7 +181,10 @@ export function Sidebar({
         // "appears again" when the entrance animation fires. opacity-0 → sidebar-appear (which
         // keyframes from opacity 0) hands off with no flash, so the entrance plays exactly once.
         (appear ? "sidebar-appear " : "opacity-0 ") +
-        "relative hidden w-full shrink-0 transition-[width] duration-300 ease-out md:block md:sticky md:top-20 md:-ml-[30px] md:w-[var(--sidebar-w)] md:self-start"
+        // md:mt-5 gives the 20px navbar gap in normal flow (the wrapper is pt-0), and md:top-[84px]
+        // (navbar min-h-16 = 64px + the same 20px) keeps that gap once it sticks — otherwise the gap
+        // would only appear on pages tall enough to scroll.
+        "relative hidden w-full shrink-0 transition-[width] duration-300 ease-out md:block md:sticky md:top-[84px] md:-ml-[30px] md:mt-5 md:w-[var(--sidebar-w)] md:self-start"
       }
       style={{ "--sidebar-w": `${collapsed ? COLLAPSED_SIDEBAR_WIDTH : sidebarWidth}px` } as CSSProperties}
     >

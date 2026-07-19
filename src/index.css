@@ -126,6 +126,26 @@ textarea,
   display: none; /* Chrome/Safari/Edge */
 }
 
+/* 快捷配置横向滚动区(Basic 行)右侧 full-bleed 到视口边缘。
+   仅在 lg 断点生效——此时侧栏在左、卡片横向排布并开启 overflow-x-auto;lg 以下
+   卡片是纵向堆叠,不需要横向 full-bleed。
+
+   默认这行滚动区被关在 main 的内容盒里,右缘停在 main 右内边距处,右侧于是露出
+   一段背景("留白")并把卡片提前截断。这里只用一个负的 margin-right 把盒子的右缘
+   一路顶到视口右缘,左缘保持不动(首屏卡片位置不变)。
+
+   需要向右扩展的距离 = 从 main 内容盒右缘到视口右缘的距离:
+     main 右内边距(md:p-8 = 2rem)
+   + 页面右内边距(md:p-6 = 1.5rem)
+   + max-w-[1600px] 居中留白 = max(0, (视口 - 3rem - 1600px) / 2)
+                            = max(0, 50vw - 1.5rem - 800px)  (视口 ≤ ~1648px 时为 0)
+   扩展后右缘正好落在视口右缘,不产生整页横向滚动条。 */
+@media (min-width: 1024px) {
+  .quick-config-fullbleed {
+    margin-right: calc(-3.5rem - max(0px, 50vw - 1.5rem - 800px));
+  }
+}
+
 /* Waiting-for-connection hero: gentle float + squash-bounce button press. */
 @keyframes kawaii-float {
   0%,
@@ -764,6 +784,17 @@ textarea,
   justify-content: center;
   min-width: 0;
   min-height: 0;
+}
+
+/* 字体位置 = 左上角: the tap half follows the same corner as a plain cap's label.
+   .key-dual is absolutely positioned, so it sits on the cap's padding-box edge and
+   doesn't inherit .key-pos-top-left's padding — re-apply it here so the tap label
+   lands exactly where a single-role cap's label would. The hold band stays centred
+   in its pill. */
+.keyboard-layout .key.key-pos-top-left .key-dual-tap {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 3px 4px;
 }
 
 .keyboard-layout .key-dual-hold {

@@ -428,7 +428,7 @@ export function QuickConfigPanel({
       {isBasic && (
         <div
           ref={basicRowRef}
-          className="scrollbar-hide flex flex-col gap-6 lg:flex-row lg:flex-nowrap lg:items-start lg:overflow-x-auto"
+          className="scrollbar-hide quick-config-fullbleed flex flex-col gap-6 lg:flex-row lg:flex-nowrap lg:items-start lg:overflow-x-auto"
         >
           {/* Left column: physical keyboard grid + special keys (both inside
               BasicKeyboardGrid) followed by the config-settings block. */}
@@ -618,6 +618,9 @@ export function QuickConfigPanel({
               <KeyboardFunctionCards groups={keyboardFnCardGroups} onPick={pick} />
             </div>
           </div>
+          {/* 末尾留白:横向滚动到底时补一段半屏宽的空白,让最右侧的卡片能被
+              滚动到窗口中央,而不是卡在视口右缘。仅 lg 断点(横向滚动开启)生效。 */}
+          <div aria-hidden="true" className="hidden shrink-0 lg:block lg:w-[15vw]" />
         </div>
       )}
       {activeCat.groups

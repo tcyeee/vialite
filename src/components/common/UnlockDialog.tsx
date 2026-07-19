@@ -97,9 +97,9 @@ export function UnlockDialog({ keyboard, onUnlocked, onCancel }: Props) {
         <p className="mb-1">{t("unlockWarning")}</p>
         <p className="mb-3">{t("unlockHold")}</p>
         <div className="unlock-reference" style={{ width, height }}>
-          {keyboard.keys.map((key) => (
+          {keyboard.keys.map((key, i) => (
             <div
-              key={`${key.row},${key.col}`}
+              key={`${key.row},${key.col}-${i}`}
               className={`unlock-key${unlockKeys.has(`${key.row},${key.col}`) ? " hold" : ""}`}
               style={{
                 left: key.x * UNIT,

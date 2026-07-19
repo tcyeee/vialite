@@ -138,12 +138,14 @@ export function MatrixTester({ keyboard }: Props) {
             className="keyboard-layout"
             style={{ width: Math.max(...rightEdges) * UNIT, height: Math.max(...bottomEdges) * UNIT }}
           >
-            {keyboard.keys.map((key) => {
+            {keyboard.keys.map((key, i) => {
               const pos = `${key.row},${key.col}`;
               const state = pressed.has(pos) ? " pressed" : tested.has(pos) ? " tested" : "";
               return (
+                // Several KLE keys can share one matrix position (layout-option
+                // alternates like ISO/ANSI Enter), so `pos` isn't unique here.
                 <div
-                  key={pos}
+                  key={`${pos}-${i}`}
                   className={`matrix-key${state}`}
                   title={pos}
                   style={{
