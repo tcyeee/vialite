@@ -57,6 +57,10 @@ interface Props {
   groups: FnCardGroup[];
   /** Assign the picked keycode (routed through QuickConfigPanel's pick handler). */
   onPick: (entry: KeycodeDef) => void;
+  /** True when any quick-config card is open, so collapsed cards here dim too. */
+  anyExpanded?: boolean;
+  /** Report this column's open/closed card up to the panel. */
+  onExpandedChange?: (key: string | null) => void;
 }
 
 /** Background colors cycled across the function-key cards. */
@@ -275,7 +279,7 @@ function MediaBody({
  * {@link ExpandableCardColumn}, the same layout the Combo Keys and Quantum
  * columns use.
  */
-export function FnMediaMouseCards({ groups, onPick }: Props) {
+export function FnMediaMouseCards({ groups, onPick, anyExpanded, onExpandedChange }: Props) {
   const { t } = useI18n();
 
   const cards: ExpandableCardDef[] = groups.map((group, i) => {
@@ -371,5 +375,12 @@ export function FnMediaMouseCards({ groups, onPick }: Props) {
     };
   });
 
-  return <ExpandableCardColumn cards={cards} idPrefix="fncard" />;
+  return (
+    <ExpandableCardColumn
+      cards={cards}
+      idPrefix="fncard"
+      anyExpanded={anyExpanded}
+      onExpandedChange={onExpandedChange}
+    />
+  );
 }

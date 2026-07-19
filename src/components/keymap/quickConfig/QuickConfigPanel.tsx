@@ -246,6 +246,13 @@ export function QuickConfigPanel({
   const [active, setActive] = useState(VISIBLE_CATEGORIES[0].name);
   const [pending, setPending] = useState<KeycodeDef | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  // True while any of the Basic tab's expandable cards (Fn/Media/Mouse,
+  // Macros/Tap Dance, Keyboard Function, …) is open. Each card column reports its
+  // open/closed card here; only one card is open panel-wide at a time (an outside
+  // click collapses the others), so a boolean captures it. When set, every
+  // collapsed card dims so the single expanded card stands out.
+  const [anyCardExpanded, setAnyCardExpanded] = useState(false);
+  const onCardExpandedChange = (key: string | null) => setAnyCardExpanded(key !== null);
   // The Basic tab lays its keyboard grid + three card columns out in one wide
   // row; on large screens that row scrolls horizontally, and a vertical mouse
   // wheel over it is turned into a horizontal pan (see the hook).
@@ -561,6 +568,8 @@ export function QuickConfigPanel({
                 },
               ]}
               onPick={pick}
+              anyExpanded={anyCardExpanded}
+              onExpandedChange={onCardExpandedChange}
             />
           </div>
           {/* Far-right: the former Combo Keys tab, folded in as two columns —
@@ -675,6 +684,8 @@ export function QuickConfigPanel({
                   },
                 ]}
                 onPick={pick}
+                anyExpanded={anyCardExpanded}
+                onExpandedChange={onCardExpandedChange}
               />
             </div>
             {/* 其他 (Other): the Lighting (灯光) and Keyboard Config (键盘配置,
@@ -682,7 +693,12 @@ export function QuickConfigPanel({
                 expandable colored cards the Fn/Media/Mouse column uses. */}
             <div>
               <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryOther")}</h4>
-              <KeyboardFunctionCards groups={keyboardFnCardGroups} onPick={pick} />
+              <KeyboardFunctionCards
+                groups={keyboardFnCardGroups}
+                onPick={pick}
+                anyExpanded={anyCardExpanded}
+                onExpandedChange={onCardExpandedChange}
+              />
             </div>
           </div>
           {/* 末尾留白:横向滚动到底时补一段半屏宽的空白,让最右侧的卡片能被

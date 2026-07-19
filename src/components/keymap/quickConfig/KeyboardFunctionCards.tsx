@@ -41,6 +41,10 @@ interface Props {
   groups: KeyboardFnCardGroup[];
   /** Assign the picked keycode (routed through QuickConfigPanel's pick handler). */
   onPick: (entry: KeycodeDef) => void;
+  /** True when any quick-config card is open, so collapsed cards here dim too. */
+  anyExpanded?: boolean;
+  /** Report this column's open/closed card up to the panel. */
+  onExpandedChange?: (key: string | null) => void;
 }
 
 /** Background colors for the Lighting / Keyboard-Config / Other cards. */
@@ -131,7 +135,7 @@ function KeyList({
  * copies leftward (`growLeft`) to avoid spilling past — and being clipped by —
  * the horizontally-scrolling row's right edge.
  */
-export function KeyboardFunctionCards({ groups, onPick }: Props) {
+export function KeyboardFunctionCards({ groups, onPick, anyExpanded, onExpandedChange }: Props) {
   const { t } = useI18n();
 
   const cards: ExpandableCardDef[] = groups.map((group, i) => {
@@ -162,5 +166,13 @@ export function KeyboardFunctionCards({ groups, onPick }: Props) {
     };
   });
 
-  return <ExpandableCardColumn cards={cards} idPrefix="kbfncard" growLeft />;
+  return (
+    <ExpandableCardColumn
+      cards={cards}
+      idPrefix="kbfncard"
+      growLeft
+      anyExpanded={anyExpanded}
+      onExpandedChange={onExpandedChange}
+    />
+  );
 }

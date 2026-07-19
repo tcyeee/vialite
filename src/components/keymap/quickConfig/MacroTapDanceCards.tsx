@@ -47,6 +47,10 @@ interface Props {
   groups: ComboGroup[];
   /** Assign the picked keycode (routed through QuickConfigPanel's pick handler). */
   onPick: (entry: KeycodeDef) => void;
+  /** True when any quick-config card is open, so collapsed cards here dim too. */
+  anyExpanded?: boolean;
+  /** Report this column's open/closed card up to the panel. */
+  onExpandedChange?: (key: string | null) => void;
 }
 
 /** Per-card cosmetic theme, cycled by card position so the cards read differently. */
@@ -80,7 +84,7 @@ const CARD_PATTERN =
  * creation, with no key binding) — clicking it pops a toast. Uses the shared
  * {@link ExpandableCardColumn}, matching the Fn/Media/Mouse and Quantum columns.
  */
-export function MacroTapDanceCards({ groups, onPick }: Props) {
+export function MacroTapDanceCards({ groups, onPick, anyExpanded, onExpandedChange }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
 
@@ -182,5 +186,12 @@ export function MacroTapDanceCards({ groups, onPick }: Props) {
     };
   });
 
-  return <ExpandableCardColumn cards={cards} idPrefix="combocard" />;
+  return (
+    <ExpandableCardColumn
+      cards={cards}
+      idPrefix="combocard"
+      anyExpanded={anyExpanded}
+      onExpandedChange={onExpandedChange}
+    />
+  );
 }

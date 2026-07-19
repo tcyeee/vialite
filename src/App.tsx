@@ -110,6 +110,11 @@ function App() {
   // already-authorized device — doesn't flash the full WaitingForConnection
   // landing page on a refresh that's about to silently reconnect.
   const [status, setStatus] = useState<ConnectionStatus>("reconnecting");
+  // True only once the user has picked a device in the WebHID chooser and the
+  // handshake is actually underway — distinct from "connecting", which also
+  // covers the (open-ended) time the picker sits open. The connect screen's
+  // "taking a while" hint keys off this so a slow picker choice doesn't count.
+  const [attaching, setAttaching] = useState(false);
   const [errorInfo, setErrorInfo] = useState<ConnectErrorInfo | null>(null);
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
   const [productName, setProductName] = useState<string | undefined>();
@@ -202,9 +207,13 @@ function App() {
     }
     connectInFlightRef.current = true;
     setStatus("connecting");
+    setAttaching(false);
     setErrorInfo(null);
     try {
+      // Blocks in the browser's device picker; the user may take a while here.
       const transport = await HidTransport.requestDevice();
+      // Device chosen — now the actual handshake begins, so start the clock.
+      setAttaching(true);
       await attachTransport(transport, true);
     } catch (err) {
       console.error("[vialite] manual connect failed:", err);
@@ -213,6 +222,7 @@ function App() {
       setStatus("error");
     } finally {
       connectInFlightRef.current = false;
+      setAttaching(false);
     }
   }, [attachTransport, teardown]);
 
@@ -747,6 +757,7 @@ function App() {
         >
           <WaitingForConnection
             status={status}
+            attaching={attaching}
             error={error}
             onConnect={handleConnect}
             zoom={inTransition}

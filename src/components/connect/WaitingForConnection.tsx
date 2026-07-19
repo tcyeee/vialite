@@ -2,7 +2,7 @@ import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "
 import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
-import { getSupportStatus, type SupportStatus } from "../../browserSupport.ts";
+import { getSupportStatus, getBrowserInfo, type SupportStatus } from "../../browserSupport.ts";
 import { DebugLogToggle } from "../common/DebugLogToggle.tsx";
 import type { ConnectionStatus } from "./DeviceConnect.tsx";
 
@@ -16,6 +16,10 @@ const UNSUPPORTED_BANNER: Record<Exclude<SupportStatus, "supported">, { title: M
 
 interface Props {
   status: ConnectionStatus;
+  // True once a device has been selected in the picker and the handshake is in
+  // flight. The "taking a while" hint times from here, not from picker-open, so
+  // a user lingering in the device chooser doesn't trip it.
+  attaching: boolean;
   error: string | null;
   onConnect: () => void;
   // When true, plays the connect-success exit choreography: the 3D model
@@ -47,7 +51,7 @@ class ModelErrorBoundary extends Component<{ onError: () => void; children: Reac
   }
 }
 
-export function WaitingForConnection({ status, error, onConnect, zoom = false }: Props) {
+export function WaitingForConnection({ status, attaching, error, onConnect, zoom = false }: Props) {
   const { lang, setLang, t } = useI18n();
   const { theme, setTheme } = useTheme();
   const connecting = status === "connecting";
@@ -58,24 +62,38 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
   // and disable the button instead of letting it throw on click.
   const [support] = useState(getSupportStatus);
   const supported = support === "supported";
-  // A connect attempt that drags on past a second is itself a sign something's
-  // off (a board that won't hand over its vial.json, a stalled handshake), so
-  // once we cross that mark reveal the debug toggle mid-attempt — the user can
-  // enable logging without having to wait for the attempt to fail first.
+  // A handshake that drags on past a second is itself a sign something's off (a
+  // board that won't hand over its vial.json, a stalled handshake), so once we
+  // cross that mark reveal the debug toggle mid-attempt — the user can enable
+  // logging without having to wait for the attempt to fail first. Timed from
+  // `attaching` (device selected), not picker-open, so a slow choice in the
+  // device chooser never counts against it.
   const [slowConnect, setSlowConnect] = useState(false);
   useEffect(() => {
-    if (status !== "connecting") {
+    if (!attaching) {
       setSlowConnect(false);
       return;
     }
     const id = setTimeout(() => setSlowConnect(true), 1000);
     return () => clearTimeout(id);
-  }, [status]);
+  }, [attaching]);
   // Any dead end on this screen — an unsupported browser, a failed connect
   // attempt, or one that's taking suspiciously long — surfaces the debug-log
   // toggle (the same switch as on the 网站设置 page) so users can turn on verbose
   // logging and retry without leaving here.
   const showDebug = !supported || status === "error" || slowConnect;
+  // Any actual problem surfaced on screen (unsupported browser, a failed
+  // connect, or an error message) reveals a corner diagnostics panel with the
+  // browser and build identity, so a bug report carries enough to triage it.
+  // A merely slow attempt isn't yet a reported error, so it's excluded here.
+  const hasProblem = !supported || status === "error" || !!error;
+  const browser = useState(getBrowserInfo)[0];
+  // ISO build stamp → the viewer's locale/timezone; guard against a malformed
+  // value so the panel can never throw on this last-resort screen.
+  const buildTime = (() => {
+    const d = new Date(__BUILD_TIME__);
+    return Number.isNaN(d.getTime()) ? __BUILD_TIME__ : d.toLocaleString();
+  })();
 
   // Everything except the 3D model fades out during the zoom exit.
   const fadeStyle = { opacity: zoom ? 0 : 1 };
@@ -196,6 +214,26 @@ export function WaitingForConnection({ status, error, onConnect, zoom = false }:
           )}
         </div>
       </div>
+
+      {/* Bottom-right diagnostics: only appears once something has gone wrong,
+          giving the user the browser + build identity to quote in a report. */}
+      {hasProblem && (
+        <div
+          className="fixed right-4 bottom-4 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-outline/30 bg-brand-surface-variant/40 px-3 py-2 text-left text-xs text-brand-on-surface-variant backdrop-blur-md transition-opacity duration-300"
+          style={fadeStyle}
+        >
+          <div className="mb-1 flex items-center gap-1.5 font-semibold text-brand-on-surface">
+            <Icon icon="mdi:information-outline" className="h-4 w-4" />
+            {t("diagTitle")}
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 tabular-nums">
+            <dt className="opacity-70">{t("diagBrowser")}</dt>
+            <dd className="font-mono">{`${browser.name} ${browser.version}`}</dd>
+            <dt className="opacity-70">{t("diagBuild")}</dt>
+            <dd className="font-mono">{buildTime}</dd>
+          </dl>
+        </div>
+      )}
 
       {/* Top-most darkening layer. ease-in keeps it near-transparent while the
           model is still growing, then rushes to full black at the end of the

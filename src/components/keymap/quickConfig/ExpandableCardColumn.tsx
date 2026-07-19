@@ -102,6 +102,12 @@ interface Props {
   growLeft?: boolean;
   /** Called with the newly-expanded card key (or null) whenever it changes. */
   onExpandedChange?: (key: string | null) => void;
+  /**
+   * True when *any* card across the whole quick-config panel is open (not just
+   * this column). Every collapsed card then dims, so the one open card stands out
+   * — the signal is aggregated by the panel and fanned back to all columns.
+   */
+  anyExpanded?: boolean;
 }
 
 /**
@@ -122,6 +128,7 @@ export function ExpandableCardColumn({
   expandedWidth = "w-72",
   growLeft = false,
   onExpandedChange,
+  anyExpanded = false,
 }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   // Which card is currently transitioning (growing or shrinking). It carries a
@@ -247,8 +254,13 @@ export function ExpandableCardColumn({
             }`}
           >
             <div
-              className={`group/expandcard card ${collapsedWidth} select-none text-brand-background shadow-md transition-shadow ${
+              className={`group/expandcard card ${collapsedWidth} select-none text-brand-background shadow-md transition-[box-shadow,opacity] ${
                 clickable ? "cursor-pointer hover:shadow-lg" : "cursor-default opacity-60"
+              } ${
+                // Dim every collapsed card while another card is open, so the
+                // single expanded card stands out. The open card keeps full
+                // opacity; disabled cards already sit at opacity-60 (above).
+                anyExpanded && !isOpen && clickable ? "opacity-40" : ""
               } ${card.cardClassName ?? ""}`}
               style={{
                 backgroundColor: card.bg,

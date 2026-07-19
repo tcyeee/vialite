@@ -570,6 +570,11 @@ const MESSAGES = {
     en: "Ran into a problem? Turn on debug logging, retry, then open the browser console (F12) and share what it prints.",
     zh: "遇到问题?打开调试日志后重试,然后按 F12 打开浏览器控制台,把输出的内容一并反馈。",
   },
+  // Diagnostics panel in the bottom-right corner, shown only when the connect
+  // screen is reporting a problem, to help triage bug reports.
+  diagTitle: { en: "Diagnostics", zh: "排查信息" },
+  diagBrowser: { en: "Browser", zh: "浏览器" },
+  diagBuild: { en: "Build", zh: "构建时间" },
 
   // LayerTabs
   layerN: { en: "Layer {n}", zh: "层 {n}" },

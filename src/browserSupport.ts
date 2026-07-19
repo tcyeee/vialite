@@ -35,3 +35,30 @@ export function getSupportStatus(): SupportStatus {
   }
   return "unsupported";
 }
+
+export interface BrowserInfo {
+  /** Human-readable engine/brand name, e.g. "Edge", "Chrome", "Safari". */
+  name: string;
+  /** Major(.minor) version string, or "?" when it can't be parsed. */
+  version: string;
+}
+
+/**
+ * Best-effort browser name + version from the UA string, for the connect-screen
+ * diagnostics panel. Order matters: Edge/Opera/Vivaldi/Brave all embed
+ * "Chrome" in their UA, so they must be matched before the generic Chrome case,
+ * and Chrome itself embeds "Safari". This is for troubleshooting display only —
+ * it never gates behavior, so a wrong guess is harmless.
+ */
+export function getBrowserInfo(): BrowserInfo {
+  const ua = navigator.userAgent || "";
+  const match = (re: RegExp): string => ua.match(re)?.[1] ?? "?";
+
+  if (/Edg\//.test(ua)) return { name: "Edge", version: match(/Edg\/([\d.]+)/) };
+  if (/OPR\//.test(ua)) return { name: "Opera", version: match(/OPR\/([\d.]+)/) };
+  if (/Vivaldi\//.test(ua)) return { name: "Vivaldi", version: match(/Vivaldi\/([\d.]+)/) };
+  if (/Firefox\//.test(ua)) return { name: "Firefox", version: match(/Firefox\/([\d.]+)/) };
+  if (/Chrome\//.test(ua)) return { name: "Chrome", version: match(/Chrome\/([\d.]+)/) };
+  if (/Version\/[\d.]+.*Safari/.test(ua)) return { name: "Safari", version: match(/Version\/([\d.]+)/) };
+  return { name: "Unknown", version: "?" };
+}
