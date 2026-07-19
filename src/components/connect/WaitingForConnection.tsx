@@ -231,6 +231,8 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
             <dd className="font-mono">{`${browser.name} ${browser.version}`}</dd>
             <dt className="opacity-70">{t("diagBuild")}</dt>
             <dd className="font-mono">{buildTime}</dd>
+            <dt className="opacity-70">{t("diagUa")}</dt>
+            <dd className="font-mono break-all select-all">{navigator.userAgent}</dd>
           </dl>
         </div>
       )}

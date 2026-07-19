@@ -575,6 +575,7 @@ const MESSAGES = {
   diagTitle: { en: "Diagnostics", zh: "排查信息" },
   diagBrowser: { en: "Browser", zh: "浏览器" },
   diagBuild: { en: "Build", zh: "构建时间" },
+  diagUa: { en: "UA", zh: "UA" },
 
   // LayerTabs
   layerN: { en: "Layer {n}", zh: "层 {n}" },
