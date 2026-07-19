@@ -7,6 +7,7 @@ import {
   type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
+import { Icon } from "@iconify/react";
 import {
   KEYCODE_CATEGORIES,
   label as kcLabel,
@@ -25,6 +26,8 @@ import {
   LAYER_GROUP_OTHER,
   QUANTUM_GROUPS,
   QUANTUM_GROUP_MISC,
+  CATEGORY_ICON_FALLBACK,
+  categoryIcon,
   deviceCategories,
   type KeycodeGroupMeta,
 } from "./keycodeMeta.ts";
@@ -177,6 +180,12 @@ const CATEGORY_SUBGROUPS: Record<string, SubGrouping[]> = {
   Quantum: QUANTUM_SUBCATS,
 };
 
+/** Icons for the two promoted clear keycodes in the first-level column. */
+const CLEAR_ICONS: Record<string, string> = {
+  KC_NO: "mdi:eraser",
+  KC_TRNS: "mdi:arrow-down-circle-outline",
+};
+
 /** Layer index for a `FN(n)` keycode, else undefined (e.g. FN_MO13). */
 const layerArgOf = (qmkId: string): string | undefined =>
   /^[A-Z]+\((\d+)\)$/.exec(qmkId)?.[1];
@@ -299,13 +308,28 @@ export function KeycodeCascadeSelector({
   // All non-empty categories: the static tables plus whatever the attached
   // device exposes (Custom keycodes, Tap Dance). Recomputed each render is
   // cheap; device categories reflect the currently-connected keyboard.
+  // The two clear keycodes are promoted out of Basic to the top of the category
+  // column (see the popover), so strip them from their category's entries to
+  // avoid listing them twice.
   const categories = useMemo<Category[]>(
     () =>
-      [...KEYCODE_CATEGORIES, ...deviceCategories()].filter(
-        (c) => c.entries.length > 0,
-      ),
+      [...KEYCODE_CATEGORIES, ...deviceCategories()]
+        .map((c) => ({
+          name: c.name,
+          entries: c.entries.filter((e) => !CLEAR_LABELS[e.qmkId]),
+        }))
+        .filter((c) => c.entries.length > 0),
     [],
   );
+
+  // KC_NO ("清空") / KC_TRNS ("穿透"), in CLEAR_LABELS order — the two actions
+  // pinned above the categories as first-level items.
+  const clearEntries = useMemo<KeycodeDef[]>(() => {
+    const all = KEYCODE_CATEGORIES.flatMap((c) => c.entries);
+    return Object.keys(CLEAR_LABELS)
+      .map((id) => all.find((e) => e.qmkId === id))
+      .filter((e): e is KeycodeDef => e !== undefined);
+  }, []);
 
   // Live macro action lists for the connected device; the getter re-decodes the
   // raw buffer each access, so read it once per render and share. Empty when no
@@ -355,7 +379,12 @@ export function KeycodeCascadeSelector({
 
   const activeEntries =
     categories.find((c) => c.name === activeCat)?.entries ?? [];
-  const activeEntry = activeEntries.find((e) => e.qmkId === activeEntryId) ?? null;
+  // The promoted clear keycodes belong to no category, so fall back to them for
+  // the info panel when one of the pinned items is hovered.
+  const activeEntry =
+    activeEntries.find((e) => e.qmkId === activeEntryId) ??
+    clearEntries.find((e) => e.qmkId === activeEntryId) ??
+    null;
 
   // Middle column for the active category, with layer keycodes folded into
   // groups, plus the currently-expanded group's sub-column (if any).
@@ -538,6 +567,36 @@ export function KeycodeCascadeSelector({
             {/* Selection columns (category / middle / sub) grouped into one card. */}
             <div className="flex overflow-hidden rounded-box bg-base-100 shadow ring-1 ring-base-content/10">
             <ul data-lenis-prevent className="menu menu-sm max-h-72 w-36 flex-nowrap overflow-y-auto border-r border-base-content/10 p-1">
+              {/* 清空 / 穿透: committed straight from the first level (they need
+                  no drill-in), separated from the categories below by a rule so
+                  they read as actions rather than another category. */}
+              {clearEntries.map((entry) => (
+                <li key={entry.qmkId}>
+                  <button
+                    type="button"
+                    className={`justify-start ${pickedId === entry.qmkId ? "menu-active" : ""}`}
+                    title={entry.qmkId}
+                    // Collapse the drilled-in columns: these belong to no
+                    // category, so only the info panel should follow the hover.
+                    onMouseEnter={() => {
+                      setActiveCat(null);
+                      setActiveGroupKey(null);
+                      setActiveEntryId(entry.qmkId);
+                    }}
+                    onClick={() => commit(entry)}
+                  >
+                    <Icon
+                      icon={CLEAR_ICONS[entry.qmkId] ?? CATEGORY_ICON_FALLBACK}
+                      className="h-4 w-4 shrink-0 opacity-70"
+                      aria-hidden="true"
+                    />
+                    <span className="truncate">{entryLabel(entry)}</span>
+                  </button>
+                </li>
+              ))}
+              {clearEntries.length > 0 && (
+                <li className="pointer-events-none my-1 border-t border-base-content/10" />
+              )}
               {categories.map((c) => (
                 <li key={c.name}>
                   <button
@@ -548,7 +607,14 @@ export function KeycodeCascadeSelector({
                     onMouseEnter={() => selectCat(c.name)}
                     onClick={() => selectCat(c.name)}
                   >
-                    <span className="truncate">{catLabel(c.name)}</span>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <Icon
+                        icon={categoryIcon(c.name)}
+                        className="h-4 w-4 shrink-0 opacity-70"
+                        aria-hidden="true"
+                      />
+                      <span className="truncate">{catLabel(c.name)}</span>
+                    </span>
                     <span className="opacity-50">›</span>
                   </button>
                 </li>

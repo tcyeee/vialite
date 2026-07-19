@@ -65,6 +65,37 @@ export const CATEGORY_KEYS: Record<string, MessageKey> = {
   "Macros/Tap Dance": "categoryMacrosTapDance",
 };
 
+/** Fallback icon for categories with no distinctive glyph of their own. */
+export const CATEGORY_ICON_FALLBACK = "mdi:checkbox-blank-circle-outline";
+
+/**
+ * Category name → its mdi icon, reusing the quick-config cards' glyphs so the
+ * cascade selector's category column reads as the same features as the cards
+ * (Fn keys / Media / Mouse / Layers / Macros / Tap Dance / Lighting / Custom).
+ * Categories with no natural glyph fall back to {@link CATEGORY_ICON_FALLBACK};
+ * look icons up through {@link categoryIcon} rather than indexing this directly.
+ */
+export const CATEGORY_ICONS: Record<string, string> = {
+  Basic: "mdi:keyboard-outline",
+  Numpad: "mdi:dialpad",
+  Navigation: "mdi:cursor-move",
+  "Fn keys": "mdi:alpha-f-box-outline",
+  Layers: "mdi:layers-outline",
+  Macros: "mdi:script-text-outline",
+  Media: "mdi:apple-safari",
+  Mouse: "mdi:mouse-outline",
+  Lighting: "mdi:lightbulb-on-outline",
+  Custom: "mdi:tune-variant",
+  "Tap Dance": "mdi:animation",
+  "Fn/Media/Mouse": "mdi:alpha-f-box-outline",
+  "Keyboard Function": "mdi:tune-variant",
+  "Macros/Tap Dance": "mdi:script-text-outline",
+};
+
+/** A category's icon, falling back to the neutral circle for unclassifiable ones. */
+export const categoryIcon = (name: string): string =>
+  CATEGORY_ICONS[name] ?? CATEGORY_ICON_FALLBACK;
+
 /**
  * Category name → a category-level description key, for the categories that have
  * one (shown in the cascade selector's info panel as supplementary context).
