@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import {
   KEYCODE_CATEGORIES,
@@ -177,6 +177,46 @@ const MULTI_FUNC_FRAMEWORK: Record<MultiFuncMode, string> = {
   taphold: "LT(0,KC_NO)",
 };
 
+/**
+ * localStorage flag marking that the first-run "swipe for more cards" demo has
+ * already played. Set once the animation actually runs, so it never replays on a
+ * returning visitor.
+ */
+const DEMO_SEEN_KEY = "vialite-quickconfig-demo-seen";
+
+/**
+ * One-shot onboarding hint: gently scroll a horizontally-overflowing container
+ * right by `peek` px and back, so a first-time user notices there are more
+ * cards off the right edge. easeInOutQuad out, a short hold, then ease back to 0.
+ * Returns a cancel function; the caller cancels on unmount / re-run.
+ */
+function playPeekDemo(el: HTMLElement, peek: number): () => void {
+  const OUT = 550;
+  const HOLD = 220;
+  const BACK = 650;
+  const total = OUT + HOLD + BACK;
+  const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+  const start = performance.now();
+  let raf = 0;
+  const step = (now: number) => {
+    const elapsed = now - start;
+    if (elapsed >= total) {
+      el.scrollLeft = 0;
+      return;
+    }
+    if (elapsed < OUT) {
+      el.scrollLeft = peek * ease(elapsed / OUT);
+    } else if (elapsed < OUT + HOLD) {
+      el.scrollLeft = peek;
+    } else {
+      el.scrollLeft = peek * (1 - ease((elapsed - OUT - HOLD) / BACK));
+    }
+    raf = requestAnimationFrame(step);
+  };
+  raf = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(raf);
+}
+
 interface Props {
   onPick: (qmkId: string) => void;
   /** Connected device, for the Combo Keys cards' used/total slot counts. */
@@ -257,6 +297,39 @@ export function QuickConfigPanel({
   // row; on large screens that row scrolls horizontally, and a vertical mouse
   // wheel over it is turned into a horizontal pan (see the hook).
   const basicRowRef = useHorizontalWheelScroll<HTMLDivElement>();
+  // First-run onboarding: with nothing selected yet (the initial state of the
+  // keymap page) and the demo never shown before, briefly scroll the Basic row
+  // right and back to hint that more cards live off the right edge. Runs at most
+  // once ever (persisted in localStorage), and only when the row actually
+  // overflows horizontally (i.e. large viewports where the cards sit in a row).
+  const demoPlayedRef = useRef(false);
+  useEffect(() => {
+    // Gate on "hasn't selected a key to modify": only play while disabled.
+    if (!disabled || active !== "Basic" || demoPlayedRef.current) return;
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem(DEMO_SEEN_KEY)) return;
+    // Respect reduced-motion: skip the animation entirely (and don't burn the
+    // flag — a silent no-op reads better than a jump).
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+    let cancel: (() => void) | undefined;
+    // Let layout settle after mount so scrollWidth is measured post-paint.
+    const timer = window.setTimeout(() => {
+      const el = basicRowRef.current;
+      if (!el) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 8) return; // nothing off-screen to reveal (narrow/stacked layout)
+      demoPlayedRef.current = true;
+      localStorage.setItem(DEMO_SEEN_KEY, "1");
+      cancel = playPeekDemo(el, Math.min(160, max));
+    }, 650);
+
+    return () => {
+      window.clearTimeout(timer);
+      cancel?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disabled, active]);
 
   const pick = (entry: KeycodeDef) => {
     setHint(null);
