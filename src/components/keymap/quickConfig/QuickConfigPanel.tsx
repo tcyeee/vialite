@@ -179,6 +179,14 @@ const MULTI_FUNC_FRAMEWORK: Record<MultiFuncMode, string> = {
 const DEMO_SEEN_KEY = "vialite-quickconfig-demo-seen";
 
 /**
+ * Marks a subtree that stays interactive while the panel is disabled (no key
+ * selected). App.tsx's activation-event trap skips anything inside it. Used by the
+ * 配置设置 block: 自动选取下一个 / 预览样式 are panel-level settings, unrelated to
+ * whether a key is currently selected.
+ */
+export const ALWAYS_ENABLED_ATTR = "data-quickconfig-always-enabled";
+
+/**
  * One-shot onboarding hint: gently scroll a horizontally-overflowing container
  * right by `peek` px and back, so a first-time user notices there are more
  * cards off the right edge. easeInOutQuad out, a short hold, then ease back to 0.
@@ -522,7 +530,9 @@ export function QuickConfigPanel({
               onPick={(qmkId) => pick({ qmkId, label: qmkId })}
               disabled={disabled}
             />
-            <div className={`mt-4${dim}`}>
+            {/* 配置设置不跟随 `dim`:它是面板级设置(自动选取下一个 / 预览样式),
+                未选中按键时同样可以调整,所以既不置灰也不被点击拦截器吞掉。 */}
+            <div className="mt-4" {...{ [ALWAYS_ENABLED_ATTR]: "" }}>
               <h4 className="mb-2 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
               {/* Same grouped-`list` look as the 个性化 / 网站设置 pages, so a
                   setting reads identically wherever it surfaces. */}

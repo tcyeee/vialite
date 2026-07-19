@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { useLenis } from "lenis/react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
@@ -15,7 +15,10 @@ import { useAutoFitZoom } from "./components/keymap/autoFitSize.ts";
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
-import { QuickConfigPanel } from "./components/keymap/quickConfig/QuickConfigPanel.tsx";
+import {
+  ALWAYS_ENABLED_ATTR,
+  QuickConfigPanel,
+} from "./components/keymap/quickConfig/QuickConfigPanel.tsx";
 import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
@@ -110,6 +113,19 @@ function describeConnectError(err: unknown): ConnectErrorInfo {
   return { key: "errConnectFailed", params: { error: err instanceof Error ? err.message : String(err) } };
 }
 
+/**
+ * 未选中按键时挂在快捷配置外层的激活类事件拦截器,用来替代 pointer-events-none
+ * (那会连滚轮一起吞掉,见调用处注释)。标了 {@link ALWAYS_ENABLED_ATTR} 的子树
+ * ——目前是「配置设置」那组开关——不受影响:它们是面板级设置,和选没选中按键无关。
+ */
+function swallowEvent(e: SyntheticEvent) {
+  if ((e.target as Element | null)?.closest?.(`[${ALWAYS_ENABLED_ATTR}]`)) return;
+  e.stopPropagation();
+  // 只对 click 调 preventDefault:在 pointerdown/keydown 上调用会连带取消浏览器的
+  // 默认滚动手势(触摸拖动、空格翻页),而这里要禁掉的只是「激活」。
+  if (e.type === "click") e.preventDefault();
+}
+
 function App() {
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -136,6 +152,21 @@ function App() {
   const [mode, setMode] = useState<PageMode>("keymap");
   const [preview3dParams, setPreview3dParams] = useState<Preview3DParams>(loadPreview3DParams);
   const [selected, setSelected] = useState<Selected | null>(null);
+  // 点击键盘预览与按键配置区(快捷配置 / 双功能编辑器)之外的任何地方都取消选中,
+  // 这样选中态不会在用户已经把注意力移开后继续挂着。用文档级监听而不是背景遮罩,
+  // 页面其余部分才能照常点击;两个区域各自带 data- 标记,便于命中测试区分内外。
+  // 快捷配置里的浮层提示都是 pointer-events-none,不会成为 pointerdown 的目标,
+  // 无需额外标记。
+  useEffect(() => {
+    if (!selected) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest("[data-keyboard-preview], [data-key-config]")) return;
+      setSelected(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [selected]);
   // When on, assigning a key advances the selection to the next key (reading
   // order) so a run of keys can be configured without re-clicking each cap.
   const [autoAdvance, setAutoAdvance] = useState(true);
@@ -704,6 +735,9 @@ function App() {
                       />
                     </div>
                   </LayerTabs>
+                  {/* 按键配置区:与上面的预览一样标记出来,点击这里不会清空选中态
+                      (清空逻辑见文件顶部的 pointerdown 监听)。 */}
+                  <div data-key-config>
                   {selected?.kind === "key" && selected.part === "hold" ? (
                     <DualRoleEditor
                       key={`${selected.row},${selected.col}`}
@@ -715,12 +749,22 @@ function App() {
                     // 快捷配置始终显示;未选中按键时整体置灰且不可交互(提示浮在
                     // 模拟键盘上)。置灰在面板内部按块处理,以便提示徽标保持不透明
                     // ——祖先若用 opacity 会连带把徽标一起变透明。
+                    //
+                    // 「不可交互」只拦截激活类事件(点击 / 按下 / 键盘),不用
+                    // pointer-events-none:后者会让整块不参与命中测试,连滚轮都收不到,
+                    // 于是未选中按键时快捷配置区就没法横向滚动了。
                     <section className="mt-6">
                       <div
                         aria-disabled={!selected}
-                        className={
-                          selected ? undefined : "pointer-events-none select-none"
-                        }
+                        className={selected ? undefined : "select-none"}
+                        {...(selected
+                          ? {}
+                          : {
+                              onClickCapture: swallowEvent,
+                              onPointerDownCapture: swallowEvent,
+                              onMouseDownCapture: swallowEvent,
+                              onKeyDownCapture: swallowEvent,
+                            })}
                       >
                         <QuickConfigPanel
                           onPick={handleAssign}
@@ -737,6 +781,7 @@ function App() {
                       </div>
                     </section>
                   )}
+                  </div>
                 </>
               )}
               {/* 纯展示页:只渲染当前图层的 3D 键盘,点击键帽不做任何事(选中态、
