@@ -521,15 +521,16 @@ export function QuickConfigPanel({
       {isBasic && (
         <div
           ref={basicRowRef}
-          // lg:pl-[3px]:滚动区左缘与内容盒对齐,首列画到自身 border box 之外的东西
+          // 整块快捷配置区是一个横向滚动的整体:任何断点都不换行、不纵向堆叠,
+          // 屏幕不够宽就横向滚动(滚轮竖滚也被转成横向平移,见 hook)。
+          // pl-[3px]:滚动区左缘与内容盒对齐,首列画到自身 border box 之外的东西
           // (描边 / 阴影 / hover 位移)会被 overflow-x 裁掉,且没有可滚动的余量把它
           // 露出来。左内边距属于起始侧的可滚动区域,scrollLeft 为 0 时正好留出这 3px。
-          // 只在 lg 生效:以下断点卡片纵向堆叠,不开横向滚动,也就无所谓裁剪。
-          className="scrollbar-hide quick-config-fullbleed flex flex-col gap-6 lg:flex-row lg:flex-nowrap lg:items-start lg:overflow-x-auto lg:pl-[3px]"
+          className="scrollbar-hide quick-config-fullbleed flex flex-row flex-nowrap items-start gap-6 overflow-x-auto pl-[3px]"
         >
           {/* Left column: physical keyboard grid + special keys (both inside
               BasicKeyboardGrid) followed by the config-settings block. */}
-          <div>
+          <div className="shrink-0">
             <BasicKeyboardGrid
               onPick={(qmkId) => pick({ qmkId, label: qmkId })}
               disabled={disabled}
@@ -576,7 +577,7 @@ export function QuickConfigPanel({
             </div>
           </div>
           {/* Middle column: the vertical Fn/Media/Mouse cards. */}
-          <div className={`mt-4 lg:mt-0${dim}`}>
+          <div className={`shrink-0${dim}`}>
             <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryFnMediaMouse")}</h4>
             <FnMediaMouseCards
               groups={[
@@ -621,11 +622,11 @@ export function QuickConfigPanel({
             />
           </div>
           {/* Far-right: the former Combo Keys tab, folded in as two columns —
-              Macros / Tap Dance / Combo on the left, Quantum on the right. Kept
-              side-by-side on large screens (where the whole Basic row scrolls
-              horizontally); only allowed to stack on narrow viewports. */}
-          <div className={`mt-4 flex flex-wrap gap-6 lg:mt-0 lg:flex-nowrap${dim}`}>
-            <div>
+              Macros / Tap Dance / Combo on the left, Quantum on the right.
+              Always side-by-side; the whole Basic row scrolls horizontally
+              instead of wrapping on narrow viewports. */}
+          <div className={`flex shrink-0 flex-nowrap gap-6${dim}`}>
+            <div className="shrink-0">
               <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryMacrosTapDance")}</h4>
               <MacroTapDanceCards
                 groups={[
@@ -739,7 +740,7 @@ export function QuickConfigPanel({
             {/* 其他 (Other): the Lighting (灯光) and Keyboard Config (键盘配置,
                 the device's Custom keycodes) cards, rendered as the same
                 expandable colored cards the Fn/Media/Mouse column uses. */}
-            <div>
+            <div className="shrink-0">
               <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryOther")}</h4>
               <KeyboardFunctionCards
                 groups={keyboardFnCardGroups}
@@ -750,8 +751,8 @@ export function QuickConfigPanel({
             </div>
           </div>
           {/* 末尾留白:横向滚动到底时补一段半屏宽的空白,让最右侧的卡片能被
-              滚动到窗口中央,而不是卡在视口右缘。仅 lg 断点(横向滚动开启)生效。 */}
-          <div aria-hidden="true" className="hidden shrink-0 lg:block lg:w-[15vw]" />
+              滚动到窗口中央,而不是卡在视口右缘。 */}
+          <div aria-hidden="true" className="w-[15vw] shrink-0" />
         </div>
       )}
       {activeCat.groups
