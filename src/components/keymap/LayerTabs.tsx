@@ -1,83 +1,114 @@
 import { type ReactNode } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
+import { usePersistedBoolean } from "../../hooks/usePersistedBoolean.ts";
 
-interface Props {
+interface BarProps {
   layers: number;
   active: number;
   onSelect: (layer: number) => void;
   /** Whether a layer has real bindings, so its tab gets a "configured" marker. */
   isConfigured?: (layer: number) => boolean;
+  /** Extra classes for the tab-bar grid (defaults to `mb-3` when standalone). */
+  className?: string;
+}
+
+interface Props extends Omit<BarProps, "className"> {
   /** Rendered inside the active layer's tab-content box. */
   children: ReactNode;
 }
 
-export function LayerTabs({ layers, active, onSelect, isConfigured, children }: Props) {
+/**
+ * Just the row of layer buttons (+ the show-all/show-used collapse toggle),
+ * without any content box. Extracted from {@link LayerTabs} so a caller can
+ * place the board separately from the tabs — the 键盘配色 page pins the board
+ * sticky while these buttons scroll away with the rest of the page.
+ */
+export function LayerTabBar({
+  layers,
+  active,
+  onSelect,
+  isConfigured,
+  className = "mb-3",
+}: BarProps) {
   const { t } = useI18n();
+  // Collapsed state persists across reloads (shared by every instance).
+  const [collapsed, setCollapsed] = usePersistedBoolean("vialite-layer-tabs-collapsed");
   return (
-    <div className="mb-5">
-      {/* daisyUI `tabs-lift` lays tabs out with `flex-wrap: wrap`, which breaks the
-          lifted folder look when there are many layers and the page is narrow: the
-          wrapped rows each draw their own baseline underline and only the last row
-          connects to the content box. We force a single, horizontally-scrollable row
-          instead (`flex-nowrap overflow-x-auto`). The active-tab styling still works
-          via `label:has(:checked)`; we only give up daisyUI's `:checked + .tab-content`
-          toggle — React already renders just the active layer's content below. */}
-      <div role="tablist" className="tabs tabs-lift flex-nowrap overflow-x-auto">
-        {Array.from({ length: layers }, (_, i) => {
-          const configured = isConfigured?.(i) ?? false;
-          // Give inactive-but-configured tabs a translucent secondary fill so
-          // they read as "has bindings" at a glance without competing with the
-          // active tab. The active tab keeps daisyUI's lifted-folder styling.
-          const markConfigured = configured && i !== active;
-          return (
-          // Label-wrapped radio (rather than a bare `input.tab`) so the "edited"
-          // marker can be a real, secondary-colored dot instead of a glyph baked
-          // into the tab's ::after label text (which can't be colored separately).
-          <label
+    // Wrapping grid so boards with many layers flow into multiple rows instead
+    // of a single horizontal-scroll strip. `auto-fill` keeps a consistent cell
+    // width and packs as many columns per row as the container allows.
+    <div
+      role="tablist"
+      aria-label={t("layers")}
+      className={`grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(4.5rem,1fr))] ${className}`}
+    >
+      {Array.from({ length: layers }, (_, i) => {
+        const configured = isConfigured?.(i) ?? false;
+        const isActive = i === active;
+        // When collapsed, only surface configured layers, keeping the active
+        // layer visible so the selection always stays represented.
+        if (collapsed && !configured && !isActive) return null;
+        return (
+          <button
             key={i}
+            type="button"
             role="tab"
-            aria-selected={i === active}
-            // shrink-0: flex items still shrink in a nowrap container, which would
-            // squash the tabs and wrap their labels mid-word instead of scrolling.
-            className="tab shrink-0 gap-1.5 relative isolate"
+            data-active={isActive}
+            aria-selected={isActive}
+            onClick={() => onSelect(i)}
+            className={`btn btn-sm relative isolate justify-start gap-1.5 ${
+              isActive ? "btn-primary" : "btn-outline border-base-300"
+            }`}
             title={t("layerN", { n: i })}
             aria-label={t("layerN", { n: i })}
           >
-            {/* Inset translucent fill (inset-1 pulls it in from the tab edges so
-                it doesn't touch the neighbouring tabs / the lifted baseline). */}
-            {markConfigured && (
+            {/* Inset translucent fill marking inactive-but-configured layers. */}
+            {configured && !isActive && (
               <span
                 aria-hidden="true"
-                className="absolute inset-1 -z-10 rounded-md bg-brand-secondary/15"
+                className="absolute inset-0 -z-10 rounded-[inherit] bg-brand-secondary/15"
               />
             )}
-            <input
-              type="radio"
-              name="layer_tabs"
-              className="sr-only"
-              checked={i === active}
-              onChange={() => onSelect(i)}
-            />
-            {configured && (
-              <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-secondary" />
+            <Icon icon="mdi:layers" aria-hidden="true" className="h-4 w-4 shrink-0" />
+            <span>{i}</span>
+            {configured && !isActive && (
+              <span className="ml-auto inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-secondary" />
             )}
-            <Icon icon="mdi:layers" aria-hidden="true" />
-            {i}
-          </label>
-          );
-        })}
-      </div>
-      {/* Content box, decoupled from the scrolling strip above. The daisyUI classes
-          (`-mt-px` overlap, top-left-square rounding) reproduce what
-          `.tabs-lift > .tab-content` gave when the box was an interleaved sibling. */}
-      <div className="-mt-px w-fit rounded-box rounded-tl-none border border-base-300 bg-base-100 p-6">
-        {/* Keyed on the active layer so switching tabs remounts the panel and
-            re-fires the appear animation (see .tab-panel-appear in index.css),
-            which the old one-tab-content-per-layer markup got for free. */}
-        <div key={active} className="tab-panel-appear">
-          {children}
-        </div>
+          </button>
+        );
+      })}
+      <button
+        type="button"
+        className="btn btn-sm btn-ghost btn-square text-brand-on-surface-variant"
+        onClick={() => setCollapsed(!collapsed)}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? t("layerShowAll") : t("layerShowUsed")}
+        title={collapsed ? t("layerShowAll") : t("layerShowUsed")}
+      >
+        <Icon
+          icon={collapsed ? "mdi:dots-horizontal" : "mdi:chevron-double-left"}
+          className="h-5 w-5 shrink-0"
+        />
+      </button>
+    </div>
+  );
+}
+
+export function LayerTabs({ layers, active, onSelect, isConfigured, children }: Props) {
+  return (
+    <div className="mb-5">
+      <LayerTabBar
+        layers={layers}
+        active={active}
+        onSelect={onSelect}
+        isConfigured={isConfigured}
+      />
+      {/* No border/card frame — the board shows directly. Keyed on the active
+          layer so switching tabs remounts the panel and re-fires the appear
+          animation (see .tab-panel-appear in index.css). */}
+      <div key={active} className="tab-panel-appear w-fit">
+        {children}
       </div>
     </div>
   );

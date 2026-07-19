@@ -3,7 +3,7 @@ import { useI18n } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
 
 interface NavbarProps {
-  /** When provided, shows a hamburger button (narrow screens only) that opens the sidebar drawer. */
+  /** When provided, shows a hamburger button (narrow/medium screens, `< lg`) that opens the sidebar drawer. */
   onMenuClick?: () => void;
 }
 
@@ -19,7 +19,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             type="button"
             onClick={onMenuClick}
             aria-label={t("openMenu")}
-            className="btn btn-sm btn-square btn-ghost text-white hover:bg-white/15 md:hidden"
+            className="btn btn-sm btn-square btn-ghost text-white hover:bg-white/15 lg:hidden"
           >
             <Icon icon="mdi:menu" className="h-5 w-5" />
           </button>

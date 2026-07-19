@@ -5,7 +5,7 @@
 // Unlike vial-gui (which leaves the board unlocked and offers Security->Lock),
 // nothing else in Vialite needs the unlocked state, so we re-lock on exit.
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { UnlockDialog } from "../common/UnlockDialog.tsx";
@@ -18,6 +18,12 @@ const UNIT = 54; // same scale as KeyboardLayout
 const INSET = 4;
 
 const POLL_INTERVAL_MS = 50;
+// Back-off between retries when a poll fails (e.g. a transient HID hiccup). The
+// loop keeps retrying rather than stopping, so a brief glitch self-recovers.
+const RETRY_INTERVAL_MS = 500;
+
+// Horizontal padding the board container reserves (p-4 × 2).
+const CONTAINER_PADDING_PX = 32;
 
 interface Props {
   keyboard: Keyboard;
@@ -30,7 +36,27 @@ export function MatrixTester({ keyboard }: Props) {
   const [dialogDismissed, setDialogDismissed] = useState(false);
   const [pressed, setPressed] = useState<Set<string>>(new Set());
   const [tested, setTested] = useState<Set<string>>(new Set());
+  // `error` is a fatal setup failure (unlock-status check); it replaces the UI.
   const [error, setError] = useState<string | null>(null);
+  // `pollError` is a transient poll failure: the loop keeps retrying and clears
+  // it on the next successful read, so it shows as a non-fatal retry banner.
+  const [pollError, setPollError] = useState<string | null>(null);
+  // The board auto-fits its container: shrinks as needed but never scales past
+  // its natural 1× size (zoom is capped at 1). There are no manual zoom controls.
+  const [zoom, setZoom] = useState(1);
+  // Full-width measuring element (independent of the board's own width) so the
+  // fit reads the space available, not the current — possibly shrunk — board.
+  const measureRef = useRef<HTMLDivElement>(null);
+
+  // Geometry pipeline (rotated keys, layout-option variants, ISO-Enter second
+  // rects). Computed unconditionally so the auto-fit effect below can depend on
+  // the board's natural width without tripping the rules-of-hooks ordering.
+  const placed = useMemo(
+    () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
+    [keyboard, keyboard.layoutOptions],
+  );
+  const boardWidth = placed.width * UNIT + INSET;
+  const boardHeight = placed.height * UNIT + INSET;
 
   useEffect(() => {
     let cancelled = false;
@@ -75,11 +101,17 @@ export function MatrixTester({ keyboard }: Props) {
               return next;
             });
           }
+          // A successful read clears any lingering retry banner.
+          setPollError((prev) => (prev === null ? prev : null));
         } catch (err) {
-          if (!cancelled) {
-            setError(err instanceof Error ? err.message : String(err));
+          if (cancelled) {
+            return;
           }
-          return;
+          // Don't stop on a failed read — surface it as a retry banner and try
+          // again after a back-off, so a transient HID hiccup self-recovers.
+          setPollError(err instanceof Error ? err.message : String(err));
+          await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
+          continue;
         }
         await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
       }
@@ -94,22 +126,53 @@ export function MatrixTester({ keyboard }: Props) {
     };
   }, [keyboard, unlocked]);
 
+  // Auto-fit: keep the board scaled to the largest size that fits the available
+  // width, capped at 1× (never enlarged). Re-runs whenever the container resizes
+  // (window/sidebar) or the board's natural width changes.
+  useLayoutEffect(() => {
+    const el = measureRef.current;
+    if (!unlocked || !el) {
+      return;
+    }
+    const recompute = () => {
+      const available = el.clientWidth - CONTAINER_PADDING_PX;
+      if (available > 0 && boardWidth > 0) {
+        setZoom(Math.min(1, available / boardWidth));
+      }
+    };
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [unlocked, boardWidth]);
+
   if (error) {
-    return <p className="error">{t("matrixStopped", { error })}</p>;
+    return (
+      <div role="alert" className="alert alert-error alert-soft text-sm">
+        <span>{t("matrixStopped", { error })}</span>
+      </div>
+    );
   }
 
   if (unlocked === null) {
-    return <p className="text-brand-on-surface-variant">{t("checkingLock")}</p>;
+    return (
+      <div role="alert" className="alert alert-info alert-soft text-sm">
+        <span className="loading loading-spinner loading-sm" />
+        <span>{t("checkingLock")}</span>
+      </div>
+    );
   }
 
   if (!unlocked) {
     if (dialogDismissed) {
       return (
         <div className="matrix-tester">
-          <p className="mb-3">{t("mustUnlock")}</p>
+          <div role="alert" className="alert alert-warning alert-soft mb-3 text-sm">
+            <span>{t("mustUnlock")}</span>
+          </div>
           <button className="btn btn-outline border-base-300" onClick={() => setDialogDismissed(false)}>
-          {t("unlock")}
-        </button>
+            {t("unlock")}
+          </button>
         </div>
       );
     }
@@ -122,20 +185,36 @@ export function MatrixTester({ keyboard }: Props) {
     );
   }
 
-  // Run the same geometry pipeline as the other boards so rotated ("倾斜") keys,
-  // layout-option variants and ISO-Enter second rects render in the right place
-  // — the old code positioned keys from raw x/y and dropped the rotation entirely.
-  const placed = placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices);
-
   return (
     <div className="matrix-tester">
-      <p className="mb-3">{t("matrixInstructions")}</p>
-      <div className="mockup-window w-fit max-w-full border border-base-300 bg-base-100">
-        <div data-lenis-prevent className="overflow-auto border-t border-base-300 p-4">
-          <div
-            className="keyboard-layout"
-            style={{ width: placed.width * UNIT + INSET, height: placed.height * UNIT + INSET }}
-          >
+      {pollError ? (
+        <div role="alert" className="alert alert-warning alert-soft mb-3 text-sm">
+          <span className="loading loading-spinner loading-sm" />
+          <span>{t("matrixRetrying", { error: pollError })}</span>
+        </div>
+      ) : (
+        <div role="alert" className="alert alert-info alert-soft mb-3 text-sm">
+          <span>{t("matrixInstructions")}</span>
+        </div>
+      )}
+      <div ref={measureRef} className="w-full">
+        <div
+          data-lenis-prevent
+          className="w-fit max-w-full overflow-auto rounded-lg bg-base-100 p-4"
+        >
+          {/* A CSS transform doesn't affect layout, so the wrapper is given the
+              scaled box explicitly and the board scaled from its top-left to fill
+              it — the container then scrolls/reflows around the apparent size. */}
+          <div style={{ width: boardWidth * zoom, height: boardHeight * zoom }}>
+            <div
+              className="keyboard-layout"
+              style={{
+                width: boardWidth,
+                height: boardHeight,
+                transform: `scale(${zoom})`,
+                transformOrigin: "top left",
+              }}
+            >
             {placed.keys
               .filter(({ key }) => !key.decal)
               .map(({ key, shiftX, shiftY }, i) => {
@@ -173,12 +252,20 @@ export function MatrixTester({ keyboard }: Props) {
                 style={shapeStyle(encoder, shiftX, shiftY, UNIT, INSET, 0)}
               />
             ))}
+            </div>
           </div>
         </div>
+        {/* Only surface Reset once something is highlighted. Centered on the
+            board's width (not the page) by matching the container to the scaled
+            board size and centering the button within it. */}
+        {tested.size > 0 && (
+          <div className="mt-4 flex justify-center" style={{ width: boardWidth * zoom }}>
+            <button className="btn btn-neutral" onClick={() => setTested(new Set())}>
+              {t("reset")}
+            </button>
+          </div>
+        )}
       </div>
-      <button className="btn btn-neutral mt-4" onClick={() => setTested(new Set())}>
-        {t("reset")}
-      </button>
     </div>
   );
 }

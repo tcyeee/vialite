@@ -454,6 +454,9 @@ const MESSAGES = {
   macroActionTap: { en: "Tap", zh: "点按" },
   macroActionDown: { en: "Down", zh: "按下" },
   macroActionUp: { en: "Up", zh: "松开" },
+  macroSlots: { en: "Macro slots", zh: "宏槽位" },
+  macroShowUsedSlots: { en: "Show used only", zh: "只看已用" },
+  macroShowAllSlots: { en: "Show all slots", zh: "显示全部" },
   macroMemoryTitle: { en: "Usage", zh: "使用量" },
   macroMemoryUsed: { en: "Memory used: {used}/{total} bytes", zh: "已用内存:{used}/{total} 字节" },
   macroMemoryHelp: {
@@ -581,6 +584,9 @@ const MESSAGES = {
 
   // LayerTabs
   layerN: { en: "Layer {n}", zh: "层 {n}" },
+  layers: { en: "Layers", zh: "层" },
+  layerShowUsed: { en: "Show used only", zh: "只看已用" },
+  layerShowAll: { en: "Show all layers", zh: "显示全部" },
 
   // Quick config
   quickConfigTitle: { en: "Quick Config", zh: "快捷配置" },
@@ -926,6 +932,10 @@ const MESSAGES = {
 
   // MatrixTester
   matrixStopped: { en: "Matrix test stopped: {error}", zh: "矩阵测试已停止:{error}" },
+  matrixRetrying: {
+    en: "Matrix test interrupted, retrying… ({error})",
+    zh: "矩阵测试已中断,正在自动重试…({error})",
+  },
   checkingLock: { en: "Checking keyboard lock state…", zh: "正在检查键盘锁定状态…" },
   mustUnlock: {
     en: "The keyboard must be unlocked before its switch matrix can be tested.",

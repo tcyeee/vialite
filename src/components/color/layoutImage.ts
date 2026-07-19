@@ -22,6 +22,10 @@ export function nodeToCanvas(node: HTMLElement): Promise<HTMLCanvasElement> {
     width: node.offsetWidth + SHADOW_PAD * 2,
     height: node.offsetHeight + SHADOW_PAD * 2,
     style: { boxSizing: "content-box", padding: `${SHADOW_PAD}px` },
+    // Skip UI chrome that overlays the board (e.g. the hover save-actions scrim),
+    // which lives inside the captured node but must not be baked into the export.
+    filter: (el) =>
+      !(el instanceof HTMLElement && el.hasAttribute("data-export-hidden")),
   });
 }
 

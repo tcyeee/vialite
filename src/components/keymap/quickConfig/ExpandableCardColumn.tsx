@@ -190,6 +190,22 @@ export function ExpandableCardColumn({
     return () => observer.disconnect();
   }, []);
 
+  // Below `lg` the quick-config panel stacks vertically with no horizontal
+  // scroll container, so the floating copy's lg-tuned anchoring/offsets/growLeft
+  // (and its fixed px width) would spill a wide card off the viewport edge —
+  // rightward into a whole-page scrollbar, or leftward off-screen where its keys
+  // become unreachable. When narrow we drop all of that and center the card in
+  // the viewport (`position: fixed`), clamped to the viewport, so it always fits.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setNarrow(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
   // Close (with the shrink animation) when clicking anywhere outside the open
   // card. A document listener is used instead of a full-screen backdrop so the
   // other cards stay clickable.
@@ -289,12 +305,18 @@ export function ExpandableCardColumn({
             {isOpen && card.body && (
               <div
                 ref={openCardRef}
-                className={`card absolute ${anchorClass(i)} ${card.expandedWidth ?? expandedWidth} cursor-pointer select-none overflow-hidden text-brand-background shadow-[0_10px_40px_-5px_rgba(0,0,0,0.5)] ring-1 ring-black/10 dark:ring-white/10 ${
+                className={`card ${
+                  narrow ? "fixed left-1/2 top-1/2 z-50" : `absolute ${anchorClass(i)}`
+                } ${card.expandedWidth ?? expandedWidth} cursor-pointer select-none overflow-hidden text-brand-background shadow-[0_10px_40px_-5px_rgba(0,0,0,0.5)] ring-1 ring-black/10 dark:ring-white/10 ${
                   card.cardClassName ?? ""
                 }`}
                 style={{
                   backgroundColor: card.bg,
                   viewTransitionName: name,
+                  // Narrow: clamp the (fixed px) width to the viewport and let the
+                  // body scroll within a viewport-bound height — never wider/taller
+                  // than the screen.
+                  maxWidth: narrow ? "calc(100vw - 2rem)" : undefined,
                   // Size to content: no forced minimum, so a card with few keycodes
                   // stays short instead of padding out to a fixed box. Still cap the
                   // height to the column so a content-heavy card never spills past
@@ -302,23 +324,27 @@ export function ExpandableCardColumn({
                   // pins a fixed `expandedHeight` — or opts in via `expandedUncapped`
                   // — bypasses the cap, so its height is honoured (or grows to
                   // content) even when the collapsed column is shorter than it.
-                  height: card.expandedHeight,
-                  maxHeight:
-                    card.expandedHeight || card.expandedUncapped
+                  height: narrow ? undefined : card.expandedHeight,
+                  maxHeight: narrow
+                    ? "calc(100dvh - 5rem)"
+                    : card.expandedHeight || card.expandedUncapped
                       ? undefined
                       : (containerH ?? undefined),
-                  // Both position nudges are transforms (not margins) so they work
-                  // regardless of anchor edge — a `right-0`-anchored card ignores
-                  // marginLeft and a `bottom-0`-anchored card ignores marginTop.
-                  // Composed with the middle card's -50% centering.
-                  transform:
-                    [
-                      i === (cards.length - 1) / 2 ? "translateY(-50%)" : "",
-                      card.expandedOffsetX ? `translateX(${card.expandedOffsetX}px)` : "",
-                      card.expandedOffsetY ? `translateY(${card.expandedOffsetY}px)` : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ") || undefined,
+                  // Narrow: a single viewport-centering transform, dropping the
+                  // lg-tuned anchor offsets (which assume the in-row absolute
+                  // layout). Wide: both position nudges are transforms (not margins)
+                  // so they work regardless of anchor edge — a `right-0`-anchored
+                  // card ignores marginLeft and a `bottom-0`-anchored card ignores
+                  // marginTop. Composed with the middle card's -50% centering.
+                  transform: narrow
+                    ? "translate(-50%, -50%)"
+                    : [
+                        i === (cards.length - 1) / 2 ? "translateY(-50%)" : "",
+                        card.expandedOffsetX ? `translateX(${card.expandedOffsetX}px)` : "",
+                        card.expandedOffsetY ? `translateY(${card.expandedOffsetY}px)` : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || undefined,
                 }}
                 onClick={() => close()}
               >

@@ -169,9 +169,9 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
   const [spacing, setSpacingState] = useState<SpacingLevel>(() =>
     readStoredLevel(SPACING_KEY, DEFAULT_KEY_SPACING),
   );
-  const [keycapWidth, setKeycapWidthState] = useState<SpacingLevel>(() =>
-    readStoredLevel(KEYCAP_WIDTH_KEY, DEFAULT_KEYCAP_WIDTH),
-  );
+  // Keycap width is no longer user-configurable — fixed at the default (xl) so
+  // the preview reads consistently. Any stale localStorage value is ignored.
+  const [keycapWidth, setKeycapWidthState] = useState<SpacingLevel>(DEFAULT_KEYCAP_WIDTH);
   const [caseRadius, setCaseRadiusState] = useState<SpacingLevel>(() =>
     readStoredLevel(CASE_RADIUS_KEY, DEFAULT_CASE_RADIUS),
   );
@@ -184,9 +184,9 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
   const [plateColor, setPlateColorState] = useState(() =>
     readStoredString(PLATE_COLOR_KEY, DEFAULT_PLATE_COLOR),
   );
-  const [keycapBorder, setKeycapBorderState] = useState(() =>
-    readStoredBoolean(KEYCAP_BORDER_KEY, false),
-  );
+  // Keycap border is no longer user-configurable — always off. Any stale
+  // localStorage value is ignored.
+  const [keycapBorder, setKeycapBorderState] = useState(false);
   const [depth, setDepthState] = useState(() => readStoredBoolean(DEPTH_KEY, true));
   const [fontSize, setFontSizeState] = useState<FontSize>(readStoredFontSize);
   const [fontColor, setFontColorState] = useState(() =>

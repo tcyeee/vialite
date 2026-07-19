@@ -103,10 +103,10 @@ type NavKind = "home" | "matrixTest" | "macro" | "tapDance" | "combo" | "keyboar
 
 const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; icon: string }[] = [
   { kind: "home", mode: "keymap", labelKey: "navHome", icon: "mdi:home-outline" },
+  { kind: "keyboardColor", mode: "color", labelKey: "navKeyboardColor", icon: "mdi:palette-outline" },
   { kind: "macro", mode: "macro", labelKey: "navMacro", icon: "mdi:script-text-outline" },
   { kind: "tapDance", mode: "tapdance", labelKey: "navTapDance", icon: "mdi:animation" },
   { kind: "combo", mode: "combo", labelKey: "navCombo", icon: "mdi:vector-combine" },
-  { kind: "keyboardColor", mode: "color", labelKey: "navKeyboardColor", icon: "mdi:palette-outline" },
   { kind: "importExport", mode: "io", labelKey: "navImportExport", icon: "mdi:swap-horizontal" },
   { kind: "matrixTest", mode: "matrix", labelKey: "navMatrixTest", icon: "mdi:view-grid-outline" },
   { kind: "advanced", mode: "advanced", labelKey: "navAdvanced", icon: "mdi:tune-variant" },
@@ -181,10 +181,10 @@ export function Sidebar({
         // "appears again" when the entrance animation fires. opacity-0 → sidebar-appear (which
         // keyframes from opacity 0) hands off with no flash, so the entrance plays exactly once.
         (appear ? "sidebar-appear " : "opacity-0 ") +
-        // md:mt-5 gives the 20px navbar gap in normal flow (the wrapper is pt-0), and md:top-[84px]
+        // lg:mt-5 gives the 20px navbar gap in normal flow (the wrapper is pt-0), and lg:top-[84px]
         // (navbar min-h-16 = 64px + the same 20px) keeps that gap once it sticks — otherwise the gap
         // would only appear on pages tall enough to scroll.
-        "relative hidden w-full shrink-0 transition-[width] duration-300 ease-out md:block md:sticky md:top-[84px] md:-ml-[30px] md:mt-5 md:w-[var(--sidebar-w)] md:self-start"
+        "relative hidden w-full shrink-0 transition-[width] duration-300 ease-out lg:block lg:sticky lg:top-[84px] lg:-ml-[30px] lg:mt-5 lg:w-[var(--sidebar-w)] lg:self-start"
       }
       style={{ "--sidebar-w": `${collapsed ? COLLAPSED_SIDEBAR_WIDTH : sidebarWidth}px` } as CSSProperties}
     >
@@ -221,7 +221,7 @@ export function Sidebar({
         onMouseDown={startResize}
         className={
           "absolute inset-y-0 -right-2 z-10 w-4 cursor-col-resize touch-none select-none " +
-          (collapsed ? "hidden" : "hidden md:block")
+          (collapsed ? "hidden" : "hidden lg:block")
         }
       >
         <div className="mx-auto h-full w-px bg-transparent transition-colors hover:bg-brand-primary/50" />
@@ -412,10 +412,10 @@ interface SidebarDrawerProps {
 }
 
 /**
- * The narrow-viewport (`< md`) sidebar variant: an off-canvas drawer flush to the window's left and
- * bottom edges, sliding out from under the Navbar (top-16) over a scrim. Hidden at `md` and up,
- * where the floating {@link Sidebar} card takes over instead. Always mounted so the open/close slide
- * animates; visibility is driven by `open`.
+ * The narrow/medium-viewport (`< lg`) sidebar variant: an off-canvas drawer flush to the window's
+ * left and bottom edges, sliding out from under the Navbar (top-16) over a scrim. Hidden at `lg` and
+ * up, where the floating {@link Sidebar} card takes over instead. Always mounted so the open/close
+ * slide animates; visibility is driven by `open`.
  */
 export function SidebarDrawer({
   productName,
@@ -454,19 +454,19 @@ export function SidebarDrawer({
   }, [open, onClose]);
 
   return (
-    <div className={"md:hidden " + (open ? "" : "pointer-events-none")}>
+    <div className={"lg:hidden " + (open ? "" : "pointer-events-none")}>
       <div
         onClick={onClose}
         aria-hidden="true"
         className={
-          "fixed inset-x-0 bottom-0 top-16 z-40 bg-black/40 transition-opacity duration-300 ease-out " +
+          "fixed inset-x-0 bottom-0 top-16 z-[60] bg-black/40 transition-opacity duration-300 ease-out " +
           (open ? "opacity-100" : "opacity-0")
         }
       />
       <aside
         data-lenis-prevent
         className={
-          "fixed bottom-0 left-0 top-16 z-40 flex w-[min(82vw,320px)] flex-col overflow-y-auto rounded-r-[2rem] bg-brand-background px-6 py-6 shadow-2xl transition-transform duration-300 ease-out " +
+          "fixed bottom-0 left-0 top-16 z-[60] flex w-[min(82vw,320px)] flex-col overflow-y-auto rounded-r-[2rem] bg-brand-background px-6 py-6 shadow-2xl transition-transform duration-300 ease-out " +
           (open ? "translate-x-0" : "-translate-x-full")
         }
       >

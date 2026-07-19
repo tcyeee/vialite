@@ -7,11 +7,18 @@ import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 
 /**
  * Wipe every localStorage entry this app owns (all `vialite-` keys: keyboard
- * style/appearance, theme, language, sidebar geometry, ...) then reload so all
- * contexts re-initialise from their defaults. Most visibly this discards the
- * user's saved keyboard style info (colors, keycap look, layout preferences).
+ * style/appearance, theme, language, sidebar geometry, ...) AND revoke every
+ * authorized WebHID device, then reload so all contexts re-initialise from
+ * their defaults and the app lands on the connect page instead of silently
+ * auto-reconnecting.
+ *
+ * Revoking the HID grants matters: localStorage and the WebHID permission
+ * store are independent. Clearing only localStorage would leave the keyboard
+ * still authorized, so App.tsx's `navigator.hid.getDevices()` auto-reconnect
+ * would jump straight back into the config page on reload — the "cache didn't
+ * get cleared" symptom. `HIDDevice.forget()` drops that grant.
  */
-function clearSiteCache() {
+async function clearSiteCache() {
   const keys: string[] = [];
   for (let i = 0; i < window.localStorage.length; i++) {
     const key = window.localStorage.key(i);
@@ -20,6 +27,18 @@ function clearSiteCache() {
     }
   }
   keys.forEach((key) => window.localStorage.removeItem(key));
+
+  // Best effort — forget() may be unavailable on older browsers, and a single
+  // failing device shouldn't block the reload.
+  try {
+    const devices = await navigator.hid?.getDevices?.();
+    if (devices) {
+      await Promise.all(devices.map((d) => d.forget?.()));
+    }
+  } catch (err) {
+    console.error("[vialite] failed to forget HID devices during cache clear:", err);
+  }
+
   window.location.reload();
 }
 
@@ -143,7 +162,7 @@ export function SiteSettingsPanel() {
               <button type="button" className="btn" onClick={() => setClearConfirmOpen(false)}>
                 {t("cancel")}
               </button>
-              <button type="button" className="btn btn-error" onClick={clearSiteCache}>
+              <button type="button" className="btn btn-error" onClick={() => void clearSiteCache()}>
                 {t("clearCacheConfirm")}
               </button>
             </div>

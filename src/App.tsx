@@ -128,7 +128,7 @@ function App() {
   const [selected, setSelected] = useState<Selected | null>(null);
   // When on, assigning a key advances the selection to the next key (reading
   // order) so a run of keys can be configured without re-clicking each cap.
-  const [autoAdvance, setAutoAdvance] = useState(false);
+  const [autoAdvance, setAutoAdvance] = useState(true);
   const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
   // Page-level smooth-scroller, shared with the sidebar TOC so a "详细设置" jump into
   // the Advanced page lands with the same inertia easing.
@@ -139,8 +139,8 @@ function App() {
   // re-render so KeyboardLayout picks up the new label after a remap.
   const [, forceUpdate] = useState(0);
   const [importing, setImporting] = useState(false);
-  // Narrow-viewport (`< md`) sidebar drawer open state; ignored at md+, where the floating
-  // Sidebar card is shown instead.
+  // Narrow/medium-viewport (`< lg`) sidebar drawer open state; ignored at lg+, where the floating
+  // Sidebar card is shown instead. Always starts closed.
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Connect-success page transition. "zoom": the waiting page's 3D model
   // scales up to fill a blackened screen; "rise": the config page slides up
@@ -578,7 +578,7 @@ function App() {
               : undefined
           }
         >
-          <Navbar onMenuClick={() => setDrawerOpen(true)} />
+          <Navbar onMenuClick={() => setDrawerOpen((v) => !v)} />
           <SidebarDrawer
             productName={productName}
             onDisconnect={handleDisconnect}
@@ -741,7 +741,6 @@ function App() {
                 <KeyboardColorPanel
                   keyboard={keyboard}
                   onChange={() => forceUpdate((r) => r + 1)}
-                  onEditKeymap={() => navigate("keymap")}
                 />
               )}
               {mode === "site" && <SiteSettingsPanel />}

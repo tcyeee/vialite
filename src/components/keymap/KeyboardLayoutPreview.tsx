@@ -10,16 +10,17 @@ import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
  * transform ({@link KeyboardZoom}). Nothing is re-measured or re-rendered at a
  * different size, so labels, icons, borders, shadows, case thickness and corner
  * radii all grow and shrink together — which is what this setting is for. The
- * factors match the px-per-unit sizes this used to re-render at (56/68/82/98).
+ * factors match the px-per-unit sizes the board renders at (32/44/56/68/82); `l`
+ * is the natural 1× (BASE_UNIT) size.
  */
 export type PreviewSize = "xs" | "s" | "m" | "l" | "xl";
 export const BASE_UNIT = 68;
 export const PREVIEW_ZOOM: Record<PreviewSize, number> = {
-  xs: 44 / BASE_UNIT,
-  s: 56 / BASE_UNIT,
-  m: 1,
-  l: 82 / BASE_UNIT,
-  xl: 98 / BASE_UNIT,
+  xs: 32 / BASE_UNIT,
+  s: 44 / BASE_UNIT,
+  m: 56 / BASE_UNIT,
+  l: 1,
+  xl: 82 / BASE_UNIT,
 };
 
 /**
@@ -81,7 +82,7 @@ export const DEFAULT_FONT_SIZE: FontSize = "m";
 export const DEFAULT_FONT_COLOR = "#1a1a1a";
 export const DEFAULT_FONT_POSITION: FontPosition = "center";
 export const DEFAULT_KEYCAP_WIDTH: SpacingLevel = "xl";
-export const DEFAULT_CASE_RADIUS: SpacingLevel = "m";
+export const DEFAULT_CASE_RADIUS: SpacingLevel = "l";
 export const DEFAULT_CASE_THICKNESS = 15;
 export const DEFAULT_CASE_COLOR = "#b0b0b0";
 export const DEFAULT_PLATE_COLOR = "#8a8a8a";

@@ -1,10 +1,11 @@
-import { Fragment, useEffect, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { VIAL_PROTOCOL_ADVANCED_MACROS } from "../../protocol/constants.ts";
 import type { Keyboard, MacroAction } from "../../protocol/keyboard.ts";
 import { serializeMacro, serializeMacros } from "../../protocol/macro.ts";
 import { useToast } from "../../contexts/toast.tsx";
+import { usePersistedBoolean } from "../../hooks/usePersistedBoolean.ts";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
 import { KeycodeCascadeSelector } from "../keymap/KeycodeCascadeSelector.tsx";
@@ -187,12 +188,21 @@ export function MacroPanel({ keyboard, onChange }: Props) {
   const [saving, setSaving] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [collapsed, setCollapsed] = usePersistedBoolean("vialite-macro-slots-collapsed");
+  const stripRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEdited(keyboard.macros);
     setSavedMacros(keyboard.macros);
     setActive(0);
   }, [keyboard]);
+
+  // Keep the selected slot visible when the strip scrolls horizontally on
+  // narrow screens (e.g. switching slots from the 3D keycap).
+  useEffect(() => {
+    const el = stripRef.current?.querySelector<HTMLElement>('[data-active="true"]');
+    el?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [active]);
 
   if (keyboard.macroCount === 0) {
     return <p className="text-brand-on-surface-variant">{t("macroNone")}</p>;
@@ -202,19 +212,26 @@ export function MacroPanel({ keyboard, onChange }: Props) {
   const actions = edited[active] ?? [];
 
   let currentBuffer: Uint8Array | null = null;
-  let currentSlotBytes: Uint8Array | null = null;
   try {
     currentBuffer = serializeMacros(edited, keyboard.vialProtocol);
-    currentSlotBytes = serializeMacro(actions, keyboard.vialProtocol);
   } catch {
     // e.g. a delay action left over on a protocol that doesn't support it.
   }
   const memoryUsed = currentBuffer?.length ?? 0;
   const overBudget = currentBuffer !== null && memoryUsed > keyboard.macroMemory;
   const hasChanges = currentBuffer !== null && !bytesEqual(currentBuffer, serializeMacros(savedMacros, keyboard.vialProtocol));
-  const slotChanged =
-    currentSlotBytes !== null &&
-    !bytesEqual(currentSlotBytes, serializeMacro(savedMacros[active] ?? [], keyboard.vialProtocol));
+  // Per-slot unsaved-change flags, so the multi-row grid can flag *every*
+  // dirty slot at a glance rather than only the active one.
+  const slotChangedFlags = edited.map((m, i) => {
+    try {
+      return !bytesEqual(
+        serializeMacro(m, keyboard.vialProtocol),
+        serializeMacro(savedMacros[i] ?? [], keyboard.vialProtocol),
+      );
+    } catch {
+      return false;
+    }
+  });
 
   const updateActive = (next: MacroAction[]) => {
     setEdited((prev) => prev.map((m, i) => (i === active ? next : m)));
@@ -264,125 +281,152 @@ export function MacroPanel({ keyboard, onChange }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 mb-2">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="text-sm font-medium">{t("macroMemoryTitle")}</span>
           <progress
-            className={overBudget ? "progress progress-error h-3 w-80" : "progress h-3 w-80"}
+            className={overBudget ? "progress progress-error h-3 w-full max-w-80 flex-1" : "progress h-3 w-full max-w-80 flex-1"}
             value={Math.min(memoryUsed, keyboard.macroMemory)}
             max={Math.max(keyboard.macroMemory, 1)}
           />
-          <span className={overBudget ? "text-xs text-error" : "text-xs text-brand-on-surface-variant"}>
-            {t("macroMemoryUsed", { used: memoryUsed, total: keyboard.macroMemory })}
-          </span>
-          <HelpIcon text={t("macroMemoryHelp")} />
+          <div className="flex basis-full items-center gap-1 sm:basis-auto">
+            <span className={overBudget ? "text-xs text-error" : "text-xs text-brand-on-surface-variant"}>
+              {t("macroMemoryUsed", { used: memoryUsed, total: keyboard.macroMemory })}
+            </span>
+            <HelpIcon text={t("macroMemoryHelp")} />
+          </div>
         </div>
       </div>
       <MacroKeycap3D label={String(active)} />
-      <div className="tabs tabs-lift">
-        {edited.map((macro, i) => (
-          <Fragment key={i}>
-            {/* Label-wrapped radio so the "edited" marker is a real, secondary-
-                colored dot rather than a glyph baked into the ::after label text. */}
-            <label
+      {/* Slot selector as a wrapping grid so devices exposing many macro slots
+          (some boards report 100+) flow into multiple rows instead of an
+          endless single-row horizontal scroll. `auto-fill` keeps a consistent
+          cell width and packs as many columns per row as the container allows. */}
+      <div
+        ref={stripRef}
+        role="tablist"
+        aria-label={t("macroSlots")}
+        className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(4.5rem,1fr))]"
+      >
+        {edited.map((macro, i) => {
+          const configured = macro.length > 0;
+          const isActive = i === active;
+          // When collapsed, only surface slots that have been used, keeping the
+          // active slot visible so the selection always stays represented.
+          if (collapsed && !configured && !isActive) return null;
+          const dirty = slotChangedFlags[i] ?? false;
+          return (
+            <button
+              key={i}
+              type="button"
               role="tab"
-              className="tab gap-1.5 relative isolate"
-              aria-label={`${macro.length > 0 ? "● " : ""}M${i}${slotChanged && i === active ? "*" : ""}`}
+              data-active={isActive}
+              aria-selected={isActive}
+              onClick={() => setActive(i)}
+              className={`btn btn-sm relative isolate justify-start gap-1.5 ${
+                isActive ? "btn-primary" : "btn-outline border-base-300"
+              }`}
+              aria-label={`${configured ? "● " : ""}M${i}${dirty ? "*" : ""}`}
             >
-              {/* Inset translucent fill marking inactive-but-configured slots
-                  (inset-1 pulls it in from the tab edges), mirroring LayerTabs. */}
-              {macro.length > 0 && i !== active && (
+              {/* Inset translucent fill marking inactive-but-configured slots,
+                  mirroring LayerTabs. */}
+              {configured && !isActive && (
                 <span
                   aria-hidden="true"
-                  className="absolute inset-1 -z-10 rounded-md bg-brand-secondary/15"
+                  className="absolute inset-0 -z-10 rounded-[inherit] bg-brand-secondary/15"
                 />
               )}
-              <input
-                type="radio"
-                name="macro_tabs"
-                className="sr-only"
-                checked={i === active}
-                onChange={() => setActive(i)}
-              />
-              {macro.length > 0 && (
-                <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-secondary" />
-              )}
-              <span className="inline-flex items-center gap-0.5">
-                <Icon icon="mdi:script-text-outline" className="h-4 w-4 shrink-0" />
-                {`${i}${slotChanged && i === active ? "*" : ""}`}
+              <Icon icon="mdi:script-text-outline" className="h-4 w-4 shrink-0" />
+              <span>
+                {i}
+                {dirty ? "*" : ""}
               </span>
-            </label>
-            <div className="tab-content bg-base-100 border-base-300 p-6 min-h-90">
-              {i === active && (
-                <div className="tab-panel-appear flex flex-col gap-4">
-                  <div className="flex flex-col gap-2">
-                    {actions.length === 0 && (
-                      <p className="text-xs text-brand-on-surface-variant">{t("macroEmpty")}</p>
-                    )}
-                    {actions.map((action, idx) => (
-                      <MacroActionRow
-                        key={idx}
-                        action={action}
-                        onChange={(next) => updateAction(idx, next)}
-                        onRemove={() => removeAction(idx)}
-                        isDragging={dragIndex === idx}
-                        onDragStartRow={() => setDragIndex(idx)}
-                        onDragEndRow={() => setDragIndex(null)}
-                        onDragOverRow={(e) => e.preventDefault()}
-                        onDropRow={() => {
-                          if (dragIndex !== null) moveActionTo(dragIndex, idx);
-                          setDragIndex(null);
-                        }}
-                      />
-                    ))}
-                  </div>
+              {configured && !isActive && (
+                <span className="ml-auto inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-secondary" />
+              )}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost btn-square text-brand-on-surface-variant"
+          onClick={() => setCollapsed(!collapsed)}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? t("macroShowAllSlots") : t("macroShowUsedSlots")}
+          title={collapsed ? t("macroShowAllSlots") : t("macroShowUsedSlots")}
+        >
+          <Icon
+            icon={collapsed ? "mdi:dots-horizontal" : "mdi:chevron-double-left"}
+            className="h-5 w-5 shrink-0"
+          />
+        </button>
+      </div>
+      <div className="rounded-box border border-base-300 bg-base-100 p-6 min-h-90">
+        <div key={active} className="tab-panel-appear flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            {actions.length === 0 && (
+              <p className="text-xs text-brand-on-surface-variant">{t("macroEmpty")}</p>
+            )}
+            {actions.map((action, idx) => (
+              <MacroActionRow
+                key={idx}
+                action={action}
+                onChange={(next) => updateAction(idx, next)}
+                onRemove={() => removeAction(idx)}
+                isDragging={dragIndex === idx}
+                onDragStartRow={() => setDragIndex(idx)}
+                onDragEndRow={() => setDragIndex(null)}
+                onDragOverRow={(e) => e.preventDefault()}
+                onDropRow={() => {
+                  if (dragIndex !== null) moveActionTo(dragIndex, idx);
+                  setDragIndex(null);
+                }}
+              />
+            ))}
+          </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        onClick={() => addAction({ kind: "text", text: "" })}
-                      >
-                        {t("macroAddText")}
-                      </button>
-                      <AddActionButton kind="tap" label={t("macroAddTap")} onAdd={addAction} />
-                      <AddActionButton kind="down" label={t("macroAddDown")} onAdd={addAction} />
-                      <AddActionButton kind="up" label={t("macroAddUp")} onAdd={addAction} />
-                      {supportsDelay && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          onClick={() => addAction({ kind: "delay", ms: 0 })}
-                        >
-                          {t("macroAddDelay")}
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary"
-                        disabled={!hasChanges || overBudget || saving || currentBuffer === null}
-                        onClick={() => void handleSaveClick()}
-                      >
-                        {saving ? t("macroSaving") : t("save")}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        disabled={!hasChanges || saving}
-                        onClick={revert}
-                      >
-                        {t("revert")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => addAction({ kind: "text", text: "" })}
+              >
+                {t("macroAddText")}
+              </button>
+              <AddActionButton kind="tap" label={t("macroAddTap")} onAdd={addAction} />
+              <AddActionButton kind="down" label={t("macroAddDown")} onAdd={addAction} />
+              <AddActionButton kind="up" label={t("macroAddUp")} onAdd={addAction} />
+              {supportsDelay && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => addAction({ kind: "delay", ms: 0 })}
+                >
+                  {t("macroAddDelay")}
+                </button>
               )}
             </div>
-          </Fragment>
-        ))}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                disabled={!hasChanges || overBudget || saving || currentBuffer === null}
+                onClick={() => void handleSaveClick()}
+              >
+                {saving ? t("macroSaving") : t("save")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                disabled={!hasChanges || saving}
+                onClick={revert}
+              >
+                {t("revert")}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {unlocking && (

@@ -7,7 +7,7 @@ import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { ColorPicker } from "../common/ColorPicker.tsx";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
-import { LayerTabs } from "../keymap/LayerTabs.tsx";
+import { LayerTabBar } from "../keymap/LayerTabs.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
   FONT_SIZES,
@@ -60,13 +60,10 @@ function store(key: string, value: string) {
 export function KeyboardColorPanel({
   keyboard,
   onChange,
-  onEditKeymap,
 }: {
   keyboard: Keyboard;
   /** Called after a layout option was written to the device, so the parent re-renders. */
   onChange: () => void;
-  /** Navigates to the 键盘布局 page, where keys are actually assigned. */
-  onEditKeymap: () => void;
 }) {
   const { t } = useI18n();
   const { keyDisplay, setKeyDisplay, mediaReset, setMediaReset } = useKeyDisplay();
@@ -79,24 +76,20 @@ export function KeyboardColorPanel({
   const {
     size,
     spacing,
-    keycapWidth,
     caseRadius,
     caseThickness,
     caseColor,
     plateColor,
-    keycapBorder,
     depth,
     fontSize,
     fontColor,
     fontPosition,
     setSize,
     setSpacing,
-    setKeycapWidth,
     setCaseRadius,
     setCaseThickness,
     setCaseColor,
     setPlateColor,
-    setKeycapBorder,
     setDepth,
     setFontSize,
     setFontColor,
@@ -168,7 +161,6 @@ export function KeyboardColorPanel({
   const sizeIndex = SIZES.indexOf(size);
   const fontSizeIndex = FONT_SIZES.indexOf(fontSize);
   const spacingIndex = SPACING_LEVELS.indexOf(spacing);
-  const keycapWidthIndex = SPACING_LEVELS.indexOf(keycapWidth);
   const caseRadiusIndex = SPACING_LEVELS.indexOf(caseRadius);
   // Thickness 0 hides the case entirely, so its color has nothing to paint —
   // grey the row out to signal it's inert.
@@ -184,10 +176,6 @@ export function KeyboardColorPanel({
 
   const onSpacingChange = (index: number) => {
     setSpacing(SPACING_LEVELS[Math.min(SPACING_LEVELS.length - 1, Math.max(0, index))]);
-  };
-
-  const onKeycapWidthChange = (index: number) => {
-    setKeycapWidth(SPACING_LEVELS[Math.min(SPACING_LEVELS.length - 1, Math.max(0, index))]);
   };
 
   const onCaseRadiusChange = (index: number) => {
@@ -227,43 +215,45 @@ export function KeyboardColorPanel({
       <p className="text-xs text-brand-on-surface-variant/70">
         {t("colorDisplayNote")}
       </p>
-      {/* 预览吸顶:调外观设置时键盘要始终可见。top-16 贴在 Navbar(sticky
-          top-0,min-h-16)下沿;z-20 低于 Navbar 的 z-40。半透明 + backdrop-blur
-          让下方滚动的设置项透出而不糊成一块,同时不必硬编码页面底色(浅色为
-          bg-white,深色是 black/30 叠在 body 的 --color-brand-background 上)。
-          负外边距把背景铺满 main 的左右内边距,滚动时内容不会从两侧漏出。 */}
-      <div className="sticky top-16 z-20 -mx-6 bg-white/80 px-6 pt-3 backdrop-blur-md dark:bg-black/50 md:-mx-8 md:px-8">
-        {/* Layer tabs wrap the preview like the 键盘布局 page, so the labels can
-            be viewed per layer. Negative margins offset the tab-content padding so
-            the board's shaded case shadow isn't clipped by overflow-x-auto. */}
-        <LayerTabs
-          layers={keyboard.layers}
-          active={previewLayer}
-          onSelect={setPreviewLayer}
-          isConfigured={(l) => keyboard.isLayerConfigured(l)}
-        >
-          {/* Group box spans the tab panel's content area; the overlay below then
-              bleeds out over the panel's p-6 padding so the dim covers the whole
-              tab region rather than just the board. */}
-          <div className="group relative">
-            <div className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2">
-              {/* Reads every appearance value from the shared context, so it stays in
-                  sync with the controls below and identical to previews elsewhere.
-                  The ref wrapper is the exact node rasterized for the current-layer
-                  image (fit-content, so it hugs the board with no extra margin). */}
-              <div ref={currentBoardRef} style={{ width: "fit-content" }}>
-                <KeyboardLayoutPreview keyboard={keyboard} layer={previewLayer} />
-              </div>
-            </div>
-            {/* Save actions live here rather than in a row below the board, and
-                deliberately sit outside currentBoardRef — nodeToCanvas rasterizes
-                that node, so anything inside it would be baked into the export.
-                The scrim spans LayerTabs' content box (p-6), but the board wrapper's
-                padding-compensating negative margins collapse onto this group: its top
-                sits 0.5rem above the content box's padding edge (-mt-2) and its bottom
-                already coincides with that box's border (-mb-6 cancels the pb-6), so the
-                vertical insets are -top-4/bottom-0 rather than a symmetric -inset-6. */}
-            <div className="pointer-events-none absolute -inset-x-6 -top-4 bottom-0 z-10 flex items-center justify-center gap-4 rounded-box rounded-tl-none bg-black/50 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+      {/* The layer tabs stay in normal flow (they scroll away); only the board
+          below is pinned. Kept as a sibling of the sticky board — not its
+          child — so the board's sticky containing block is the whole panel. */}
+      <LayerTabBar
+        layers={keyboard.layers}
+        active={previewLayer}
+        onSelect={setPreviewLayer}
+        isConfigured={(l) => keyboard.isLayerConfigured(l)}
+      />
+      {/* Pin only the board to the top so it stays visible while the settings
+          rows below scroll under it (see ColorPicker's fixed-popover note).
+          `top-16` clears the sticky Navbar (h-16); the page-matching background
+          occludes content scrolling beneath, and z-20 keeps it under the z-30
+          Navbar. The `-mx-4 … px-4` self-cancelling margins give the shaded case
+          shadow room without clipping it in `overflow-x-auto`. */}
+      <div className="sticky top-16 z-20 -mx-4 -mb-6 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background">
+        {/* Keyed on the active layer so switching tabs re-fires the appear
+            animation, mirroring LayerTabs' own content box. */}
+        <div key={previewLayer} className="tab-panel-appear w-fit">
+          {/* Reads every appearance value from the shared context, so it stays in
+              sync with the controls below and identical to previews elsewhere.
+              The ref wrapper is the exact node rasterized for the current-layer
+              image (fit-content, so it hugs the board with no extra margin).
+              `group` + `relative` live on this fit-content wrapper so the hover
+              scrim below covers only the board itself, not the surrounding
+              padding/scroll area. */}
+          <div
+            ref={currentBoardRef}
+            className="group relative"
+            style={{ width: "fit-content" }}
+          >
+            <KeyboardLayoutPreview keyboard={keyboard} layer={previewLayer} />
+            {/* Save actions overlay the board on hover. This node sits inside
+                currentBoardRef, but nodeToCanvas hides `[data-export-hidden]`
+                before rasterizing so the scrim isn't baked into the export. */}
+            <div
+              data-export-hidden
+              className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-4 rounded-box bg-black/50 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
+            >
               <button
                 type="button"
                 className="btn btn-primary"
@@ -282,13 +272,9 @@ export function KeyboardColorPanel({
                 <Icon icon="mdi:content-save-outline" className="h-5 w-5" />
                 {saving ? t("colorSaving") : t("colorSaveAllLayers")}
               </button>
-              <button type="button" className="btn" onClick={onEditKeymap}>
-                <Icon icon="mdi:keyboard-outline" className="h-5 w-5" />
-                {t("colorEditKeymap")}
-              </button>
             </div>
           </div>
-        </LayerTabs>
+        </div>
       </div>
 
       {/* Offscreen boards, one per configured layer, kept mounted so the
@@ -494,40 +480,6 @@ export function KeyboardColorPanel({
                   {LEVEL_LABELS[spacing]}
                 </span>
               </div>
-            }
-          />
-          <SettingsRow
-            icon={<Icon icon="mdi:square-rounded-outline" className="h-5 w-5" />}
-            label={t("keycapWidthTitle")}
-            control={
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min={0}
-                  max={SPACING_LEVELS.length - 1}
-                  step={1}
-                  value={keycapWidthIndex}
-                  onChange={(e) => onKeycapWidthChange(Number(e.target.value))}
-                  className="range range-primary range-xs w-40"
-                  aria-label={t("keycapWidthTitle")}
-                />
-                <span className="w-10 shrink-0 text-right text-sm tabular-nums text-brand-on-surface-variant">
-                  {LEVEL_LABELS[keycapWidth]}
-                </span>
-              </div>
-            }
-          />
-          <SettingsRow
-            icon={<Icon icon="mdi:square-rounded-outline" className="h-5 w-5" />}
-            label={t("keycapBorderTitle")}
-            control={
-              <input
-                type="checkbox"
-                className="toggle toggle-primary"
-                checked={keycapBorder}
-                onChange={(e) => setKeycapBorder(e.target.checked)}
-                aria-label={t("keycapBorderTitle")}
-              />
             }
           />
         </ul>
