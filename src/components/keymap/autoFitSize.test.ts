@@ -1,26 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { pickFitSize } from "./autoFitSize.ts";
-import { PREVIEW_ZOOM } from "./KeyboardLayoutPreview.tsx";
+import { fitZoom, MAX_AUTO_FIT_ZOOM } from "./autoFitSize.ts";
 
-describe("pickFitSize", () => {
+describe("fitZoom", () => {
   const natural = 1000;
 
-  it("picks the largest level that fits", () => {
-    // Ample room: the biggest level fits.
-    expect(pickFitSize(natural, 5000)).toBe("xl");
-    // Just enough for 1× (m), but not l.
-    expect(pickFitSize(natural, natural * PREVIEW_ZOOM.m)).toBe("m");
-    // Between s and m.
-    expect(pickFitSize(natural, natural * PREVIEW_ZOOM.m - 1)).toBe("s");
+  it("scales the board down to the width available", () => {
+    expect(fitZoom(natural, 500)).toBe(0.5);
+    expect(fitZoom(natural, 250)).toBe(0.25);
   });
 
-  it("floors at xs when even the smallest level overflows", () => {
-    expect(pickFitSize(natural, natural * PREVIEW_ZOOM.xs - 1)).toBe("xs");
-    expect(pickFitSize(natural, 1)).toBe("xs");
+  it("shrinks without a floor so a narrow viewport still shows a whole board", () => {
+    expect(fitZoom(natural, 10)).toBe(0.01);
+    expect(fitZoom(natural, 1)).toBe(0.001);
   });
 
-  it("treats an exact fit as fitting (<=)", () => {
-    expect(pickFitSize(natural, natural * PREVIEW_ZOOM.xl)).toBe("xl");
-    expect(pickFitSize(natural, natural * PREVIEW_ZOOM.s)).toBe("s");
+  it("never enlarges past the l level, however much room there is", () => {
+    expect(fitZoom(natural, natural)).toBe(MAX_AUTO_FIT_ZOOM);
+    expect(fitZoom(natural, natural * 10)).toBe(MAX_AUTO_FIT_ZOOM);
+  });
+
+  it("falls back to the cap for an unmeasured board or container", () => {
+    expect(fitZoom(0, 500)).toBe(MAX_AUTO_FIT_ZOOM);
+    expect(fitZoom(natural, 0)).toBe(MAX_AUTO_FIT_ZOOM);
+    expect(fitZoom(Number.NaN, 500)).toBe(MAX_AUTO_FIT_ZOOM);
   });
 });

@@ -8,6 +8,7 @@ import type { Keyboard } from "../../protocol/keyboard.ts";
 import { ColorPicker } from "../common/ColorPicker.tsx";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { LayerTabBar } from "../keymap/LayerTabs.tsx";
+import { useAutoFitZoom } from "../keymap/autoFitSize.ts";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
   FONT_SIZES,
@@ -74,6 +75,7 @@ export function KeyboardColorPanel({
   // Appearance settings are shared with the main keymap board via context, so
   // tuning them here also restyles the interactive layout on the 键位 page.
   const {
+    autoFit,
     size,
     spacing,
     caseRadius,
@@ -84,6 +86,7 @@ export function KeyboardColorPanel({
     fontSize,
     fontColor,
     fontPosition,
+    setAutoFit,
     setSize,
     setSpacing,
     setCaseRadius,
@@ -101,6 +104,9 @@ export function KeyboardColorPanel({
   // Refs for image export: the visible board (current-layer save) and an
   // offscreen board per configured layer (all-layers save, stitched together).
   const currentBoardRef = useRef<HTMLDivElement>(null);
+  // Overflow-scrolling viewport around the visible preview; its width is
+  // independent of the board's, so auto-fit can measure it without feedback.
+  const { ref: previewViewportRef, zoom: autoFitZoom } = useAutoFitZoom(keyboard);
   const hiddenBoardRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [saving, setSaving] = useState(false);
   // Only layers the user has actually configured get exported in the all-layers
@@ -230,7 +236,10 @@ export function KeyboardColorPanel({
           occludes content scrolling beneath, and z-20 keeps it under the z-30
           Navbar. The `-mx-4 … px-4` self-cancelling margins give the shaded case
           shadow room without clipping it in `overflow-x-auto`. */}
-      <div className="sticky top-16 z-20 -mx-4 -mb-6 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background">
+      <div
+        ref={previewViewportRef}
+        className="sticky top-16 z-20 -mx-4 -mb-4 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background"
+      >
         {/* Keyed on the active layer so switching tabs re-fires the appear
             animation, mirroring LayerTabs' own content box. */}
         <div key={previewLayer} className="tab-panel-appear w-fit">
@@ -238,41 +247,14 @@ export function KeyboardColorPanel({
               sync with the controls below and identical to previews elsewhere.
               The ref wrapper is the exact node rasterized for the current-layer
               image (fit-content, so it hugs the board with no extra margin).
-              `group` + `relative` live on this fit-content wrapper so the hover
-              scrim below covers only the board itself, not the surrounding
-              padding/scroll area. */}
-          <div
-            ref={currentBoardRef}
-            className="group relative"
-            style={{ width: "fit-content" }}
-          >
-            <KeyboardLayoutPreview keyboard={keyboard} layer={previewLayer} />
-            {/* Save actions overlay the board on hover. This node sits inside
-                currentBoardRef, but nodeToCanvas hides `[data-export-hidden]`
-                before rasterizing so the scrim isn't baked into the export. */}
-            <div
-              data-export-hidden
-              className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-4 rounded-box bg-black/50 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-            >
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void saveCurrentLayer()}
-                disabled={saving}
-              >
-                <Icon icon="mdi:content-save-outline" className="h-5 w-5" />
-                {saving ? t("colorSaving") : t("colorSaveCurrentLayer")}
-              </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => void saveAllLayers()}
-                disabled={saving || configuredLayers.length === 0}
-              >
-                <Icon icon="mdi:content-save-outline" className="h-5 w-5" />
-                {saving ? t("colorSaving") : t("colorSaveAllLayers")}
-              </button>
-            </div>
+              The save actions live in the 整体配置 settings list below rather
+              than as a hover overlay here, so the board is never covered. */}
+          <div ref={currentBoardRef} style={{ width: "fit-content" }}>
+            <KeyboardLayoutPreview
+              keyboard={keyboard}
+              layer={previewLayer}
+              zoomOverride={autoFitZoom}
+            />
           </div>
         </div>
       </div>
@@ -294,7 +276,9 @@ export function KeyboardColorPanel({
             }}
             style={{ width: "fit-content" }}
           >
-            <KeyboardLayoutPreview keyboard={keyboard} layer={l} />
+            {/* Same zoom as the visible board, so the all-layers export and the
+                current-layer export come out at one consistent scale. */}
+            <KeyboardLayoutPreview keyboard={keyboard} layer={l} zoomOverride={autoFitZoom} />
           </div>
         ))}
       </div>
@@ -305,8 +289,27 @@ export function KeyboardColorPanel({
         </h2>
         <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
+            icon={<Icon icon="mdi:fit-to-screen-outline" className="h-5 w-5" />}
+            label={t("previewAutoFitTitle")}
+            description={t("previewAutoFitDesc")}
+            control={
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={autoFit}
+                onChange={(e) => setAutoFit(e.target.checked)}
+                aria-label={t("previewAutoFitTitle")}
+              />
+            }
+          />
+          {/* The manual scale only means something once auto-fit stops driving
+              the board, so it's hidden rather than shown-but-inert. It stays
+              mounted and collapses to zero height (`collapsed`) so toggling
+              auto-fit animates the row in and out instead of snapping. */}
+          <SettingsRow
             icon={<Icon icon="mdi:arrow-expand-all" className="h-5 w-5" />}
             label={t("displaySizeTitle")}
+            collapsed={autoFit}
             control={
               <div className="flex items-center gap-2">
                 <input
@@ -339,6 +342,35 @@ export function KeyboardColorPanel({
               />
             }
           />
+          {/* Image export lives here rather than on a hover overlay over the
+              board, so the preview is never covered while tuning it. */}
+          <SettingsRow
+            icon={<Icon icon="mdi:camera-outline" className="h-5 w-5" />}
+            label={t("colorScreenshotTitle")}
+            description={t("colorScreenshotDesc")}
+            control={
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={() => void saveCurrentLayer()}
+                  disabled={saving}
+                >
+                  <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
+                  {saving ? t("colorSaving") : t("colorSaveCurrentLayer")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => void saveAllLayers()}
+                  disabled={saving || configuredLayers.length === 0}
+                >
+                  <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
+                  {saving ? t("colorSaving") : t("colorSaveAllLayers")}
+                </button>
+              </div>
+            }
+          />
         </ul>
       </section>
 
@@ -357,6 +389,7 @@ export function KeyboardColorPanel({
                   className={"btn btn-sm join-item" + (keyDisplay === "macos" ? " btn-primary" : " btn-outline")}
                   onClick={() => setKeyDisplay("macos")}
                 >
+                  <Icon icon="mdi:apple-keyboard-command" className="h-3 w-3" />
                   {t("keyDisplayMacos")}
                 </button>
                 <button
@@ -364,6 +397,7 @@ export function KeyboardColorPanel({
                   className={"btn btn-sm join-item" + (keyDisplay === "windows" ? " btn-primary" : " btn-outline")}
                   onClick={() => setKeyDisplay("windows")}
                 >
+                  <Icon icon="mdi:microsoft-windows" className="h-4 w-4" />
                   {t("keyDisplayWindows")}
                 </button>
               </div>

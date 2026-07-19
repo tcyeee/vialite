@@ -83,7 +83,11 @@ const MESSAGES = {
     en: "Failed to connect: {error}",
     zh: "连接失败:{error}",
   },
-  keyboardLayoutTitle: { en: "Keyboard Layout", zh: "键盘布局" },
+  keyboardLayoutTitle: { en: "Keyboard Config", zh: "键盘配置" },
+  keyboardLayoutSubtitle: {
+    en: "Click a key to reassign it, or switch layers above.",
+    zh: "点击键位即可重新分配功能,或在上方切换层。",
+  },
   magicSettingsTitle: { en: "Magic", zh: "Magic" },
   magicSwapCapsLockControl: { en: "Swap Caps Lock and Left Control", zh: "交换 Caps Lock 与左 Control" },
   magicCapsLockAsControl: { en: "Treat Caps Lock as Control", zh: "将 Caps Lock 作为 Control 使用" },
@@ -370,6 +374,11 @@ const MESSAGES = {
   colorSaveCurrentLayer: { en: "Save current layer", zh: "保存当前层图片" },
   colorSaveAllLayers: { en: "Save all layers", zh: "保存所有层图片" },
   colorSaving: { en: "Saving…", zh: "保存中…" },
+  colorScreenshotTitle: { en: "Save screenshot", zh: "保存截图" },
+  colorScreenshotDesc: {
+    en: "Download the preview as a PNG image",
+    zh: "将预览效果下载为 PNG 图片",
+  },
   colorEditKeymap: { en: "Configure key layout", zh: "配置按键布局" },
   colorLayoutTitle: { en: "Layout options", zh: "布局选项" },
   colorAppearanceTitle: { en: "Appearance", zh: "外观" },
@@ -377,7 +386,12 @@ const MESSAGES = {
   colorFontSectionTitle: { en: "Keyboard font", zh: "键盘字体" },
   colorKeycapSectionTitle: { en: "Keycap", zh: "键帽" },
   colorCaseSectionTitle: { en: "Case & plate", zh: "键盘外壳与定位板" },
-  displaySizeTitle: { en: "Display size", zh: "显示尺寸" },
+  previewAutoFitTitle: { en: "Auto-fit preview", zh: "预览区域自适应大小" },
+  previewAutoFitDesc: {
+    en: "Scale the keyboard to fit the window; turn off to set the scale yourself.",
+    zh: "键盘随窗口宽度自动缩放;关闭后可手动设置缩放比例。",
+  },
+  displaySizeTitle: { en: "Preview scale", zh: "预览区域缩放" },
   displaySizeSmaller: { en: "Smaller", zh: "缩小" },
   displaySizeLarger: { en: "Larger", zh: "放大" },
   keySpacingTitle: { en: "Keycap spacing", zh: "键帽间距" },
@@ -411,7 +425,7 @@ const MESSAGES = {
   importLayoutDesc: { en: "Load a keymap from a .vil file", zh: "从 .vil 文件加载配置" },
 
   // Sidebar
-  navHome: { en: "Keyboard Layout", zh: "键盘布局" },
+  navHome: { en: "Keyboard Config", zh: "键盘配置" },
   navMatrixTest: { en: "Keyboard Test", zh: "键盘测试" },
   navMacro: { en: "Macros", zh: "宏配置" },
   navTapDance: { en: "Tap Dance", zh: "Tap Dance" },
@@ -614,11 +628,6 @@ const MESSAGES = {
   autoAdvanceHelp: {
     en: "When on, assigning a key automatically selects the next key so you can configure them in sequence.",
     zh: "开启后,设置完成一个按键会自动选中下一个按键,便于连续配置。",
-  },
-  previewScale: { en: "Preview scale", zh: "预览区域缩放" },
-  previewScaleHelp: {
-    en: "Display size of the keyboard preview. Same setting as “Display size” on the Personalization page.",
-    zh: "键盘预览区域的显示尺寸,与个性化页面的「显示尺寸」为同一项配置。",
   },
   goConfigure: { en: "Configure", zh: "去配置" },
   previewStyle: { en: "Preview style", zh: "配置预览样式" },

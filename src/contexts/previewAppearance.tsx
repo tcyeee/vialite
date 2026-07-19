@@ -32,6 +32,7 @@ import {
 } from "../components/keymap/KeyboardLayoutPreview.tsx";
 
 const SIZE_KEY = "vialite-color-preview-size";
+const AUTO_FIT_KEY = "vialite-color-preview-autofit";
 const SPACING_KEY = "vialite-color-key-spacing";
 const KEYCAP_WIDTH_KEY = "vialite-color-keycap-width";
 const CASE_RADIUS_KEY = "vialite-color-case-radius";
@@ -135,6 +136,13 @@ function store(key: string, value: string) {
 }
 
 interface PreviewAppearanceValue {
+  /**
+   * When on (the default), the preview ignores {@link size} and continuously
+   * scales itself to the width available in its container — see
+   * `useAutoFitZoom`. {@link size} is only consulted once this is off, which is
+   * why the 个性化 page hides the 预览区域缩放 slider while it's on.
+   */
+  autoFit: boolean;
   size: PreviewSize;
   spacing: SpacingLevel;
   keycapWidth: SpacingLevel;
@@ -148,6 +156,7 @@ interface PreviewAppearanceValue {
   fontSize: FontSize;
   fontColor: string;
   fontPosition: FontPosition;
+  setAutoFit: (value: boolean) => void;
   setSize: (value: PreviewSize) => void;
   setSpacing: (value: SpacingLevel) => void;
   setKeycapWidth: (value: SpacingLevel) => void;
@@ -165,6 +174,7 @@ interface PreviewAppearanceValue {
 const PreviewAppearanceContext = createContext<PreviewAppearanceValue | null>(null);
 
 export function PreviewAppearanceProvider({ children }: { children: ReactNode }) {
+  const [autoFit, setAutoFitState] = useState(() => readStoredBoolean(AUTO_FIT_KEY, true));
   const [size, setSizeState] = useState<PreviewSize>(readStoredSize);
   const [spacing, setSpacingState] = useState<SpacingLevel>(() =>
     readStoredLevel(SPACING_KEY, DEFAULT_KEY_SPACING),
@@ -195,6 +205,10 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
   const [fontPosition, setFontPositionState] =
     useState<FontPosition>(readStoredFontPosition);
 
+  const setAutoFit = useCallback((value: boolean) => {
+    setAutoFitState(value);
+    store(AUTO_FIT_KEY, String(value));
+  }, []);
   const setSize = useCallback((value: PreviewSize) => {
     setSizeState(value);
     store(SIZE_KEY, value);
@@ -246,6 +260,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
 
   const value = useMemo(
     () => ({
+      autoFit,
       size,
       spacing,
       keycapWidth,
@@ -258,6 +273,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       fontSize,
       fontColor,
       fontPosition,
+      setAutoFit,
       setSize,
       setSpacing,
       setKeycapWidth,
@@ -272,6 +288,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setFontPosition,
     }),
     [
+      autoFit,
       size,
       spacing,
       keycapWidth,
@@ -284,6 +301,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       fontSize,
       fontColor,
       fontPosition,
+      setAutoFit,
       setSize,
       setSpacing,
       setKeycapWidth,

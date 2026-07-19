@@ -42,6 +42,12 @@ interface Props {
   onEncoderSelect: (index: number, direction: 0 | 1) => void;
   /** Right-click cascade pick: writes the chosen keycode to the target cap/encoder. */
   onContextAssign?: (target: ContextTarget, qmkId: string) => void;
+  /**
+   * Continuous zoom from auto-fit (`useAutoFitZoom`), which wins over the
+   * discrete 预览区域缩放 level. `null`/absent means auto-fit is off or hasn't
+   * measured yet, so the configured level applies.
+   */
+  zoomOverride?: number | null;
 }
 
 export function KeyboardLayout({
@@ -51,6 +57,7 @@ export function KeyboardLayout({
   onKeySelect,
   onEncoderSelect,
   onContextAssign,
+  zoomOverride,
 }: Props) {
   // Physical appearance (size, spacing, case/plate) is shared with the 键盘配色
   // page via context, so tuning it there restyles this interactive board too.
@@ -71,13 +78,15 @@ export function KeyboardLayout({
     fontColor,
     fontPosition,
   } = usePreviewAppearance();
-  const { PITCH, inset, outerRadius, innerRadius, showCase, zoom } = appearanceMetrics(
-    size,
-    spacing,
-    keycapWidth,
-    caseRadius,
-    caseThickness,
-  );
+  const {
+    PITCH,
+    inset,
+    outerRadius,
+    innerRadius,
+    showCase,
+    zoom: sizeZoom,
+  } = appearanceMetrics(size, spacing, keycapWidth, caseRadius, caseThickness);
+  const zoom = zoomOverride ?? sizeZoom;
   const posClass = fontPositionClass(fontPosition);
 
   // Hover info card: revealed only after the pointer rests on a cap for 0.5s, so
@@ -272,6 +281,7 @@ export function KeyboardLayout({
     <>
       <KeyboardZoom
         zoom={zoom}
+        live={zoomOverride != null}
         width={plateWidth + caseThickness * 2}
         height={plateHeight + caseThickness * 2}
       >

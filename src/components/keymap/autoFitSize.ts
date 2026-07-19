@@ -1,45 +1,47 @@
-// One-shot, device-level auto-fit for the preview display size.
+// Live auto-fit (预览区域自适应大小) for the keyboard preview.
 //
 // A wide keyboard config (many columns, or split/Alice boards whose rotated keys
-// stretch the bounding box) can overflow a narrow window. The very first time
-// this device shows a board, we pick the largest display-size level whose board
-// still fits the available width, so it's visible without the user hunting for
-// the zoom control. After that we never touch the size again — the flag below is
-// what makes it "device-level once" rather than per-load.
+// stretch the bounding box) can overflow a narrow window. When auto-fit is on —
+// the default, toggled on the 个性化 page — the board continuously scales to
+// whatever width its container currently offers, tracking window resizes, so it
+// is always fully visible without the user hunting for a zoom control.
 //
-// The flag uses the `vialite-` prefix so SiteSettingsPanel's clearSiteCache()
-// (which wipes every `vialite-` key) resets it for free: after clearing the
-// cache, the next board shown auto-fits again.
+// This deliberately replaces an earlier one-shot, device-level fit that nudged
+// the discrete 预览区域缩放 (display size) level once and then recorded a
+// localStorage flag. Auto-fit is now a live *mode*, not a one-time guess: the
+// discrete size setting is left untouched and is only consulted when the user
+// turns auto-fit off.
 
-import { useLayoutEffect, type RefObject } from "react";
+import { useEffect, useState } from "react";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import {
   appearanceMetrics,
   PREVIEW_ZOOM,
-  type PreviewSize,
   type SpacingLevel,
 } from "./KeyboardLayoutPreview.tsx";
 import { placeLayout } from "./layoutGeometry.ts";
 
-export const AUTOFIT_DONE_KEY = "vialite-autofit-done";
-
-/** Display-size levels, largest first — the order auto-fit tries. */
-const SIZES_LARGEST_FIRST: PreviewSize[] = ["xl", "l", "m", "s", "xs"];
+/**
+ * Ceiling for the auto-fit zoom: the "l" level, i.e. the board's natural 1×
+ * size. A wide window may leave room to scale past it, but blowing the board up
+ * beyond its designed size just wastes space and coarsens the keycap art, so
+ * auto-fit only ever shrinks. Shrinking has no floor — a narrow phone viewport
+ * gets a small-but-complete board rather than a clipped one.
+ */
+export const MAX_AUTO_FIT_ZOOM = PREVIEW_ZOOM.l;
 
 /**
- * Largest display size whose board (natural 1× width times that level's zoom)
- * fits `availableWidth`. Floors at the smallest level ("xs") when even that
- * overflows — below it the caller's container scrolls horizontally rather than
- * shrinking keys into illegibility.
+ * Continuous zoom that makes a board of `naturalWidth` fit `availableWidth`,
+ * capped at {@link MAX_AUTO_FIT_ZOOM}. Returns the cap for a non-positive or
+ * non-finite natural width so a not-yet-measured board renders at 1× rather
+ * than collapsing to zero.
  */
-export function pickFitSize(naturalWidth: number, availableWidth: number): PreviewSize {
-  for (const size of SIZES_LARGEST_FIRST) {
-    if (naturalWidth * PREVIEW_ZOOM[size] <= availableWidth) {
-      return size;
-    }
+export function fitZoom(naturalWidth: number, availableWidth: number): number {
+  if (!(naturalWidth > 0) || !(availableWidth > 0)) {
+    return MAX_AUTO_FIT_ZOOM;
   }
-  return "xs";
+  return Math.min(availableWidth / naturalWidth, MAX_AUTO_FIT_ZOOM);
 }
 
 /**
@@ -66,49 +68,58 @@ export function boardNaturalWidth(
 const CONTAINER_PADDING_PX = 32;
 
 /**
- * Runs the one-shot auto-fit when a keyboard first becomes available: measures
- * the (overflow-scrolling) container's inner width and sets the display size to
- * the largest level that fits, then marks it done so it never runs again on this
- * device. Guarded by {@link AUTOFIT_DONE_KEY}, so reconnecting a different (wider)
- * board or reloading won't re-fit once the user is presumed to be in control.
+ * Auto-fit for one preview: gives back the `ref` to put on the board's
+ * container and the `zoom` the board should render at.
  *
- * `containerRef` must point at an element whose width is *independent* of the
- * board's — an `overflow-x-auto` viewport — so a shrink can't feed back into the
- * measurement.
+ * `zoom` is `null` — meaning "fall back to the user's discrete 预览区域缩放
+ * level" — whenever auto-fit is off, there's no board yet, or the container
+ * hasn't been measured, so the board never renders at a bogus scale.
+ *
+ * `ref` must go on an element whose width is *independent* of the board's (an
+ * `overflow-x-auto` viewport), otherwise shrinking the board would shrink the
+ * container and feed back into the next measurement.
+ *
+ * It's a callback ref held in state rather than a `useRef` object on purpose:
+ * the measuring effect must re-run whenever the container node itself changes,
+ * and a plain ref object mutates silently. Pages here unmount their board when
+ * you navigate away, so with a ref object the observer would stay attached to
+ * the detached node and never measure the new one on the way back.
+ *
+ * Re-measures on container resize via ResizeObserver, which covers window
+ * resizes, sidebar/panel layout shifts, and device rotation alike — all of them
+ * change the container's width, which is the only input that matters.
  */
-export function useAutoFitPreviewSize(
-  containerRef: RefObject<HTMLElement | null>,
-  keyboard: Keyboard | null,
-): void {
-  const { spacing, keycapWidth, caseThickness, setSize } = usePreviewAppearance();
-  useLayoutEffect(() => {
-    const el = containerRef.current;
-    if (!keyboard || !el) {
+export function useAutoFitZoom(keyboard: Keyboard | null): {
+  ref: (node: HTMLElement | null) => void;
+  zoom: number | null;
+} {
+  const { autoFit, spacing, keycapWidth, caseThickness } = usePreviewAppearance();
+  const [container, setContainer] = useState<HTMLElement | null>(null);
+  const [availableWidth, setAvailableWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!autoFit || !keyboard || !container) {
+      // Drop any stale measurement so re-enabling auto-fit re-measures rather
+      // than flashing the board at the width from a previous board/container.
+      setAvailableWidth(null);
       return;
     }
-    try {
-      if (window.localStorage.getItem(AUTOFIT_DONE_KEY)) {
-        return;
-      }
-    } catch {
-      // localStorage unavailable (private mode / blocked): skip auto-fit rather
-      // than fitting on every load with no way to record that we did.
-      return;
-    }
-    const available = el.clientWidth - CONTAINER_PADDING_PX;
-    if (!(available > 0)) {
-      // Container not laid out yet; leave the flag unset so a later mount retries.
-      return;
-    }
-    const natural = boardNaturalWidth(keyboard, spacing, keycapWidth, caseThickness);
-    setSize(pickFitSize(natural, available));
-    try {
-      window.localStorage.setItem(AUTOFIT_DONE_KEY, "1");
-    } catch {
-      // Best-effort: if we can't record it, worst case is another fit next load.
-    }
-    // Intentionally keyed only on the keyboard: appearance knobs changing later
-    // are the user tuning things, which must not re-trigger auto-fit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyboard]);
+    const measure = () => {
+      const next = container.clientWidth - CONTAINER_PADDING_PX;
+      setAvailableWidth(next > 0 ? next : null);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [container, autoFit, keyboard]);
+
+  const zoom =
+    !autoFit || !keyboard || availableWidth === null
+      ? null
+      : fitZoom(
+          boardNaturalWidth(keyboard, spacing, keycapWidth, caseThickness),
+          availableWidth,
+        );
+  return { ref: setContainer, zoom };
 }

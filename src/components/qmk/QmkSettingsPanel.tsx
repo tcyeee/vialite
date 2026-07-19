@@ -39,6 +39,8 @@ export function SettingsRow({
   help,
   control,
   disabled = false,
+  className = "",
+  collapsed,
 }: {
   icon: ReactNode;
   label: string;
@@ -50,10 +52,22 @@ export function SettingsRow({
   control: ReactNode;
   /** Grey the row and show a not-allowed cursor when the setting is inert. */
   disabled?: boolean;
+  /** Extra classes on the row element (e.g. `settings-row-collapse`). */
+  className?: string;
+  /**
+   * When set, the row animates its height in/out (see `.settings-row-collapse`)
+   * instead of unmounting, and is taken out of the tab order while collapsed.
+   * Leave undefined for rows that are always visible.
+   */
+  collapsed?: boolean;
 }) {
   return (
     <li
-      className={`list-row items-center ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+      className={`list-row items-center ${disabled ? "cursor-not-allowed opacity-40" : ""} ${
+        collapsed === undefined ? "" : "settings-row-collapse"
+      } ${className}`}
+      {...(collapsed === undefined ? {} : { "data-open": String(!collapsed) })}
+      inert={collapsed === true}
     >
       <div className="btn btn-circle btn-ghost pointer-events-none text-brand-on-surface">{icon}</div>
       <div className="min-w-0">

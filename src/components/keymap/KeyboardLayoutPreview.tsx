@@ -218,6 +218,7 @@ export function KeyboardZoom({
   zoom,
   width,
   height,
+  live = false,
   children,
 }: {
   zoom: number;
@@ -225,10 +226,19 @@ export function KeyboardZoom({
   width: number;
   /** Natural (1×) outer height of the board, in px. */
   height: number;
+  /**
+   * True while auto-fit is driving the zoom, which changes it continuously as
+   * the container resizes. Drops the size transition so the board tracks the
+   * window exactly instead of easing toward each intermediate width.
+   */
+  live?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="keyboard-zoom" style={{ width: width * zoom, height: height * zoom }}>
+    <div
+      className={"keyboard-zoom" + (live ? " keyboard-zoom-live" : "")}
+      style={{ width: width * zoom, height: height * zoom }}
+    >
       <div style={{ width, height, transform: `scale(${zoom})`, transformOrigin: "top left" }}>
         {children}
       </div>
@@ -253,8 +263,20 @@ export function KeyboardZoom({
 export function KeyboardLayoutPreview({
   keyboard,
   layer = 0,
+  zoomOverride,
   ...overrides
-}: { keyboard: Keyboard; size?: PreviewSize; layer?: number } & PreviewAppearance) {
+}: {
+  keyboard: Keyboard;
+  size?: PreviewSize;
+  layer?: number;
+  /**
+   * Continuous zoom from auto-fit (`useAutoFitZoom`), which wins over the
+   * discrete 预览区域缩放 level. `null`/absent means auto-fit is off or hasn't
+   * measured yet, so the configured level applies. Named explicitly (not part of
+   * the `overrides` rest) so it never reaches {@link appearanceMetrics}.
+   */
+  zoomOverride?: number | null;
+} & PreviewAppearance) {
   const appearance = usePreviewAppearance();
   // Context supplies every value; an explicitly-passed prop overrides just that
   // one field (rest capture omits props the caller didn't pass, so `undefined`
@@ -273,13 +295,15 @@ export function KeyboardLayoutPreview({
     fontColor,
     fontPosition,
   } = { ...appearance, ...overrides };
-  const { PITCH, inset, outerRadius, innerRadius, showCase, zoom } = appearanceMetrics(
-    size,
-    spacing,
-    keycapWidth,
-    caseRadius,
-    caseThickness,
-  );
+  const {
+    PITCH,
+    inset,
+    outerRadius,
+    innerRadius,
+    showCase,
+    zoom: sizeZoom,
+  } = appearanceMetrics(size, spacing, keycapWidth, caseRadius, caseThickness);
+  const zoom = zoomOverride ?? sizeZoom;
   const posClass = fontPositionClass(fontPosition);
   const placed = useMemo(
     () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
@@ -357,6 +381,7 @@ export function KeyboardLayoutPreview({
   return (
     <KeyboardZoom
       zoom={zoom}
+      live={zoomOverride != null}
       width={plateWidth + caseThickness * 2}
       height={plateHeight + caseThickness * 2}
     >

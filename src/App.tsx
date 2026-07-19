@@ -4,7 +4,7 @@ import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
 import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
 import { KeyboardLayout, type KeyPart } from "./components/keymap/KeyboardLayout.tsx";
-import { useAutoFitPreviewSize } from "./components/keymap/autoFitSize.ts";
+import { useAutoFitZoom } from "./components/keymap/autoFitSize.ts";
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
@@ -118,10 +118,12 @@ function App() {
   const [attaching, setAttaching] = useState(false);
   const [errorInfo, setErrorInfo] = useState<ConnectErrorInfo | null>(null);
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
-  // Overflow-scrolling viewport around the interactive board; its width is
-  // independent of the board's, so auto-fit can measure it without feedback.
-  const boardViewportRef = useRef<HTMLDivElement | null>(null);
-  useAutoFitPreviewSize(boardViewportRef, keyboard);
+  // `boardViewportRef` goes on the overflow-scrolling viewport around the
+  // interactive board; its width is independent of the board's, so auto-fit can
+  // measure it without feedback. `autoFitZoom` is non-null only while
+  // 预览区域自适应大小 is on, overriding the discrete 预览区域缩放 level so the
+  // board tracks the window width as it changes.
+  const { ref: boardViewportRef, zoom: autoFitZoom } = useAutoFitZoom(keyboard);
   const [productName, setProductName] = useState<string | undefined>();
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("keymap");
@@ -633,6 +635,14 @@ function App() {
               )}
               {keyboard && mode === "keymap" && (
                 <>
+                  <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-brand-on-surface">
+                      {t("keyboardLayoutTitle")}
+                    </h1>
+                    <p className="mt-1 text-brand-on-surface-variant">
+                      {t("keyboardLayoutSubtitle")}
+                    </p>
+                  </div>
                   <LayerTabs
                     layers={keyboard.layers}
                     active={layer}
@@ -656,6 +666,7 @@ function App() {
                       <KeyboardLayout
                         keyboard={keyboard}
                         layer={layer}
+                        zoomOverride={autoFitZoom}
                         selected={selected}
                         onKeySelect={(row, col, part) => {
                           // Clicking the hold band selects that sub-part, which
