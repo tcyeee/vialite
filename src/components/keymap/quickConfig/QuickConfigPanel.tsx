@@ -521,7 +521,11 @@ export function QuickConfigPanel({
       {isBasic && (
         <div
           ref={basicRowRef}
-          className="scrollbar-hide quick-config-fullbleed flex flex-col gap-6 lg:flex-row lg:flex-nowrap lg:items-start lg:overflow-x-auto"
+          // lg:pl-[3px]:滚动区左缘与内容盒对齐,首列画到自身 border box 之外的东西
+          // (描边 / 阴影 / hover 位移)会被 overflow-x 裁掉,且没有可滚动的余量把它
+          // 露出来。左内边距属于起始侧的可滚动区域,scrollLeft 为 0 时正好留出这 3px。
+          // 只在 lg 生效:以下断点卡片纵向堆叠,不开横向滚动,也就无所谓裁剪。
+          className="scrollbar-hide quick-config-fullbleed flex flex-col gap-6 lg:flex-row lg:flex-nowrap lg:items-start lg:overflow-x-auto lg:pl-[3px]"
         >
           {/* Left column: physical keyboard grid + special keys (both inside
               BasicKeyboardGrid) followed by the config-settings block. */}
