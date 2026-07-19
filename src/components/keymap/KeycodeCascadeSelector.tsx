@@ -180,6 +180,14 @@ const CATEGORY_SUBGROUPS: Record<string, SubGrouping[]> = {
   Quantum: QUANTUM_SUBCATS,
 };
 
+/** Info-panel width in px, matching its `w-52` class (kept in sync by hand — it
+ *  feeds the fits-on-the-right test, which runs before the panel is laid out). */
+const INFO_PANEL_W = 208;
+
+/** How long the pointer must rest on a described keycode before the info panel
+ *  opens — long enough that scrubbing through a column doesn't flash it. */
+const INFO_DELAY_MS = 500;
+
 /** Icons for the two promoted clear keycodes in the first-level column. */
 const CLEAR_ICONS: Record<string, string> = {
   KC_NO: "mdi:eraser",
@@ -275,6 +283,15 @@ export function KeycodeCascadeSelector({
   const popoverRef = useRef<HTMLDivElement>(null);
   const [basePoint, setBasePoint] = useState<{ x: number; y: number } | null>(null);
   const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
+  // Whether the popover has already been placed for the *current* open, i.e. the
+  // initial clamp is done. Only then is the position transition enabled, so the
+  // popover appears at its final spot but animates any later re-clamp (drilling
+  // in widens it and can push it left off the viewport's right edge).
+  const placedRef = useRef(false);
+  // The selection-columns card, measured to decide which side the info panel
+  // opens on, and whether it fits to the right at all.
+  const columnsRef = useRef<HTMLDivElement>(null);
+  const [infoFlip, setInfoFlip] = useState(false);
 
   // Trigger mode: the popover is portalled to the body and positioned `fixed`,
   // so an ancestor's `overflow-hidden` or transform (e.g. the tap-dance / combo
@@ -386,6 +403,27 @@ export function KeycodeCascadeSelector({
     clearEntries.find((e) => e.qmkId === activeEntryId) ??
     null;
 
+  // The info panel only opens once the pointer has rested on a described keycode
+  // for a beat, so sweeping down a column doesn't strobe a panel on every row.
+  // Once open it stays open and just swaps content — only leaving the described
+  // items entirely closes it (and then it fades out rather than vanishing).
+  const [infoShown, setInfoShown] = useState(false);
+  const hasInfo = activeEntry !== null;
+  useEffect(() => {
+    if (!hasInfo) {
+      setInfoShown(false);
+      return;
+    }
+    if (infoShown) return;
+    const id = window.setTimeout(() => setInfoShown(true), INFO_DELAY_MS);
+    return () => window.clearTimeout(id);
+  }, [hasInfo, infoShown]);
+  // Keep the last described keycode around so the panel still has something to
+  // render while it animates out, after `activeEntry` has already gone null.
+  const lastInfoEntry = useRef<KeycodeDef | null>(null);
+  if (activeEntry) lastInfoEntry.current = activeEntry;
+  const infoEntry = activeEntry ?? lastInfoEntry.current;
+
   // Middle column for the active category, with layer keycodes folded into
   // groups, plus the currently-expanded group's sub-column (if any).
   const activeMiddle = useMemo(
@@ -462,7 +500,11 @@ export function KeycodeCascadeSelector({
   // mode the category column stays under the pointer and the cascade reads
   // left→right.
   useLayoutEffect(() => {
-    if (!open || !basePoint) return;
+    if (!open) {
+      placedRef.current = false;
+      return;
+    }
+    if (!basePoint) return;
     const el = popoverRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -470,10 +512,32 @@ export function KeycodeCascadeSelector({
     const left = Math.max(margin, Math.min(basePoint.x, window.innerWidth - rect.width - margin));
     const top = Math.max(margin, Math.min(basePoint.y, window.innerHeight - rect.height - margin));
     setMenuPos((p) => (p && p.left === left && p.top === top ? p : { left, top }));
-    // Re-clamp as the user drills in: revealing the middle / sub columns and the
-    // info panel widens the popover, which could otherwise grow past the
-    // viewport's right edge.
+    // Runs before paint, so the initial placement commits together with the
+    // transition being switched on — the popover never animates in from the raw
+    // click point, only subsequent re-clamps animate.
+    placedRef.current = true;
+    // Re-clamp as the user drills in: revealing the middle / sub columns widens
+    // the popover, which could otherwise grow past the viewport's right edge.
+    // (The info panel is out of flow and doesn't count here — it flips sides
+    // instead; see the layout effect below.)
   }, [open, basePoint, activeCat, activeGroupKey, activeEntryId]);
+
+  // Side the info panel opens on: to the right of the selection columns by
+  // default, flipped to their left when the viewport's right edge would clip it
+  // — but only if the left side actually has room, otherwise flipping would just
+  // move the clipping to the other edge. Re-run as the user drills in, since
+  // each revealed column pushes the columns card's right edge further right.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const el = columnsRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    // w-52 panel + its 8px gap + an 8px viewport margin.
+    const needed = INFO_PANEL_W + 8 + 8;
+    const fitsRight = rect.right + needed <= window.innerWidth;
+    const fitsLeft = rect.left - needed >= 0;
+    setInfoFlip(!fitsRight && fitsLeft);
+  }, [open, menuPos, basePoint, activeCat, activeGroupKey, activeEntryId]);
 
   const emit = (entry: KeycodeDef) => {
     if (keepPicked) setPickedId(entry.qmkId);
@@ -500,13 +564,14 @@ export function KeycodeCascadeSelector({
   // device-provided title, or the active group's shared description (e.g. a layer
   // group's MO/TG/… help). Describes the *selected keycode*, not its category —
   // the category blurb is shown separately (see `catDesc`).
+  // Reads `infoEntry`, not `activeEntry`, so the copy survives the fade-out.
   const keyDesc = (() => {
-    if (!activeEntry) return null;
-    const clear = CLEAR_LABELS[activeEntry.qmkId];
+    if (!infoEntry) return null;
+    const clear = CLEAR_LABELS[infoEntry.qmkId];
     if (clear) return t(clear.title);
-    const help = KEYCODE_HELP[activeEntry.qmkId];
+    const help = KEYCODE_HELP[infoEntry.qmkId];
     if (help) return t(help);
-    if (activeEntry.title && activeEntry.title !== activeEntry.label) return activeEntry.title;
+    if (infoEntry.title && infoEntry.title !== infoEntry.label) return infoEntry.title;
     if (activeGroup?.descKey) return t(activeGroup.descKey);
     return null;
   })();
@@ -517,8 +582,8 @@ export function KeycodeCascadeSelector({
     return cat ? t(cat) : null;
   })();
 
-  const activeMacroIdx = activeEntry ? macroIndex(activeEntry.qmkId) : null;
-  const activeTapDanceIdx = activeEntry ? tapDanceIndex(activeEntry.qmkId) : null;
+  const activeMacroIdx = infoEntry ? macroIndex(infoEntry.qmkId) : null;
+  const activeTapDanceIdx = infoEntry ? tapDanceIndex(infoEntry.qmkId) : null;
 
   const macroActionKind = (a: MacroAction): string => {
     if (a.kind === "text") return t("macroActionText");
@@ -549,6 +614,13 @@ export function KeycodeCascadeSelector({
     top: menuPos?.top ?? basePoint?.y ?? 0,
   };
 
+  // Smooth out the re-clamp that happens when drilling in widens the popover past
+  // the viewport edge and shifts it left; the first placement is exempt (see
+  // `placedRef`), and reduced-motion users get the instant jump.
+  const menuMotion = placedRef.current
+    ? "motion-safe:transition-[left,top] motion-safe:duration-200 motion-safe:ease-out"
+    : "";
+
   const popover = open && (
     // The popover paints its own base-100 surfaces, so it must also set its own
     // foreground — it can be embedded in a context with an inherited text color
@@ -556,16 +628,19 @@ export function KeycodeCascadeSelector({
     // it white-on-white.
     <div
       ref={popoverRef}
-      className="fixed z-50 flex flex-col gap-1 text-base-content"
+      className={`fixed z-50 flex flex-col gap-1 text-base-content ${menuMotion}`}
       style={menuStyle}
       // Auto-collapse the drilled-in columns back to the category column when
       // the pointer leaves the popover (React onMouseLeave doesn't fire while
       // moving between the popover's own columns, only on a real exit).
       onMouseLeave={collapse}
     >
-            <div className="flex items-start gap-2">
+            <div className="relative flex items-start">
             {/* Selection columns (category / middle / sub) grouped into one card. */}
-            <div className="flex overflow-hidden rounded-box bg-base-100 shadow ring-1 ring-base-content/10">
+            <div
+              ref={columnsRef}
+              className="flex overflow-hidden rounded-box bg-base-100 shadow ring-1 ring-base-content/10"
+            >
             <ul data-lenis-prevent className="menu menu-sm max-h-72 w-36 flex-nowrap overflow-y-auto border-r border-base-content/10 p-1">
               {/* 清空 / 穿透: committed straight from the first level (they need
                   no drill-in), separated from the categories below by a rule so
@@ -574,7 +649,13 @@ export function KeycodeCascadeSelector({
                 <li key={entry.qmkId}>
                   <button
                     type="button"
-                    className={`justify-start ${pickedId === entry.qmkId ? "menu-active" : ""}`}
+                    // Highlighted on hover like the categories below (and the
+                    // level-2 groups / level-3 entries), not only when picked.
+                    className={`justify-start ${
+                      activeEntryId === entry.qmkId || pickedId === entry.qmkId
+                        ? "menu-active"
+                        : ""
+                    }`}
                     title={entry.qmkId}
                     // Collapse the drilled-in columns: these belong to no
                     // category, so only the info panel should follow the hover.
@@ -695,14 +776,36 @@ export function KeycodeCascadeSelector({
                 raw encoding. Visually detached (own gap + rounded corners) from
                 the selection columns; not selectable, purely informational.
                 Only shown while the pointer is over a level-2+ item (a described
-                keycode) — hovering just a category leaves it hidden. */}
-            {activeEntry && (
-            <div data-lenis-prevent className="max-h-72 w-52 overflow-y-auto rounded-box bg-base-100 p-3 shadow ring-1 ring-base-content/10">
+                keycode) — hovering just a category leaves it hidden — and only
+                after it has rested there for INFO_DELAY_MS. Stays mounted once
+                shown (kept fed by `infoEntry`) so it can animate back out.
+                Styled as an inverted `neutral` tooltip surface rather than
+                another base-100 card, so it reads as annotation rather than as
+                one more column of the menu. */}
+            {infoEntry && (
+            <div
+              data-lenis-prevent
+              aria-hidden={!infoShown}
+              // Out of flow (absolute) so flipping sides never shifts the
+              // selection columns out from under the pointer, and so revealing
+              // it doesn't widen the popover the clamp effect measures.
+              className={`absolute top-0 max-h-72 w-52 overflow-y-auto rounded-box bg-neutral p-3 text-neutral-content shadow-lg ring-1 ring-neutral/40 motion-safe:transition motion-safe:duration-150 motion-safe:ease-out ${
+                infoFlip ? "right-full mr-2 origin-right" : "left-full ml-2 origin-left"
+              } ${
+                infoShown
+                  ? "scale-100 opacity-100"
+                  : // Not just invisible but inert, so the faded-out panel can't
+                    // swallow hovers over whatever sits beside the menu.
+                    `pointer-events-none scale-95 opacity-0 ${
+                      infoFlip ? "translate-x-1" : "-translate-x-1"
+                    }`
+              }`}
+            >
                 <div className="flex flex-col gap-3">
                   {/* 1. Keycode encoding — always first. */}
                   <div>
                     <div className="mb-1 text-xs opacity-50">{zh ? "按键编码" : "Keycode"}</div>
-                    <div className="font-mono text-sm break-all">{activeEntry.qmkId}</div>
+                    <div className="font-mono text-sm break-all">{infoEntry.qmkId}</div>
                   </div>
                   {/* 2. Per-key description. */}
                   {keyDesc && (
@@ -721,7 +824,9 @@ export function KeycodeCascadeSelector({
                         <div className="flex flex-col gap-1 text-xs">
                           {macros[activeMacroIdx].map((a, i) => (
                             <div key={i} className="flex items-start gap-1">
-                              <span className="badge badge-ghost badge-xs shrink-0">
+                              {/* Outline, not ghost: ghost paints a base-200
+                                  chip that disappears on the neutral surface. */}
+                              <span className="badge badge-outline badge-xs shrink-0">
                                 {macroActionKind(a)}
                               </span>
                               <span className="break-all">{macroActionValue(a)}</span>
