@@ -12,9 +12,10 @@ import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
  * radii all grow and shrink together — which is what this setting is for. The
  * factors match the px-per-unit sizes this used to re-render at (56/68/82/98).
  */
-export type PreviewSize = "s" | "m" | "l" | "xl";
+export type PreviewSize = "xs" | "s" | "m" | "l" | "xl";
 export const BASE_UNIT = 68;
 export const PREVIEW_ZOOM: Record<PreviewSize, number> = {
+  xs: 44 / BASE_UNIT,
   s: 56 / BASE_UNIT,
   m: 1,
   l: 82 / BASE_UNIT,
@@ -49,8 +50,14 @@ export const CASE_RADIUS_PX: Record<SpacingLevel, number> = { s: 4, m: 10, l: 18
  * Keycap label font size (字体大小) as a 4-level setting: a multiplier applied to
  * the label/icon size via the `--key-font-scale` CSS var, so `m` = 1× is the
  * baseline and the others scale the on-cap text without touching cap geometry.
+ *
+ * Independent of {@link PreviewSize}: display size is a whole-board "photo" zoom
+ * (see {@link KeyboardZoom}) that scales labels along with everything else, so it
+ * has nothing to do with this label-relative-to-cap knob. They were once the same
+ * type only because both happened to be 4-level s→xl ladders; the display-size
+ * ladder now also has an `xs` for auto-fit, which must not leak into font size.
  */
-export type FontSize = PreviewSize;
+export type FontSize = "s" | "m" | "l" | "xl";
 export const FONT_SIZES: FontSize[] = ["s", "m", "l", "xl"];
 export const FONT_SCALES: Record<FontSize, number> = { s: 0.8, m: 1, l: 1.25, xl: 1.5 };
 

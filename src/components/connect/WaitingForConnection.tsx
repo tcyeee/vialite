@@ -183,8 +183,6 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
         </div>
 
         <div className="mx-auto max-w-lg space-y-4 transition-opacity duration-300" style={fadeStyle}>
-          <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">{t("waitingTitle")}</h1>
-
           {support !== "supported" && (
             <div
               role="alert"
@@ -197,6 +195,8 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
               </div>
             </div>
           )}
+
+          <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">{t("waitingTitle")}</h1>
 
           <div className="pt-4">
             <button
@@ -235,7 +235,7 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
           interactive UI — since it's a troubleshooting aid, not primary content. */}
       {hasProblem && (
         <div
-          className="fixed right-4 bottom-4 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-outline/20 bg-brand-surface-variant/20 px-3 py-2 text-left text-xs text-brand-on-surface-variant/70 transition-opacity duration-300"
+          className="fixed right-4 bottom-4 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-outline/20 bg-brand-surface-variant/20 px-3 py-2 text-left text-[11px] leading-tight text-brand-on-surface-variant/70 transition-opacity duration-300"
           style={fadeStyle}
         >
           <div className="mb-1 flex items-center gap-1.5">
@@ -256,7 +256,10 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
             <dt className="opacity-60">{t("diagBuild")}</dt>
             <dd className="font-mono">{buildTime}</dd>
             <dt className="opacity-60">{t("diagUa")}</dt>
-            <dd className="font-mono break-all select-all">{navigator.userAgent}</dd>
+            {/* Display is truncated to one line — the UA is for the Copy button /
+                bug reports, not for the user to read; the full string still gets
+                copied. */}
+            <dd className="truncate font-mono">{navigator.userAgent}</dd>
           </dl>
         </div>
       )}

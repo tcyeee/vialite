@@ -44,7 +44,7 @@ const FONT_SIZE_KEY = "vialite-color-font-size";
 const FONT_COLOR_KEY = "vialite-color-font-color";
 const FONT_POSITION_KEY = "vialite-color-font-position";
 
-const SIZES: PreviewSize[] = ["s", "m", "l", "xl"];
+const SIZES: PreviewSize[] = ["xs", "s", "m", "l", "xl"];
 
 function readStoredFontSize(): FontSize {
   try {

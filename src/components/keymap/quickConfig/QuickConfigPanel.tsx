@@ -154,8 +154,8 @@ const VISIBLE_CATEGORIES = (() => {
 export type ComboEditTarget = "macro" | "tapdance" | "combo" | "color";
 
 /** Preview display sizes, in the same order as the 个性化 page's 显示尺寸 slider. */
-const PREVIEW_SIZES: PreviewSize[] = ["s", "m", "l", "xl"];
-const PREVIEW_SIZE_LABELS = { s: "S", m: "M", l: "L", xl: "XL" } as const;
+const PREVIEW_SIZES: PreviewSize[] = ["xs", "s", "m", "l", "xl"];
+const PREVIEW_SIZE_LABELS = { xs: "XS", s: "S", m: "M", l: "L", xl: "XL" } as const;
 
 /**
  * The two Multi-Function categories the 多功能 card offers:

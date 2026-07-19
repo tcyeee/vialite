@@ -4,6 +4,7 @@ import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
 import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
 import { KeyboardLayout, type KeyPart } from "./components/keymap/KeyboardLayout.tsx";
+import { useAutoFitPreviewSize } from "./components/keymap/autoFitSize.ts";
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
 import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
@@ -117,6 +118,10 @@ function App() {
   const [attaching, setAttaching] = useState(false);
   const [errorInfo, setErrorInfo] = useState<ConnectErrorInfo | null>(null);
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
+  // Overflow-scrolling viewport around the interactive board; its width is
+  // independent of the board's, so auto-fit can measure it without feedback.
+  const boardViewportRef = useRef<HTMLDivElement | null>(null);
+  useAutoFitPreviewSize(boardViewportRef, keyboard);
   const [productName, setProductName] = useState<string | undefined>();
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("keymap");
@@ -645,6 +650,7 @@ function App() {
                       // click still re-selects the cap, it just doesn't collapse
                       // the card (see ExpandableCardColumn's outside-click close).
                       data-keyboard-preview
+                      ref={boardViewportRef}
                       className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2"
                     >
                       <KeyboardLayout

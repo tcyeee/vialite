@@ -10,6 +10,7 @@ import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { LayerTabs } from "../keymap/LayerTabs.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
+  FONT_SIZES,
   KeyboardLayoutPreview,
   SPACING_LEVELS,
   type FontPosition,
@@ -20,8 +21,8 @@ const CASE_RECENT_KEY = "vialite-color-case-recent";
 const PLATE_RECENT_KEY = "vialite-color-plate-recent";
 const FONT_RECENT_KEY = "vialite-color-font-recent";
 const MAX_RECENT_COLORS = 3;
-const SIZES: PreviewSize[] = ["s", "m", "l", "xl"];
-const LEVEL_LABELS = { s: "S", m: "M", l: "L", xl: "XL" } as const;
+const SIZES: PreviewSize[] = ["xs", "s", "m", "l", "xl"];
+const LEVEL_LABELS = { xs: "XS", s: "S", m: "M", l: "L", xl: "XL" } as const;
 
 function readStoredColors(key: string): string[] {
   try {
@@ -165,7 +166,7 @@ export function KeyboardColorPanel({
   );
 
   const sizeIndex = SIZES.indexOf(size);
-  const fontSizeIndex = SIZES.indexOf(fontSize);
+  const fontSizeIndex = FONT_SIZES.indexOf(fontSize);
   const spacingIndex = SPACING_LEVELS.indexOf(spacing);
   const keycapWidthIndex = SPACING_LEVELS.indexOf(keycapWidth);
   const caseRadiusIndex = SPACING_LEVELS.indexOf(caseRadius);
@@ -178,7 +179,7 @@ export function KeyboardColorPanel({
   };
 
   const onFontSizeChange = (index: number) => {
-    setFontSize(SIZES[Math.min(SIZES.length - 1, Math.max(0, index))]);
+    setFontSize(FONT_SIZES[Math.min(FONT_SIZES.length - 1, Math.max(0, index))]);
   };
 
   const onSpacingChange = (index: number) => {
@@ -390,7 +391,7 @@ export function KeyboardColorPanel({
                 <input
                   type="range"
                   min={0}
-                  max={SIZES.length - 1}
+                  max={FONT_SIZES.length - 1}
                   step={1}
                   value={fontSizeIndex}
                   onChange={(e) => onFontSizeChange(Number(e.target.value))}
