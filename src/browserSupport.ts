@@ -17,7 +17,7 @@ export type SupportStatus = "supported" | "insecure" | "unsupported" | "inapp";
  * those fall through to `unsupported` anyway and need no special-casing here.
  */
 const IN_APP_UA =
-  /MicroMessenger|\bQQ\/|QQBrowser\/|\bWeibo|AlipayClient|DingTalk|Lark\/|Feishu|baiduboxapp|BaiduHD|UCBrowser|UBrowser|Kwai|ksNebula|FBAN|FBAV|Instagram|\bLine\/|SnapChat|TikTok|musical_ly|aweme|BytedanceWebview|KAKAOTALK|\bWhatsApp|\bDouyin/i;
+  /MicroMessenger|\bQQ\/|QQEX|QQBrowser\/|QQWebContentView|\bWeibo|AlipayClient|DingTalk|Lark\/|Feishu|baiduboxapp|BaiduHD|UCBrowser|UBrowser|Kwai|ksNebula|FBAN|FBAV|Instagram|\bLine\/|SnapChat|TikTok|musical_ly|aweme|BytedanceWebview|KAKAOTALK|\bWhatsApp|\bDouyin/i;
 
 /** Android System WebView marker; real Chrome/Edge/Opera never include it. */
 const ANDROID_WEBVIEW_UA = /;\s*wv\)/i;

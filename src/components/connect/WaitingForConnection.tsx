@@ -94,6 +94,20 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
     const d = new Date(__BUILD_TIME__);
     return Number.isNaN(d.getTime()) ? __BUILD_TIME__ : d.toLocaleString();
   })();
+  // One-tap copy of the whole diagnostics block, so a bug report can paste it
+  // verbatim instead of hand-transcribing the UA. `copied` briefly flips the
+  // label; clipboard may be unavailable in an insecure context, so it's guarded.
+  const [copied, setCopied] = useState(false);
+  const copyDiagnostics = () => {
+    const text = `${t("diagBrowser")}: ${browser.name} ${browser.version}\n${t("diagBuild")}: ${buildTime}\n${t("diagUa")}: ${navigator.userAgent}`;
+    navigator.clipboard?.writeText(text).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      () => {},
+    );
+  };
 
   // Everything except the 3D model fades out during the zoom exit.
   const fadeStyle = { opacity: zoom ? 0 : 1 };
@@ -216,22 +230,32 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
       </div>
 
       {/* Bottom-right diagnostics: only appears once something has gone wrong,
-          giving the user the browser + build identity to quote in a report. */}
+          giving the user the browser + build identity to quote in a report. Kept
+          deliberately low-key — subdued colors, no z-index so it sits under the
+          interactive UI — since it's a troubleshooting aid, not primary content. */}
       {hasProblem && (
         <div
-          className="fixed right-4 bottom-4 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-outline/30 bg-brand-surface-variant/40 px-3 py-2 text-left text-xs text-brand-on-surface-variant backdrop-blur-md transition-opacity duration-300"
+          className="fixed right-4 bottom-4 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-outline/20 bg-brand-surface-variant/20 px-3 py-2 text-left text-xs text-brand-on-surface-variant/70 transition-opacity duration-300"
           style={fadeStyle}
         >
-          <div className="mb-1 flex items-center gap-1.5 font-semibold text-brand-on-surface">
-            <Icon icon="mdi:information-outline" className="h-4 w-4" />
-            {t("diagTitle")}
+          <div className="mb-1 flex items-center gap-1.5">
+            <Icon icon="mdi:information-outline" className="h-3.5 w-3.5 opacity-60" />
+            <span className="font-medium opacity-80">{t("diagTitle")}</span>
+            <button
+              type="button"
+              onClick={copyDiagnostics}
+              className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 opacity-70 transition hover:bg-brand-on-surface/10 hover:opacity-100"
+            >
+              <Icon icon={copied ? "mdi:check" : "mdi:content-copy"} className="h-3.5 w-3.5" />
+              {t(copied ? "diagCopied" : "diagCopy")}
+            </button>
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 tabular-nums">
-            <dt className="opacity-70">{t("diagBrowser")}</dt>
+            <dt className="opacity-60">{t("diagBrowser")}</dt>
             <dd className="font-mono">{`${browser.name} ${browser.version}`}</dd>
-            <dt className="opacity-70">{t("diagBuild")}</dt>
+            <dt className="opacity-60">{t("diagBuild")}</dt>
             <dd className="font-mono">{buildTime}</dd>
-            <dt className="opacity-70">{t("diagUa")}</dt>
+            <dt className="opacity-60">{t("diagUa")}</dt>
             <dd className="font-mono break-all select-all">{navigator.userAgent}</dd>
           </dl>
         </div>

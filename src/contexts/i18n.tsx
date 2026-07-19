@@ -561,8 +561,8 @@ const MESSAGES = {
   },
   browserInappTitle: { en: "Open in a real browser", zh: "请在浏览器中打开" },
   browserInappDesc: {
-    en: "You're viewing this inside an app's built-in browser, which can't open the WebHID device picker. Tap the menu (⋯) and choose \"Open in browser\", then use desktop Chrome, Edge, or Opera.",
-    zh: "你正在应用内置浏览器中浏览本页面,它无法弹出 WebHID 设备选择窗口。请点击右上角菜单(⋯)选择“在浏览器中打开”,并使用电脑版 Chrome、Edge 或 Opera 访问。",
+    en: "App built-in browsers (WeChat, QQ, …) can't connect to a keyboard. Copy this page's link and open it in desktop Chrome, Edge, or Opera.",
+    zh: "微信、QQ 等 App 的内置浏览器无法连接键盘。请复制本页链接,用电脑版 Chrome、Edge 或 Opera 打开。",
   },
   // Shown on the connect screen alongside the debug-log toggle when something
   // has gone wrong, pointing at how the toggle helps.
@@ -576,6 +576,8 @@ const MESSAGES = {
   diagBrowser: { en: "Browser", zh: "浏览器" },
   diagBuild: { en: "Build", zh: "构建时间" },
   diagUa: { en: "UA", zh: "UA" },
+  diagCopy: { en: "Copy", zh: "复制" },
+  diagCopied: { en: "Copied", zh: "已复制" },
 
   // LayerTabs
   layerN: { en: "Layer {n}", zh: "层 {n}" },
