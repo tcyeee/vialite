@@ -580,6 +580,16 @@ const MESSAGES = {
     en: "When on, assigning a key automatically selects the next key so you can configure them in sequence.",
     zh: "开启后,设置完成一个按键会自动选中下一个按键,便于连续配置。",
   },
+  previewScale: { en: "Preview scale", zh: "预览区域缩放" },
+  previewScaleHelp: {
+    en: "Display size of the keyboard preview. Same setting as “Display size” on the Personalization page.",
+    zh: "键盘预览区域的显示尺寸,与个性化页面的「显示尺寸」为同一项配置。",
+  },
+  previewStyle: { en: "Preview style", zh: "配置预览样式" },
+  previewStyleHelp: {
+    en: "Open the Personalization page to tune keycap, case, and font styling.",
+    zh: "前往个性化页面调整键帽、外壳与字体等样式。",
+  },
   pickInnerKey: { en: "{template} — now pick the inner key", zh: "{template}——请继续选择内部按键" },
   cancel: { en: "Cancel", zh: "取消" },
   cannotNest: {

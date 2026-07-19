@@ -6,6 +6,8 @@ import {
   type KeycodeDef,
 } from "../../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
+import { usePreviewAppearance } from "../../../contexts/previewAppearance.tsx";
+import type { PreviewSize } from "../KeyboardLayoutPreview.tsx";
 import type { Keyboard } from "../../../protocol/keyboard.ts";
 import { HelpIcon } from "../../common/HelpIcon.tsx";
 import { useHorizontalWheelScroll } from "../../common/useHorizontalWheelScroll.ts";
@@ -146,8 +148,13 @@ const VISIBLE_CATEGORIES = (() => {
   return out;
 })();
 
-/** Editor pages the Combo Keys cards can jump to via their hover "编辑" action. */
-export type ComboEditTarget = "macro" | "tapdance" | "combo";
+/** Editor pages the Combo Keys cards can jump to via their hover "编辑" action.
+ *  "color" is the 个性化 page, reached from the 配置预览样式 row instead. */
+export type ComboEditTarget = "macro" | "tapdance" | "combo" | "color";
+
+/** Preview display sizes, in the same order as the 个性化 page's 显示尺寸 slider. */
+const PREVIEW_SIZES: PreviewSize[] = ["s", "m", "l", "xl"];
+const PREVIEW_SIZE_LABELS = { s: "S", m: "M", l: "L", xl: "XL" } as const;
 
 /**
  * The two Multi-Function categories the 多功能 card offers:
@@ -214,6 +221,11 @@ export function QuickConfigPanel({
   dualRoleTap = false,
 }: Props) {
   const { t } = useI18n();
+  // 预览区域缩放 is literally the 个性化 page's 显示尺寸 setting — same context,
+  // same localStorage entry — surfaced here so it can be tweaked without leaving
+  // the keymap page.
+  const { size: previewSize, setSize: setPreviewSize } = usePreviewAppearance();
+  const previewSizeIndex = PREVIEW_SIZES.indexOf(previewSize);
   // The "详细设置" pill shown at the top-right of an expanded card, jumping to the
   // matching QMK Settings section. Its own click is stopped from bubbling to the
   // card so it never doubles as a keycode assignment.
@@ -449,6 +461,38 @@ export function QuickConfigPanel({
                   onChange={(e) => onAutoAdvanceChange(e.target.checked)}
                 />
               </label>
+              <label className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm">
+                <span>{t("previewScale")}</span>
+                <HelpIcon text={t("previewScaleHelp")} />
+                <input
+                  type="range"
+                  min={0}
+                  max={PREVIEW_SIZES.length - 1}
+                  step={1}
+                  value={previewSizeIndex}
+                  onChange={(e) =>
+                    setPreviewSize(
+                      PREVIEW_SIZES[
+                        Math.min(PREVIEW_SIZES.length - 1, Math.max(0, Number(e.target.value)))
+                      ],
+                    )
+                  }
+                  className="range range-primary range-xs w-32"
+                  aria-label={t("previewScale")}
+                />
+                <span className="w-6 shrink-0 text-right tabular-nums opacity-70">
+                  {PREVIEW_SIZE_LABELS[previewSize]}
+                </span>
+              </label>
+              <button
+                type="button"
+                className="mt-1 flex w-fit cursor-pointer items-center gap-2 text-sm"
+                onClick={() => onNavigate("color")}
+              >
+                <span>{t("previewStyle")}</span>
+                <HelpIcon text={t("previewStyleHelp")} />
+                <Icon icon="mdi:chevron-right" className="text-base opacity-70" aria-hidden="true" />
+              </button>
               {/* 仅用于将快捷配置区域的高度撑起来的占位块。 */}
               <div className="h-[200px]" aria-hidden="true" />
             </div>

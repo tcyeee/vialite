@@ -91,7 +91,7 @@ export function SiteSettingsPanel() {
               <select
                 className="select select-sm w-32"
                 value={theme}
-                onChange={(e) => setTheme(e.target.value as "light" | "dark")}
+                onChange={(e) => setTheme(e.target.value as "light" | "dark", e.currentTarget)}
                 aria-label={t("themeTitle")}
               >
                 <option value="light">{t("themeLight")}</option>

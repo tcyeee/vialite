@@ -17,6 +17,7 @@ import {
   appearanceMetrics,
   FONT_SCALES,
   fontPositionClass,
+  KeyboardZoom,
   shapeStyle,
 } from "./KeyboardLayoutPreview.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
@@ -70,7 +71,7 @@ export function KeyboardLayout({
     fontColor,
     fontPosition,
   } = usePreviewAppearance();
-  const { PITCH, inset, outerRadius, innerRadius, showCase } = appearanceMetrics(
+  const { PITCH, inset, outerRadius, innerRadius, showCase, zoom } = appearanceMetrics(
     size,
     spacing,
     keycapWidth,
@@ -137,8 +138,10 @@ export function KeyboardLayout({
     // changes after the initial load.
     [keyboard, keyboard.layoutOptions],
   );
+  const plateWidth = placed.width * PITCH + inset;
+  const plateHeight = placed.height * PITCH + inset;
 
-  return (
+  const board = (
     <div
       className={"keyboard-case" + (showCase && depth ? " keyboard-case-shaded" : "")}
       style={{
@@ -155,8 +158,8 @@ export function KeyboardLayout({
           (keycapBorder ? " keyboard-layout-bordered" : "")
         }
         style={{
-          width: placed.width * PITCH + inset,
-          height: placed.height * PITCH + inset,
+          width: plateWidth,
+          height: plateHeight,
           background: plateColor,
           borderRadius: innerRadius,
           // Shared 字体颜色: cascades to `.key`/`.key-icon` (both `color: inherit`).
@@ -258,6 +261,21 @@ export function KeyboardLayout({
           );
         })}
       </div>
+    </div>
+  );
+
+  // The hover card and the right-click cascade are positioned in viewport
+  // coordinates, so they stay outside <KeyboardZoom> — a transformed ancestor
+  // would become their containing block and scale them along with the board.
+  return (
+    <>
+      <KeyboardZoom
+        zoom={zoom}
+        width={plateWidth + caseThickness * 2}
+        height={plateHeight + caseThickness * 2}
+      >
+        {board}
+      </KeyboardZoom>
       {hover && (
         <KeyInfoCard
           qmkId={hover.qmkId}
@@ -289,6 +307,6 @@ export function KeyboardLayout({
           />
         </div>
       )}
-    </div>
+    </>
   );
 }

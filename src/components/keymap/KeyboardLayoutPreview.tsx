@@ -1,17 +1,30 @@
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
 
-/** Cap size in px per KLE unit, keyed by the display-size setting. */
+/**
+ * Display size (显示尺寸) is a pure *visual* zoom: the board is always laid out
+ * at {@link BASE_UNIT} px per KLE unit and then scaled as a whole via a CSS
+ * transform ({@link KeyboardZoom}). Nothing is re-measured or re-rendered at a
+ * different size, so labels, icons, borders, shadows, case thickness and corner
+ * radii all grow and shrink together — which is what this setting is for. The
+ * factors match the px-per-unit sizes this used to re-render at (56/68/82/98).
+ */
 export type PreviewSize = "s" | "m" | "l" | "xl";
-export const PREVIEW_UNITS: Record<PreviewSize, number> = { s: 56, m: 68, l: 82, xl: 98 };
+export const BASE_UNIT = 68;
+export const PREVIEW_ZOOM: Record<PreviewSize, number> = {
+  s: 56 / BASE_UNIT,
+  m: 1,
+  l: 82 / BASE_UNIT,
+  xl: 98 / BASE_UNIT,
+};
 
 /**
  * Key spacing (按键间距) as a 4-level setting. The gap isn't an absolute px
- * value — each level is a fraction of one keycap's width, so the spacing (and
- * therefore the whole board's size) scales with the display size too.
+ * value — each level is a fraction of one keycap's width, so it stays
+ * proportional however the cap ratios are tuned.
  */
 export type SpacingLevel = "s" | "m" | "l" | "xl";
 export const SPACING_LEVELS: SpacingLevel[] = ["s", "m", "l", "xl"];
@@ -26,8 +39,9 @@ export const SPACING_RATIOS: Record<SpacingLevel, number> = { s: 0.05, m: 0.09, 
 export const CAP_RATIOS: Record<SpacingLevel, number> = { s: 0.8, m: 0.87, l: 0.93, xl: 1.0 };
 
 /**
- * Case corner radius (外壳圆角) as a 4-level setting, in px. Unlike spacing it's
- * an absolute px value — the bezel radius doesn't scale with the display size.
+ * Case corner radius (外壳圆角) as a 4-level setting, in px at 1×. Unlike spacing
+ * it's an absolute px value rather than a ratio; the visual zoom scales it along
+ * with everything else.
  */
 export const CASE_RADIUS_PX: Record<SpacingLevel, number> = { s: 4, m: 10, l: 18, xl: 28 };
 
@@ -123,7 +137,7 @@ export function shapeStyle(
   return style;
 }
 
-/** Derived px geometry for a given display size + appearance settings. */
+/** Derived px geometry for the appearance settings, at 1× (pre-zoom). */
 export interface AppearanceMetrics {
   /** Per-unit advance (one pitch cell), in px. */
   PITCH: number;
@@ -135,14 +149,19 @@ export interface AppearanceMetrics {
   innerRadius: number;
   /** Whether the case bezel is drawn at all (thickness > 0). */
   showCase: boolean;
+  /** Visual zoom factor for the finished board — see {@link KeyboardZoom}. */
+  zoom: number;
 }
 
 /**
- * Resolves the display size + appearance knobs into the concrete px metrics both
+ * Resolves the appearance knobs into the concrete px metrics both
  * {@link KeyboardLayoutPreview} and the interactive KeyboardLayout render from,
  * so the two boards stay pixel-identical in geometry. Keycap width sets the cap
  * size, key spacing sets the (constant) gap, and the pitch is their sum — so each
- * knob is independent; display size (UNIT) zooms everything uniformly.
+ * knob is independent.
+ *
+ * These are always the 1× metrics: display size doesn't enter the layout math at
+ * all, it only comes back out as `zoom` for the caller's {@link KeyboardZoom}.
  */
 export function appearanceMetrics(
   size: PreviewSize,
@@ -151,16 +170,62 @@ export function appearanceMetrics(
   caseRadius: SpacingLevel,
   caseThickness: number,
 ): AppearanceMetrics {
-  const UNIT = PREVIEW_UNITS[size];
-  const cap = UNIT * CAP_RATIOS[keycapWidth];
-  const inset = UNIT * SPACING_RATIOS[spacing];
+  const cap = BASE_UNIT * CAP_RATIOS[keycapWidth];
+  const inset = BASE_UNIT * SPACING_RATIOS[spacing];
   const PITCH = cap + inset;
   // Concentric corners: the plate's inner radius is the case's outer radius less
   // the bezel thickness, so the two arcs stay parallel. Clamp at 5 — once the
   // bezel is thicker than the outer radius the inner corner is essentially square.
   const outerRadius = CASE_RADIUS_PX[caseRadius];
   const innerRadius = Math.max(5, outerRadius - caseThickness + 5);
-  return { PITCH, inset, outerRadius, innerRadius, showCase: caseThickness > 0 };
+  return {
+    PITCH,
+    inset,
+    outerRadius,
+    innerRadius,
+    showCase: caseThickness > 0,
+    zoom: PREVIEW_ZOOM[size],
+  };
+}
+
+/**
+ * Scales a finished board (case + plate + caps) as a single visual unit.
+ *
+ * A CSS transform doesn't affect layout, so the wrapper is given the scaled box
+ * explicitly — `width`/`height` are the board's natural size times the zoom —
+ * and the inner element is scaled from its top-left corner to fill exactly that
+ * box. Surrounding content therefore flows around the board at its apparent
+ * size, with no gap or overlap.
+ *
+ * Anything using viewport coordinates (the hover card, the right-click cascade)
+ * must stay *outside* this wrapper: a transformed ancestor becomes the
+ * containing block for `position: fixed` descendants, which would both offset
+ * and scale them.
+ *
+ * The wrapper is rendered even at 1×, so switching display size only animates
+ * the two inline values (`.keyboard-zoom` transitions them in index.css) instead
+ * of mounting/unmounting nodes mid-transition.
+ */
+export function KeyboardZoom({
+  zoom,
+  width,
+  height,
+  children,
+}: {
+  zoom: number;
+  /** Natural (1×) outer width of the board, in px. */
+  width: number;
+  /** Natural (1×) outer height of the board, in px. */
+  height: number;
+  children: ReactNode;
+}) {
+  return (
+    <div className="keyboard-zoom" style={{ width: width * zoom, height: height * zoom }}>
+      <div style={{ width, height, transform: `scale(${zoom})`, transformOrigin: "top left" }}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -200,7 +265,7 @@ export function KeyboardLayoutPreview({
     fontColor,
     fontPosition,
   } = { ...appearance, ...overrides };
-  const { PITCH, inset, outerRadius, innerRadius, showCase } = appearanceMetrics(
+  const { PITCH, inset, outerRadius, innerRadius, showCase, zoom } = appearanceMetrics(
     size,
     spacing,
     keycapWidth,
@@ -212,8 +277,10 @@ export function KeyboardLayoutPreview({
     () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
     [keyboard, keyboard.layoutOptions],
   );
+  const plateWidth = placed.width * PITCH + inset;
+  const plateHeight = placed.height * PITCH + inset;
 
-  return (
+  const board = (
     <div
       className={"keyboard-case" + (showCase && depth ? " keyboard-case-shaded" : "")}
       style={{
@@ -230,8 +297,8 @@ export function KeyboardLayoutPreview({
           (keycapBorder ? " keyboard-layout-bordered" : "")
         }
         style={{
-          width: placed.width * PITCH + inset,
-          height: placed.height * PITCH + inset,
+          width: plateWidth,
+          height: plateHeight,
           background: plateColor,
           borderRadius: innerRadius,
           pointerEvents: "none",
@@ -277,5 +344,15 @@ export function KeyboardLayoutPreview({
         ))}
       </div>
     </div>
+  );
+
+  return (
+    <KeyboardZoom
+      zoom={zoom}
+      width={plateWidth + caseThickness * 2}
+      height={plateHeight + caseThickness * 2}
+    >
+      {board}
+    </KeyboardZoom>
   );
 }
