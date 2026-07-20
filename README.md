@@ -2,9 +2,16 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-<video src="https://github.com/tcyeee/vialite/raw/main/public/1.mp4" controls muted loop playsinline width="100%"></video>
+![Vialite waiting for a keyboard to connect](public/preview/connection.png)
 
-> If the video doesn't play in your Markdown viewer, watch it [here](https://github.com/tcyeee/vialite/raw/main/public/1.mp4).
+![The Vialite keymap editor](public/preview/keyboard-layout.png)
+
+<details>
+<summary>▶️ Watch the 30-second demo video</summary>
+
+https://github.com/user-attachments/assets/1098467b-e887-43f8-916a-9941419393d3
+
+</details>
 
 A native web configurator for [Vial](https://get.vial.today/)-protocol keyboards, talking to the keyboard directly over [WebHID](https://developer.mozilla.org/en-US/docs/Web/API/WebHID_API) — no Qt, no WebAssembly, no driver install.
 

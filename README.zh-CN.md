@@ -2,9 +2,16 @@
 
 [English](README.md) · **简体中文**
 
-<video src="https://github.com/tcyeee/vialite/raw/main/public/1.mp4" controls muted loop playsinline width="100%"></video>
+![Vialite 等待键盘连接](public/preview/connection.png)
 
-> 如果你的 Markdown 阅读器无法播放视频,可以[点这里查看](https://github.com/tcyeee/vialite/raw/main/public/1.mp4)。
+![Vialite 键位编辑界面](public/preview/keyboard-layout.png)
+
+<details>
+<summary>▶️ 观看 30 秒演示视频</summary>
+
+https://github.com/user-attachments/assets/1098467b-e887-43f8-916a-9941419393d3
+
+</details>
 
 一款面向 [Vial](https://get.vial.today/) 协议键盘的原生 Web 配置器,通过 [WebHID](https://developer.mozilla.org/zh-CN/docs/Web/API/WebHID_API) 直接与键盘通信 —— 无需 Qt、无需 WebAssembly、无需安装驱动。
 
