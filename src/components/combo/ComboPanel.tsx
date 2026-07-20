@@ -29,6 +29,15 @@ const MOD_ABBR: { m: ModName; title: string }[] = [
   { m: "gui", title: "GUI" },
 ];
 
+/** Shared keycap-box treatment for the front (display-state) card face — same border weight,
+ *  radius, and minimum footprint for every key shown there (the 4 trigger keys and the output
+ *  key), so the border reads as one consistent size regardless of each slot's font size or how
+ *  long its label is. Stretches to fill whatever width its container gives it (a grid cell for
+ *  the 4 keys, the remaining row width next to the arrow for the output key) rather than
+ *  shrink-wrapping to the label. */
+const CARD_KEY_BOX =
+  "flex min-h-9 w-full items-center justify-center rounded-lg border border-[#434b5b]/25 px-2 dark:border-[#d7dfeb]/25";
+
 /** True unless `qmkId` is a masked/dual-role keycode left with no inner key
  *  (e.g. `LCTL(KC_NO)`, fresh off picking a modifier template but never given
  *  a regular key) — the one shape the combo picker can produce that doesn't
@@ -272,14 +281,14 @@ function InlineComboFace({ qmkId }: { qmkId: string }) {
   const inner = dualRole(qmkId)?.tap ?? qmkId;
   const active = MOD_ABBR.filter(({ m }) => info[m]);
   return (
-    <span className="inline-flex flex-wrap items-center gap-0.5">
+    <span className="inline-flex flex-nowrap items-center gap-0.5">
       {active.map(({ m, title }, i) => (
         <span key={m} className="inline-flex items-center gap-0.5">
-          {i > 0 && <Icon icon="mdi:plus" className="h-2.5 w-2.5 opacity-40" />}
-          <span className="badge badge-outline badge-sm">{title}</span>
+          {i > 0 && <Icon icon="mdi:plus" className="h-2.5 w-2.5 shrink-0 opacity-40" />}
+          <span className="badge badge-outline badge-sm shrink-0">{title}</span>
         </span>
       ))}
-      <Icon icon="mdi:plus" className="h-2.5 w-2.5 opacity-40" />
+      <Icon icon="mdi:plus" className="h-2.5 w-2.5 shrink-0 opacity-40" />
       <KeycapFace qmkId={inner} className="whitespace-nowrap" />
     </span>
   );
@@ -315,15 +324,17 @@ function ConfiguredFieldRow({
 }) {
   const { t } = useI18n();
   return (
-    <div className="group/field flex min-h-9 items-center justify-between gap-1 rounded-btn border border-base-300 bg-base-100 px-3 py-1 dark:border-neutral-700">
+    <div className="group/field relative flex min-h-9 items-center rounded-btn bg-base-100 px-3 py-1">
       <span className="text-sm font-semibold">
         <InlineComboFace qmkId={qmkId} />
       </span>
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/field:opacity-100 group-focus-within/field:opacity-100">
-        <button type="button" className="btn btn-ghost btn-xs px-1.5" title={t("edit")} onClick={onEdit}>
+      {/* Hover overlay: the whole field darkens and the edit/delete buttons fade in
+          centered on top of it, instead of sitting off to the side at all times. */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1 rounded-btn bg-black/50 opacity-0 transition-opacity group-hover/field:pointer-events-auto group-hover/field:opacity-100 group-focus-within/field:pointer-events-auto group-focus-within/field:opacity-100">
+        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-white hover:bg-white/20 hover:text-white" title={t("edit")} onClick={onEdit}>
           <Icon icon="mdi:pencil" className="h-3.5 w-3.5" />
         </button>
-        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-error" title={t("delete")} onClick={onDelete}>
+        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-white hover:bg-white/20 hover:text-white" title={t("delete")} onClick={onDelete}>
           <Icon icon="mdi:trash-can-outline" className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -451,13 +462,13 @@ function ComboPreviewCard({
         </div>
       )}
       <div
-        className="grid h-[21rem] transition-transform duration-500"
+        className="grid h-[27rem] transition-transform duration-500"
         style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : undefined }}
         onTransitionEnd={handleFlipSettled}
       >
         <div
           style={{ backfaceVisibility: "hidden", gridArea: "1 / 1" }}
-          className="card relative h-[21rem] overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#57637314_35%,transparent_36%),radial-gradient(circle_at_top_right,#57637314_35%,transparent_36%)] bg-[#eaeff7] bg-size-[4.95em_4.95em] text-[#434b5b] shadow-lg shadow-slate-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-slate-900/15 dark:bg-[radial-gradient(circle_at_bottom_left,#ffffff12_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff12_35%,transparent_36%)] dark:bg-[#1f242e] dark:text-[#d7dfeb] dark:shadow-black/40 dark:group-hover/card:shadow-black/55"
+          className="card relative h-[27rem] overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#57637314_35%,transparent_36%),radial-gradient(circle_at_top_right,#57637314_35%,transparent_36%)] bg-[#eaeff7] bg-size-[4.95em_4.95em] text-[#434b5b] shadow-lg shadow-slate-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-slate-900/15 dark:bg-[radial-gradient(circle_at_bottom_left,#ffffff12_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff12_35%,transparent_36%)] dark:bg-[#1f242e] dark:text-[#d7dfeb] dark:shadow-black/40 dark:group-hover/card:shadow-black/55"
         >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden select-none">
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
@@ -472,19 +483,19 @@ function ComboPreviewCard({
               <Icon icon="mdi:vector-combine" className="h-9 w-9" />
               {index}
             </div>
-            <div className="grid grid-cols-2 gap-y-3">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
               {entry.keys.map((qmkId, i) => (
                 <div key={i}>
                   <div className="text-xs opacity-45 uppercase">{t("comboKeyN", { n: i + 1 })}</div>
-                  <div className="inline-block rounded-btn border border-[#434b5b]/25 px-2 py-0.5 text-xl font-bold dark:border-[#d7dfeb]/25">
+                  <div className={`${CARD_KEY_BOX} bg-white/60 text-xl font-bold dark:bg-white/10`}>
                     <KeycapFace qmkId={qmkId} className="whitespace-nowrap" />
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-auto flex items-center justify-center gap-2 border-t border-[#434b5b]/15 pt-3 text-sm tracking-widest opacity-55 dark:border-[#d7dfeb]/15">
+            <div className="mt-auto flex items-center gap-2 border-t border-[#434b5b]/15 pt-3 text-sm tracking-widest opacity-55 dark:border-[#d7dfeb]/15">
               →
-              <span className="inline-block rounded-btn border border-[#434b5b]/25 px-2 py-0.5 dark:border-[#d7dfeb]/25">
+              <span className={`${CARD_KEY_BOX} flex-1 bg-[#434b5b]/10 dark:bg-black/20`}>
                 <KeycapFace qmkId={entry.output} className="whitespace-nowrap" />
               </span>
             </div>
@@ -494,7 +505,7 @@ function ComboPreviewCard({
         {editable && (
           <div
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", gridArea: "1 / 1" }}
-            className="card relative h-[38rem] overflow-hidden border-2 border-dashed border-[#576373]/50 bg-white shadow-lg shadow-slate-900/10 dark:border-[#d7dfeb]/30 dark:bg-[#232326] dark:shadow-black/40"
+            className="card relative h-[27rem] overflow-hidden border-2 border-dashed border-[#576373]/50 bg-white shadow-lg shadow-slate-900/10 dark:border-[#d7dfeb]/30 dark:bg-[#232326] dark:shadow-black/40"
           >
             {/* Absolutely positioned (rather than sized by normal flex flow) so its
                 height is pinned to the card's own fixed 21rem box regardless of how
@@ -527,40 +538,6 @@ function ComboPreviewCard({
                     {t("done")}
                   </button>
                 </div>
-              </div>
-
-              <label className="fieldset-label text-xs text-neutral-400">{t("comboOutput")}</label>
-              <div className="mb-1.5">
-                {activeField === "output" ? (
-                  <ComboKeySlot
-                    qmkId={entry.output}
-                    onChange={(id) => onSave?.({ output: id })}
-                    className="btn btn-sm min-h-9 flex-wrap py-0.5 text-xs whitespace-pre-line btn-soft"
-                    trailing={
-                      <ConfirmButton
-                        disabled={!comboFieldValid(entry.output) || entry.output === "KC_NO"}
-                        onClick={() => setActiveField(null)}
-                      />
-                    }
-                  />
-                ) : entry.output === "KC_NO" ? (
-                  // Untouched slot: switches this field to the editor above instead of popping the
-                  // picker directly, and (being the new active field) collapses whichever other
-                  // field was mid-edit back to its display row.
-                  <button
-                    type="button"
-                    onClick={() => setActiveField("output")}
-                    className="btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line btn-dash"
-                  >
-                    {t("comboAddRegularKey")}
-                  </button>
-                ) : (
-                  <ConfiguredFieldRow
-                    qmkId={entry.output}
-                    onEdit={() => setActiveField("output")}
-                    onDelete={() => onSave?.({ output: "KC_NO" })}
-                  />
-                )}
               </div>
 
               <div className="flex flex-col gap-2">
@@ -601,6 +578,42 @@ function ComboPreviewCard({
                     )}
                   </div>
                 ))}
+              </div>
+
+              <div className="my-1 border-t border-base-300 dark:border-neutral-700" />
+
+              <label className="fieldset-label text-xs text-neutral-400">{t("comboOutput")}</label>
+              <div className="mb-1.5">
+                {activeField === "output" ? (
+                  <ComboKeySlot
+                    qmkId={entry.output}
+                    onChange={(id) => onSave?.({ output: id })}
+                    className="btn btn-sm min-h-9 flex-wrap py-0.5 text-xs whitespace-pre-line btn-soft"
+                    trailing={
+                      <ConfirmButton
+                        disabled={!comboFieldValid(entry.output) || entry.output === "KC_NO"}
+                        onClick={() => setActiveField(null)}
+                      />
+                    }
+                  />
+                ) : entry.output === "KC_NO" ? (
+                  // Untouched slot: switches this field to the editor above instead of popping the
+                  // picker directly, and (being the new active field) collapses whichever other
+                  // field was mid-edit back to its display row.
+                  <button
+                    type="button"
+                    onClick={() => setActiveField("output")}
+                    className="btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line btn-dash"
+                  >
+                    {t("comboAddRegularKey")}
+                  </button>
+                ) : (
+                  <ConfiguredFieldRow
+                    qmkId={entry.output}
+                    onEdit={() => setActiveField("output")}
+                    onDelete={() => onSave?.({ output: "KC_NO" })}
+                  />
+                )}
               </div>
 
               {/* Bottom breathing room so the last field doesn't sit flush against the
