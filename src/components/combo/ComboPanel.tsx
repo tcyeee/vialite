@@ -1,15 +1,253 @@
 import { useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { KeycapFace } from "../keymap/KeycapFace.tsx";
 import type { ComboEntry, Keyboard } from "../../protocol/keyboard.ts";
+import { buildModCombo, dualRole, holdInfo, keyBehavior, type KeycodeDef } from "../../protocol/keycodes.ts";
+import { BASIC_MOD_IDS } from "../keymap/keycodeMeta.ts";
 import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
 import { RenumberPicker } from "../common/RenumberPicker.tsx";
 import { ConfirmDialog } from "../common/ConfirmDialog.tsx";
 import { startViewTransition } from "../common/viewTransition.ts";
+
+type ModName = "ctrl" | "shift" | "alt" | "gui";
+interface ModState {
+  ctrl: boolean;
+  shift: boolean;
+  alt: boolean;
+  gui: boolean;
+  side: "L" | "R";
+}
+const NO_MODS: ModState = { ctrl: false, shift: false, alt: false, gui: false, side: "L" };
+const MOD_ABBR: { m: ModName; title: string }[] = [
+  { m: "ctrl", title: "Ctrl" },
+  { m: "shift", title: "Shift" },
+  { m: "alt", title: "Alt" },
+  { m: "gui", title: "GUI" },
+];
+
+/** True unless `qmkId` is a masked/dual-role keycode left with no inner key
+ *  (e.g. `LCTL(KC_NO)`, fresh off picking a modifier template but never given
+ *  a regular key) — the one shape the combo picker can produce that doesn't
+ *  actually do anything on the device. */
+const comboFieldValid = (qmkId: string): boolean => {
+  const b = keyBehavior(qmkId);
+  return b.kind === "plain" || b.inner !== "KC_NO";
+};
+
+/** The combo editor's "regular key" field excludes bare modifiers (added
+ *  instead through the dedicated modifier picker below) and masked Quantum
+ *  templates (Mod-Tap / Layer-Tap / held-mods — none compose sensibly as the
+ *  inner key of another modifier combo). */
+const regularKeyFilter = (e: KeycodeDef) => !e.masked && !BASIC_MOD_IDS.has(e.qmkId);
+
+/**
+ * Multi-select popover for a combo field's modifier mask: a scoped-down cascade
+ * selector — a single flat list of checkable rows instead of the full picker's
+ * category drill-down — that stays open across several toggles so more than one
+ * modifier can be added in one sitting. Portalled to `<body>` and positioned
+ * under its trigger, like {@link ../keymap/KeycodeCascadeSelector}'s own
+ * popover, since the combo card clips overflow. A combination with no canonical
+ * fire-together name is disabled rather than silently written as a raw code
+ * that no longer parses as a modifier combo.
+ */
+function ModifierMenu({
+  mods,
+  nameable,
+  onToggle,
+  onSide,
+  onClose,
+  anchor,
+}: {
+  mods: ModState;
+  nameable: (next: ModState) => boolean;
+  onToggle: (m: ModName) => void;
+  onSide: (s: "L" | "R") => void;
+  onClose: () => void;
+  anchor: { x: number; y: number };
+}) {
+  const { t } = useI18n();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      if (ref.current?.contains(e.target as Node)) return;
+      onClose();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      ref={ref}
+      className="fixed z-50 w-36 rounded-box bg-base-100 p-1 text-base-content shadow-lg ring-1 ring-base-content/10"
+      style={{ left: anchor.x, top: anchor.y }}
+    >
+      <div className="join mb-1 flex w-full">
+        {(["L", "R"] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            className={`btn join-item btn-xs flex-1 ${
+              mods.side === s ? "btn-primary btn-active" : "btn-outline"
+            }`}
+            onClick={() => onSide(s)}
+          >
+            {s === "L" ? t("holdEditorSideLeft") : t("holdEditorSideRight")}
+          </button>
+        ))}
+      </div>
+      <ul className="menu menu-xs w-full gap-0.5 p-0">
+        {MOD_ABBR.map(({ m, title }) => {
+          const active = mods[m];
+          const disabled = !active && !nameable({ ...mods, [m]: true });
+          return (
+            <li key={m}>
+              <button
+                type="button"
+                title={disabled ? t("comboModUnsupported") : undefined}
+                disabled={disabled}
+                className="flex items-center justify-between"
+                onClick={() => onToggle(m)}
+              >
+                <span>{title}</span>
+                <input
+                  type="checkbox"
+                  className="checkbox checkbox-xs"
+                  checked={active}
+                  disabled={disabled}
+                  readOnly
+                />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>,
+    document.body,
+  );
+}
+
+/**
+ * Combo trigger/output field, split into the two actions the combo editor
+ * exposes: "add modifier" opens {@link ModifierMenu} to build a fire-together
+ * mask (Ctrl/Shift/Alt/GUI + L/R side, applied via {@link buildModCombo}) shown
+ * as removable chips, and "add regular key" reuses the shared cascade picker —
+ * restricted via {@link regularKeyFilter} so a bare modifier or another masked
+ * template can't be picked as the regular key, that being the modifier
+ * button's job. Together they let a combo slot require e.g. "Ctrl+Shift+A"
+ * instead of only a single keycode.
+ */
+function ComboKeySlot({
+  qmkId,
+  onChange,
+  className,
+}: {
+  qmkId: string;
+  onChange: (id: string) => void;
+  className?: string;
+}) {
+  const { t } = useI18n();
+  const info = holdInfo(qmkId);
+  // Side has no encoding in the keycode while no modifier is active yet (a
+  // zero mask collapses to the plain tap regardless of side — see
+  // buildModCombo), so it can't be read back from `qmkId` at that point. Track
+  // it locally so a side pick made before the first modifier checkbox still
+  // sticks once one is checked, instead of silently reverting to "L" every
+  // render. Re-synced whenever `qmkId` changes to a value that *does* encode a
+  // side, so external edits (loading a different combo entry) still win.
+  const [localSide, setLocalSide] = useState<"L" | "R">(info?.type === "mod" ? info.side : "L");
+  useEffect(() => {
+    if (info?.type === "mod") setLocalSide(info.side);
+    // Only `qmkId` should re-trigger this — `info` is derived from it each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qmkId]);
+  const mods: ModState =
+    info?.type === "mod"
+      ? { ctrl: info.ctrl, shift: info.shift, alt: info.alt, gui: info.gui, side: info.side }
+      : { ...NO_MODS, side: localSide };
+  const inner = dualRole(qmkId)?.tap ?? qmkId;
+  const hasMods = mods.ctrl || mods.shift || mods.alt || mods.gui;
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+
+  const nameable = (next: ModState) => {
+    const built = buildModCombo(next, inner);
+    return built === inner || keyBehavior(built).kind === "modCombo";
+  };
+  const apply = (next: ModState) => {
+    if (!nameable(next)) return;
+    onChange(buildModCombo(next, inner));
+  };
+  const setSide = (s: "L" | "R") => {
+    setLocalSide(s);
+    apply({ ...mods, side: s });
+  };
+  const openMenu = () => {
+    const r = rowRef.current?.getBoundingClientRect();
+    setMenuAnchor(r ? { x: r.left, y: r.bottom + 4 } : { x: 0, y: 0 });
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div ref={rowRef} className="flex flex-wrap items-center gap-1">
+        {MOD_ABBR.filter(({ m }) => mods[m]).map(({ m, title }) => (
+          <span key={m} className="badge badge-primary badge-sm gap-1 pr-1">
+            {title}
+            <button
+              type="button"
+              className="opacity-70 hover:opacity-100"
+              aria-label={`${t("comboRemoveModifier")}: ${title}`}
+              onClick={() => apply({ ...mods, [m]: false })}
+            >
+              <Icon icon="mdi:close" className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+        {/* Once at least one modifier is added, the tag collapses to a bare "+"
+            (title carries the label) so it reads as "add another" rather than
+            repeating the same full prompt next to the chips it already applies to. */}
+        <button
+          type="button"
+          className="badge badge-outline badge-sm cursor-pointer gap-1"
+          title={hasMods ? t("comboAddModifier") : undefined}
+          onClick={openMenu}
+        >
+          <Icon icon="mdi:plus" className="h-3 w-3" />
+          {!hasMods && t("comboAddModifier")}
+        </button>
+      </div>
+      {menuAnchor && (
+        <ModifierMenu
+          mods={mods}
+          nameable={nameable}
+          onToggle={(m) => apply({ ...mods, [m]: !mods[m] })}
+          onSide={setSide}
+          onClose={() => setMenuAnchor(null)}
+          anchor={menuAnchor}
+        />
+      )}
+      <KeySlot
+        qmkId={inner}
+        onChange={(id) => onChange(hasMods ? buildModCombo(mods, id) : id)}
+        entryFilter={regularKeyFilter}
+        emptyLabel={t("comboAddRegularKey")}
+        className={className}
+      />
+    </div>
+  );
+}
 
 interface PreviewCardProps {
   index: number;
@@ -54,12 +292,39 @@ function ComboPreviewCard({
   const { t } = useI18n();
   const flipped = !!editing;
   const editable = !!onSave;
+  const cardBodyRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Chromium has a known bug where a scroller that becomes visible purely through a CSS
+   * transform — no layout change, which is exactly what flipping this card is: only the
+   * ancestor's `transform` changes, the scroller's own box never moves or resizes — doesn't get
+   * its wheel-scrollable region registered with the compositor. The element is genuinely
+   * overflowing (dragging the scrollbar or a keyboard PageDown still works), but the mouse
+   * wheel / trackpad silently does nothing, which read as "the edit face can't be scrolled
+   * down". Forcing a synchronous reflow on the scroller right as the flip settles makes Blink
+   * re-register its scrollable region. See https://issues.chromium.org/issues/40394725.
+   */
+  const handleFlipSettled = (e: React.TransitionEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget || e.propertyName !== "transform" || !flipped) return;
+    const el = cardBodyRef.current;
+    if (!el) return;
+    el.style.display = "none";
+    void el.offsetHeight;
+    el.style.display = "";
+  };
 
   const setKeyAt = (i: number, id: string) => {
     const keys = [...entry.keys] as ComboEntry["keys"];
     keys[i] = id;
     onSave?.({ keys });
   };
+
+  // Slots to render in the edit face's trigger-key row: every already-set key,
+  // plus (only while at least one slot is still free) the next empty one as an
+  // "add key" trigger — rather than always showing all 4 regardless of use.
+  const nextEmptyKeyIndex = entry.keys.findIndex((k) => k === "KC_NO");
+  const visibleKeyIndices = entry.keys.flatMap((k, i) => (k !== "KC_NO" ? [i] : []));
+  if (nextEmptyKeyIndex !== -1) visibleKeyIndices.push(nextEmptyKeyIndex);
 
   return (
     <div
@@ -87,12 +352,13 @@ function ComboPreviewCard({
         </div>
       )}
       <div
-        className="grid h-[16.5rem] transition-transform duration-500"
+        className="grid h-[21rem] transition-transform duration-500"
         style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : undefined }}
+        onTransitionEnd={handleFlipSettled}
       >
         <div
           style={{ backfaceVisibility: "hidden", gridArea: "1 / 1" }}
-          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#57637314_35%,transparent_36%),radial-gradient(circle_at_top_right,#57637314_35%,transparent_36%)] bg-[#eaeff7] bg-size-[4.95em_4.95em] text-[#434b5b] shadow-lg shadow-slate-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-slate-900/15 dark:bg-[radial-gradient(circle_at_bottom_left,#ffffff12_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff12_35%,transparent_36%)] dark:bg-[#1f242e] dark:text-[#d7dfeb] dark:shadow-black/40 dark:group-hover/card:shadow-black/55"
+          className="card relative h-[21rem] overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#57637314_35%,transparent_36%),radial-gradient(circle_at_top_right,#57637314_35%,transparent_36%)] bg-[#eaeff7] bg-size-[4.95em_4.95em] text-[#434b5b] shadow-lg shadow-slate-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-slate-900/15 dark:bg-[radial-gradient(circle_at_bottom_left,#ffffff12_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff12_35%,transparent_36%)] dark:bg-[#1f242e] dark:text-[#d7dfeb] dark:shadow-black/40 dark:group-hover/card:shadow-black/55"
         >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden select-none">
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
@@ -126,9 +392,22 @@ function ComboPreviewCard({
         {editable && (
           <div
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", gridArea: "1 / 1" }}
-            className="card overflow-hidden border-2 border-dashed border-[#576373]/50 bg-white shadow-lg shadow-slate-900/10 dark:border-[#d7dfeb]/30 dark:bg-[#232326] dark:shadow-black/40"
+            className="card relative h-[21rem] overflow-hidden border-2 border-dashed border-[#576373]/50 bg-white shadow-lg shadow-slate-900/10 dark:border-[#d7dfeb]/30 dark:bg-[#232326] dark:shadow-black/40"
           >
-            <div className="card-body gap-1.5 px-4 pt-4 pb-2">
+            {/* Absolutely positioned (rather than sized by normal flex flow) so its
+                height is pinned to the card's own fixed 21rem box regardless of how
+                tall the fields inside grow — a flex child's default min-height:auto
+                would otherwise let it grow past the card and get silently clipped by
+                the card's overflow-hidden instead of scrolling. `translateZ(0)` gives
+                it its own compositing layer, and `handleFlipSettled` (attached to the
+                flip container above) forces a reflow once the flip transition ends —
+                see the comment on that handler for why both are needed for mouse-wheel
+                scrolling to actually work here. */}
+            <div
+              ref={cardBodyRef}
+              className="card-body scrollbar-hide absolute inset-0 gap-1.5 overflow-y-auto px-4 pt-4 pb-2"
+              style={{ transform: "translateZ(0)" }}
+            >
               <div className="mb-1 flex items-center justify-between">
                 <RenumberPicker
                   index={index}
@@ -150,7 +429,7 @@ function ComboPreviewCard({
 
               <label className="fieldset-label text-xs text-neutral-400">{t("comboOutput")}</label>
               <div className="mb-1.5">
-                <KeySlot
+                <ComboKeySlot
                   qmkId={entry.output}
                   onChange={(id) => onSave?.({ output: id })}
                   className={`btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line ${
@@ -159,22 +438,29 @@ function ComboPreviewCard({
                 />
               </div>
 
-              {/* Same 2x2 arrangement as the front face's grid, so a field's position doesn't
-                  move when the card flips between display and edit state. */}
-              <div className="grid grid-cols-2 gap-2">
-                {entry.keys.map((qmkId, i) => (
+              <div className="flex flex-col gap-2">
+                {/* Only the keys the user has actually set, plus (while a slot is
+                    still free) one more trigger for the next one — instead of
+                    always showing all 4 slots regardless of how many are in use.
+                    One per row: a ComboKeySlot's modifier chips + key button
+                    don't fit two across in the card's 20rem width. */}
+                {visibleKeyIndices.map((i) => (
                   <div key={i}>
                     <label className="fieldset-label text-xs text-neutral-400">{t("comboKeyN", { n: i + 1 })}</label>
-                    <KeySlot
-                      qmkId={qmkId}
+                    <ComboKeySlot
+                      qmkId={entry.keys[i]}
                       onChange={(id) => setKeyAt(i, id)}
                       className={`btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line ${
-                        qmkId !== "KC_NO" ? "btn-soft" : "btn-dash"
+                        entry.keys[i] !== "KC_NO" ? "btn-soft" : "btn-dash"
                       }`}
                     />
                   </div>
                 ))}
               </div>
+
+              {/* Bottom breathing room so the last field doesn't sit flush against the
+                  card edge when scrolled all the way down. */}
+              <div className="h-5 shrink-0" aria-hidden="true" />
             </div>
           </div>
         )}
@@ -201,6 +487,14 @@ export function ComboPanel({ keyboard, onChange }: Props) {
    */
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   /**
+   * A freshly added, still-unused slot that's visible but not yet flipped — set for the two
+   * animation frames between "新增 Combo" being clicked and {@link editingIndex} taking over, so
+   * the new card mounts showing its front face first and then flips into the editor face exactly
+   * like clicking the pencil icon on an existing card, instead of popping directly into the
+   * editor face with no transition.
+   */
+  const [addingIndex, setAddingIndex] = useState<number | null>(null);
+  /**
    * When set, overrides the natural (ascending) card order so a just-renumbered card stays put for
    * a beat before it animates to its sorted position. Cleared inside a View Transition.
    */
@@ -210,9 +504,18 @@ export function ComboPanel({ keyboard, onChange }: Props) {
   const reorderTimer = useRef<number | null>(null);
   /** The entry's value captured when editing began, restored verbatim if the user clicks Cancel. */
   const editSnapshot = useRef<ComboEntry | null>(null);
+  /** Pending `requestAnimationFrame` id(s) for the add-flow's delayed flip, cancelled on unmount
+   *  or if another action pre-empts it before the two frames elapse. */
+  const addRaf = useRef<number[]>([]);
+
+  const cancelPendingAddFlip = () => {
+    addRaf.current.forEach((id) => cancelAnimationFrame(id));
+    addRaf.current = [];
+  };
 
   useEffect(() => () => {
     if (reorderTimer.current) clearTimeout(reorderTimer.current);
+    cancelPendingAddFlip();
   }, []);
 
   const cancelPendingReorder = () => {
@@ -240,11 +543,23 @@ export function ComboPanel({ keyboard, onChange }: Props) {
   const handleEdit = (i: number) => {
     // Switching to another card settles the previous card's pending re-sort first.
     if (pendingOrder) settlePendingReorder(0);
+    cancelPendingAddFlip();
+    setAddingIndex(null);
     editSnapshot.current = snapshotOf(i);
     setEditingIndex(i);
   };
 
   const handleCloseEdit = () => {
+    if (editingIndex !== null) {
+      const e = keyboard.comboEntries[editingIndex];
+      const invalid = !comboFieldValid(e.output) || e.keys.some((k) => !comboFieldValid(k));
+      if (invalid) {
+        showToast(t("comboInvalidKeycode"));
+        return;
+      }
+    }
+    cancelPendingAddFlip();
+    setAddingIndex(null);
     editSnapshot.current = null;
     setEditingIndex(null);
     // Only now (on "done") does the card animate into its sorted position — after a beat that lets
@@ -258,6 +573,8 @@ export function ComboPanel({ keyboard, onChange }: Props) {
     const snap = editSnapshot.current;
     editSnapshot.current = null;
     cancelPendingReorder();
+    cancelPendingAddFlip();
+    setAddingIndex(null);
     setEditingIndex(null);
     if (idx !== null && snap) void updateAt(idx, snap);
   };
@@ -286,7 +603,7 @@ export function ComboPanel({ keyboard, onChange }: Props) {
   /** Cards to show, in the order to show them — `pendingOrder` while a renumber is settling. */
   const sortedVisible = keyboard.comboEntries
     .map((_, i) => i)
-    .filter((i) => isUsed(keyboard.comboEntries[i]) || i === editingIndex);
+    .filter((i) => isUsed(keyboard.comboEntries[i]) || i === editingIndex || i === addingIndex);
   const displayOrder = pendingOrder
     ? pendingOrder.filter((i) => sortedVisible.includes(i))
     : sortedVisible;
@@ -323,12 +640,28 @@ export function ComboPanel({ keyboard, onChange }: Props) {
       return;
     }
     cancelPendingReorder();
+    cancelPendingAddFlip();
     // Show the freshly added card at the front of the row while it's being edited; the natural
     // (ascending) order animates back into place only when the user clicks Done or Cancel.
     const used = keyboard.comboEntries.flatMap((e, i) => (isUsed(e) ? [i] : []));
     setPendingOrder([freeIdx, ...used]);
     editSnapshot.current = snapshotOf(freeIdx);
-    setEditingIndex(freeIdx);
+    // Mount the new card showing its front face first, then flip it into the editor face on the
+    // next paint — the same entrance the pencil-icon edit path gets — instead of popping directly
+    // into the editor face with no transition. Two rAFs so the un-flipped frame actually commits
+    // before the transform change that the flip's CSS transition needs to animate from.
+    setAddingIndex(freeIdx);
+    addRaf.current = [
+      requestAnimationFrame(() => {
+        addRaf.current = [
+          requestAnimationFrame(() => {
+            addRaf.current = [];
+            setEditingIndex(freeIdx);
+            setAddingIndex(null);
+          }),
+        ];
+      }),
+    ];
   };
 
   return (

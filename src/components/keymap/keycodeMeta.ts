@@ -147,7 +147,10 @@ const BASIC_EDIT_IDS = new Set([
   "KC_ENTER", "KC_ESCAPE", "KC_BSPACE", "KC_TAB", "KC_SPACE",
   "KC_CAPSLOCK", "KC_APPLICATION",
 ]);
-const BASIC_MOD_IDS = new Set([
+/** The 8 basic modifier keycodes (both sides), also used to keep "regular key"
+ *  pickers (e.g. the combo editor's key field) from offering a bare modifier
+ *  as its own regular key — see {@link ../combo/ComboPanel}. */
+export const BASIC_MOD_IDS = new Set([
   "KC_LCTRL", "KC_LSHIFT", "KC_LALT", "KC_LGUI",
   "KC_RCTRL", "KC_RSHIFT", "KC_RALT", "KC_RGUI",
 ]);

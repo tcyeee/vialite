@@ -63,6 +63,10 @@ const MESSAGES = {
     en: "The keyboard was disconnected during the operation.",
     zh: "操作过程中键盘已断开连接。",
   },
+  errReconnectNotFound: {
+    en: "Couldn't find that keyboard. Make sure it's plugged in, or try Detect device instead.",
+    zh: "未找到该键盘,请确认已插入,或改用「检测设备」。",
+  },
   errCommFailed: {
     en: "Failed to communicate with the keyboard. Unplug it, plug it back in, and try again.",
     zh: "与键盘通信失败。请拔下键盘重新插入后再试。",
@@ -598,6 +602,17 @@ const MESSAGES = {
     en: "All combo slots are already in use.",
     zh: "所有组合键槽位都已被使用。",
   },
+  comboModUnsupported: {
+    en: "This modifier combination has no fire-together form.",
+    zh: "该修饰键组合没有「同时触发」形式。",
+  },
+  comboInvalidKeycode: {
+    en: "One of the keys is an incomplete modifier combo — pick a regular key to complete it before saving.",
+    zh: "存在未完成的组合按键——请先为修饰键组合选择一个普通按键,再保存。",
+  },
+  comboAddModifier: { en: "Add modifier", zh: "添加修饰键" },
+  comboAddRegularKey: { en: "Add regular key", zh: "添加普通按键" },
+  comboRemoveModifier: { en: "Remove modifier", zh: "移除修饰键" },
 
   // DeviceConnect
   connecting: { en: "Connecting…", zh: "连接中…" },
@@ -611,6 +626,7 @@ const MESSAGES = {
     zh: "请点击下方按钮开始检测。",
   },
   detectDevice: { en: "Detect device", zh: "检测设备" },
+  reconnectSaved: { en: "Reconnect {name}", zh: "重新连接 {name}" },
   toggleLanguage: { en: "Switch language", zh: "切换语言" },
   toggleTheme: { en: "Toggle theme", zh: "切换主题" },
   browserUnsupportedTitle: { en: "Browser not supported", zh: "浏览器不支持" },

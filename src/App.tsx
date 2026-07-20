@@ -38,6 +38,13 @@ import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./contexts/toast.tsx";
 import { track } from "./analytics.ts";
 import { debugWarn } from "./debug.ts";
+import {
+  clearSkipAutoConnect,
+  loadLastDeviceName,
+  markSkipAutoConnect,
+  saveLastDeviceName,
+  shouldSkipAutoConnect,
+} from "./components/connect/lastDevice.ts";
 
 type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "rgb" | "color" | "advanced" | "site" | "io" | "preview3d";
 
@@ -149,6 +156,10 @@ function App() {
   // board tracks the window width as it changes.
   const { ref: boardViewportRef, zoom: autoFitZoom } = useAutoFitZoom(keyboard);
   const [productName, setProductName] = useState<string | undefined>();
+  // Name of the last keyboard successfully connected in this browser, shown as
+  // a "重新连接 <name>" shortcut on the waiting screen once disconnected.
+  // Seeded from localStorage so it survives a page reload.
+  const [lastDeviceName, setLastDeviceName] = useState<string | null>(loadLastDeviceName);
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("keymap");
   const [preview3dParams, setPreview3dParams] = useState<Preview3DParams>(loadPreview3DParams);
@@ -228,6 +239,11 @@ function App() {
       await kb.reload();
       setKeyboard(kb);
       setProductName(transport.productName);
+      setLastDeviceName(transport.productName);
+      saveLastDeviceName(transport.productName);
+      // A real connection just happened, manually or silently — trust
+      // auto-reconnect on the next reload again.
+      clearSkipAutoConnect();
       setLayer(0);
       setSelected(null);
       setMode("keymap");
@@ -273,15 +289,82 @@ function App() {
     }
   }, [attachTransport, teardown]);
 
-  const handleDisconnect = useCallback(async () => {
-    // Revoke the WebHID grant so auto-reconnect on the next page load won't
-    // silently re-attach the board the user just chose to disconnect. teardown
-    // nulls transportRef, so forget it first.
-    const transport = transportRef.current;
-    if (transport) {
-      await transport.forget().catch(() => {});
+  // Tries every already-authorized Vial-capable device — navigator.hid.getDevices()
+  // lists prior WebHID grants without opening the chooser UI — and attaches the
+  // first one that actually answers a Vial handshake. Shared by the silent
+  // page-load auto-reconnect effect and the "重新连接" shortcut button, so both
+  // stay in sync. Returns whether a device was found and attached.
+  const tryAttachAuthorizedDevice = useCallback(
+    async (withTransition: boolean) => {
+      const devices = await navigator.hid.getDevices();
+      const candidates = devices.filter((d) => HidTransport.hasVialInterface(d));
+      // hasVialInterface only proves the board exposes the raw-HID interface
+      // VIA and Vial share, so handshake each candidate and take the first
+      // that actually speaks Vial — otherwise an authorized VIA-only board
+      // would shadow a real Vial keyboard plugged in alongside it.
+      for (const device of candidates) {
+        let transport: HidTransport;
+        try {
+          transport = await HidTransport.fromDevice(device);
+        } catch (err) {
+          // Claimed by another app, permission revoked, ... — a candidate we
+          // can't even open shouldn't stop us reaching a good one behind it.
+          debugWarn(`[vialite] cannot open ${device.productName}, skipping:`, err);
+          continue;
+        }
+        if (await probeVial(transport)) {
+          await attachTransport(transport, withTransition);
+          return true;
+        }
+        debugWarn(`[vialite] skipping non-Vial device: ${device.productName}`);
+        await transport.close();
+      }
+      return false;
+    },
+    [attachTransport],
+  );
+
+  // Manual counterpart to the silent auto-reconnect: the "重新连接 <name>"
+  // shortcut on the waiting screen. Same underlying lookup, just triggered by
+  // a click (e.g. after a physical unplug/replug mid-session, which the
+  // mount-only auto-reconnect effect never re-runs for) instead of page load.
+  const handleReconnectSaved = useCallback(async () => {
+    if (connectInFlightRef.current) {
+      return;
     }
+    connectInFlightRef.current = true;
+    setStatus("connecting");
+    setAttaching(true);
+    setErrorInfo(null);
+    try {
+      const connected = await tryAttachAuthorizedDevice(true);
+      if (!connected) {
+        await teardown();
+        setErrorInfo({ key: "errReconnectNotFound" });
+        setStatus("error");
+      }
+    } catch (err) {
+      console.error("[vialite] reconnect-saved failed:", err);
+      await teardown();
+      setErrorInfo(describeConnectError(err));
+      setStatus("error");
+    } finally {
+      connectInFlightRef.current = false;
+      setAttaching(false);
+    }
+  }, [tryAttachAuthorizedDevice, teardown]);
+
+  const handleDisconnect = useCallback(async () => {
     await teardown();
+    // Mark this as an explicit disconnect so the next page load won't
+    // silently auto-reconnect to the same board. Deliberately *not*
+    // transport.forget(): that revokes the WebHID grant outright, which also
+    // erases the device from navigator.hid.getDevices() — breaking the
+    // "重新连接 <name>" shortcut and forcing the picker dialog back next time.
+    // The flag gets the same "stay disconnected across reload" outcome
+    // without touching the grant; attachTransport clears it on the next real
+    // connect (manual or via the shortcut).
+    markSkipAutoConnect();
     setErrorInfo(null);
     setStatus("idle");
     setQmkSections([]);
@@ -380,38 +463,23 @@ function App() {
     }
     autoConnectStarted = true;
     void (async () => {
-      try {
-        const devices = await navigator.hid.getDevices();
-        const candidates = devices.filter((d) => HidTransport.hasVialInterface(d));
-        if (candidates.length === 0 || connectInFlightRef.current) {
-          setStatus("idle");
-          return;
-        }
-        connectInFlightRef.current = true;
-        // hasVialInterface only proves the board exposes the raw-HID interface
-        // VIA and Vial share, so handshake each candidate and take the first
-        // that actually speaks Vial — otherwise an authorized VIA-only board
-        // would shadow a real Vial keyboard plugged in alongside it.
-        for (const device of candidates) {
-          let transport: HidTransport;
-          try {
-            transport = await HidTransport.fromDevice(device);
-          } catch (err) {
-            // Claimed by another app, permission revoked, ... — a candidate we
-            // can't even open shouldn't stop us reaching a good one behind it.
-            debugWarn(`[vialite] cannot open ${device.productName}, skipping:`, err);
-            continue;
-          }
-          if (await probeVial(transport)) {
-            // A reload failure past this point is a real error worth surfacing,
-            // not a reason to fall through to the next candidate.
-            await attachTransport(transport);
-            return;
-          }
-          debugWarn(`[vialite] skipping non-Vial device: ${device.productName}`);
-          await transport.close();
-        }
+      // The user explicitly disconnected last time — respect that across the
+      // reload instead of silently reattaching the same board. See
+      // handleDisconnect / components/connect/lastDevice.ts.
+      if (shouldSkipAutoConnect()) {
         setStatus("idle");
+        return;
+      }
+      if (connectInFlightRef.current) {
+        setStatus("idle");
+        return;
+      }
+      connectInFlightRef.current = true;
+      try {
+        const connected = await tryAttachAuthorizedDevice(false);
+        if (!connected) {
+          setStatus("idle");
+        }
       } catch (err) {
         // Best effort — fall back to the manual Connect button.
         console.error("[vialite] auto-reconnect failed:", err);
@@ -421,7 +489,7 @@ function App() {
         connectInFlightRef.current = false;
       }
     })();
-  }, [attachTransport, teardown]);
+  }, [tryAttachAuthorizedDevice, teardown]);
 
   // Drives the connect-success transition timeline: hold on the model zoom,
   // then let the config page rise, then clear the overlay entirely.
@@ -859,6 +927,8 @@ function App() {
             attaching={attaching}
             error={error}
             onConnect={handleConnect}
+            lastDeviceName={lastDeviceName}
+            onReconnectSaved={handleReconnectSaved}
             zoom={inTransition}
           />
         </div>

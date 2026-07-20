@@ -1,5 +1,5 @@
 import type { Keyboard } from "../../protocol/keyboard.ts";
-import { label } from "../../protocol/keycodes.ts";
+import { label, type KeycodeDef } from "../../protocol/keycodes.ts";
 import { KeycodeCascadeSelector } from "../keymap/KeycodeCascadeSelector.tsx";
 
 interface Props {
@@ -8,6 +8,13 @@ interface Props {
   /** Connected device, for the picker's macro / tap-dance info previews. */
   keyboard?: Keyboard;
   className?: string;
+  /** Restricts the picker's catalogue — see {@link KeycodeCascadeSelector}'s prop
+   *  of the same name. */
+  entryFilter?: (entry: KeycodeDef) => boolean;
+  /** Trigger text shown while unset (`KC_NO`), overriding the default blank
+   *  face — e.g. a "+ Add regular key" placeholder for a field whose empty
+   *  state should read as an action rather than a plain empty slot. */
+  emptyLabel?: string;
 }
 
 /** A single keycode slot (tap dance / combo entry field): shows the current
@@ -22,17 +29,18 @@ interface Props {
  *  Both are driven off the parent's `qmkId` rather than the selector's own
  *  picked-id, which would otherwise go stale for KC_NO (it maps to `value`
  *  undefined, so the selector's value-sync effect never re-fires). */
-export function KeySlot({ qmkId, onChange, keyboard, className }: Props) {
+export function KeySlot({ qmkId, onChange, keyboard, className, entryFilter, emptyLabel = "" }: Props) {
   const unset = qmkId === "KC_NO";
   return (
     <KeycodeCascadeSelector
       value={unset ? undefined : qmkId}
       placeholder=""
-      triggerLabel={unset ? "" : qmkId === "KC_TRNS" ? label(qmkId) : undefined}
+      triggerLabel={unset ? emptyLabel : qmkId === "KC_TRNS" ? label(qmkId) : undefined}
       keyboard={keyboard}
       compact
       fullWidth
       hideCaret
+      entryFilter={entryFilter}
       triggerClassName={
         className ?? "btn btn-outline min-h-12 w-full justify-between py-1 text-xs"
       }

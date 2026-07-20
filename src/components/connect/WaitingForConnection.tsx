@@ -22,6 +22,13 @@ interface Props {
   attaching: boolean;
   error: string | null;
   onConnect: () => void;
+  // Name of the last keyboard connected in this browser, if any — shows a
+  // "重新连接 <name>" shortcut below the Detect button. At most one is ever
+  // remembered (see components/connect/lastDevice.ts).
+  lastDeviceName?: string | null;
+  // Reconnects to that saved keyboard via navigator.hid.getDevices() (no
+  // WebHID chooser popup) instead of onConnect's requestDevice() picker.
+  onReconnectSaved?: () => void;
   // When true, plays the connect-success exit choreography: the 3D model
   // rapidly scales up to fill the viewport, the page fades to black, and the
   // rest of the UI (logo, toggles, title, button) fades out — leaving a black
@@ -51,7 +58,15 @@ class ModelErrorBoundary extends Component<{ onError: () => void; children: Reac
   }
 }
 
-export function WaitingForConnection({ status, attaching, error, onConnect, zoom = false }: Props) {
+export function WaitingForConnection({
+  status,
+  attaching,
+  error,
+  onConnect,
+  lastDeviceName,
+  onReconnectSaved,
+  zoom = false,
+}: Props) {
   const { lang, setLang, t } = useI18n();
   const { theme, setTheme } = useTheme();
   const connecting = status === "connecting";
@@ -216,6 +231,17 @@ export function WaitingForConnection({ status, attaching, error, onConnect, zoom
                   )}
                   <span>{connecting ? t("connecting") : t("detectDevice")}</span>
                 </button>
+                {lastDeviceName && (
+                  <button
+                    type="button"
+                    className="mx-auto mt-3 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-brand-on-surface-variant transition hover:bg-brand-on-surface/5 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={onReconnectSaved}
+                    disabled={connecting}
+                  >
+                    <Icon icon="mdi:history" className="h-4 w-4" />
+                    <span>{t("reconnectSaved", { name: lastDeviceName })}</span>
+                  </button>
+                )}
               </div>
 
               {error && <p className="error text-sm font-medium">{error}</p>}

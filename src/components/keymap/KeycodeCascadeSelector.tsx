@@ -71,6 +71,13 @@ interface Props {
    *  glyph, where a second small triangle next to KC_TRNS's "▽" reads as part of
    *  the keycode — see {@link ../common/KeySlot}. */
   hideCaret?: boolean;
+  /** Restricts every category's listed entries to those passing this predicate
+   *  (categories left empty are dropped); the two clear keycodes (KC_NO/KC_TRNS)
+   *  are unaffected. Used to scope a picker down to a subset of the full
+   *  catalogue — e.g. the combo editor's "regular key" field excludes bare
+   *  modifiers and masked Quantum templates, which it offers through a
+   *  dedicated modifier picker instead. See {@link ../combo/ComboPanel}. */
+  entryFilter?: (entry: KeycodeDef) => boolean;
   /** Context-menu mode: render only the popover (no trigger button), positioned
    *  `fixed` at this viewport point and auto-opened. Used by the keyboard
    *  layout's right-click assign; a fresh object each open re-seeds/reopens it. */
@@ -264,6 +271,7 @@ export function KeycodeCascadeSelector({
   hideCaret = false,
   anchor = null,
   onClose,
+  entryFilter,
 }: Props) {
   const menuMode = anchor !== null;
   const { t, lang } = useI18n();
@@ -333,10 +341,10 @@ export function KeycodeCascadeSelector({
       [...KEYCODE_CATEGORIES, ...deviceCategories()]
         .map((c) => ({
           name: c.name,
-          entries: c.entries.filter((e) => !CLEAR_LABELS[e.qmkId]),
+          entries: c.entries.filter((e) => !CLEAR_LABELS[e.qmkId] && (!entryFilter || entryFilter(e))),
         }))
         .filter((c) => c.entries.length > 0),
-    [],
+    [entryFilter],
   );
 
   // KC_NO ("清空") / KC_TRNS ("穿透"), in CLEAR_LABELS order — the two actions
