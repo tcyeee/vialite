@@ -572,8 +572,6 @@ export function QuickConfigPanel({
                   }
                 />
               </ul>
-              {/* 仅用于将快捷配置区域的高度撑起来的占位块。 */}
-              <div className="h-[200px]" aria-hidden="true" />
             </div>
           </div>
           {/* Middle column: the vertical Fn/Media/Mouse cards. */}
