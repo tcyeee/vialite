@@ -153,10 +153,15 @@ function ComboKeySlot({
   qmkId,
   onChange,
   className,
+  trailing,
 }: {
   qmkId: string;
   onChange: (id: string) => void;
   className?: string;
+  /** Rendered to the right of the base-key button, in the same row — the field's
+   *  confirm button, kept out of this component so the caller owns what "confirm"
+   *  means for that field. */
+  trailing?: React.ReactNode;
 }) {
   const { t } = useI18n();
   const info = holdInfo(qmkId);
@@ -200,7 +205,19 @@ function ComboKeySlot({
   };
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <KeySlot
+            qmkId={inner}
+            onChange={(id) => onChange(hasMods ? buildModCombo(mods, id) : id)}
+            entryFilter={regularKeyFilter}
+            emptyLabel={t("comboAddRegularKey")}
+            className={className ? `${className} w-full` : className}
+          />
+        </div>
+        {trailing}
+      </div>
       <div ref={rowRef} className="flex flex-wrap items-center gap-1">
         {MOD_ABBR.filter(({ m }) => mods[m]).map(({ m, title }) => (
           <span key={m} className="badge badge-primary badge-sm gap-1 pr-1">
@@ -238,13 +255,78 @@ function ComboKeySlot({
           anchor={menuAnchor}
         />
       )}
-      <KeySlot
-        qmkId={inner}
-        onChange={(id) => onChange(hasMods ? buildModCombo(mods, id) : id)}
-        entryFilter={regularKeyFilter}
-        emptyLabel={t("comboAddRegularKey")}
-        className={className}
-      />
+    </div>
+  );
+}
+
+/** Same-line modifier+base-key summary for a confirmed combo field: the editor's own modifier
+ *  abbreviations (as non-removable chips) followed by the inner key's face, instead of
+ *  `KeycapFace`'s stacked dual-role rendering (tap on top, hold band below) — that reads as a
+ *  physical keycap, not a flat "Ctrl Shift A" line. Falls back to a bare `KeycapFace` when the
+ *  value carries no modifier mask. */
+function InlineComboFace({ qmkId }: { qmkId: string }) {
+  const info = holdInfo(qmkId);
+  if (info?.type !== "mod") {
+    return <KeycapFace qmkId={qmkId} className="whitespace-nowrap" />;
+  }
+  const inner = dualRole(qmkId)?.tap ?? qmkId;
+  const active = MOD_ABBR.filter(({ m }) => info[m]);
+  return (
+    <span className="inline-flex flex-wrap items-center gap-0.5">
+      {active.map(({ m, title }, i) => (
+        <span key={m} className="inline-flex items-center gap-0.5">
+          {i > 0 && <Icon icon="mdi:plus" className="h-2.5 w-2.5 opacity-40" />}
+          <span className="badge badge-outline badge-sm">{title}</span>
+        </span>
+      ))}
+      <Icon icon="mdi:plus" className="h-2.5 w-2.5 opacity-40" />
+      <KeycapFace qmkId={inner} className="whitespace-nowrap" />
+    </span>
+  );
+}
+
+/** Small confirm ("check") button appended after the base-key button while a combo field is
+ *  being configured — what turns "配置中" into "已配置" for that one field. */
+function ConfirmButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      className="btn btn-primary btn-sm min-h-9 shrink-0 px-2"
+      title={t("comboConfirm")}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon icon="mdi:check" className="h-4 w-4" />
+    </button>
+  );
+}
+
+/** A confirmed combo field: the same-line modifier+base-key summary ({@link InlineComboFace})
+ *  plus trailing modify/delete buttons, replacing the picker once its value is confirmed. */
+function ConfiguredFieldRow({
+  qmkId,
+  onEdit,
+  onDelete,
+}: {
+  qmkId: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="group/field flex min-h-9 items-center justify-between gap-1 rounded-btn border border-base-300 bg-base-100 px-3 py-1 dark:border-neutral-700">
+      <span className="text-sm font-semibold">
+        <InlineComboFace qmkId={qmkId} />
+      </span>
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/field:opacity-100 group-focus-within/field:opacity-100">
+        <button type="button" className="btn btn-ghost btn-xs px-1.5" title={t("edit")} onClick={onEdit}>
+          <Icon icon="mdi:pencil" className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-error" title={t("delete")} onClick={onDelete}>
+          <Icon icon="mdi:trash-can-outline" className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -293,6 +375,23 @@ function ComboPreviewCard({
   const flipped = !!editing;
   const editable = !!onSave;
   const cardBodyRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Each field on the edit face (the output key and every trigger key) is either "being
+   * configured" (the {@link ComboKeySlot} picker plus a confirm button) or, once it holds a real
+   * value, "configured" (collapsed to a compact modifier+key display with modify/delete buttons).
+   * Only one field may be under configuration at a time — `activeField` names it ("output" or a
+   * key index), and setting it to a different field implicitly collapses whichever one it was
+   * pointing at back to its display row, since that row's own "is this the active field" check
+   * simply stops matching. Reset to null whenever the card (re-)enters edit mode.
+   */
+  const [activeField, setActiveField] = useState<"output" | number | null>(null);
+  useEffect(() => {
+    if (!editing) return;
+    setActiveField(null);
+    // Only re-seed when a card newly enters edit mode, not on every entry edit within the session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
 
   /**
    * Chromium has a known bug where a scroller that becomes visible purely through a CSS
@@ -377,14 +476,17 @@ function ComboPreviewCard({
               {entry.keys.map((qmkId, i) => (
                 <div key={i}>
                   <div className="text-xs opacity-45 uppercase">{t("comboKeyN", { n: i + 1 })}</div>
-                  <div className="text-xl font-bold">
-                    <KeycapFace qmkId={qmkId} className="whitespace-pre-line" />
+                  <div className="inline-block rounded-btn border border-[#434b5b]/25 px-2 py-0.5 text-xl font-bold dark:border-[#d7dfeb]/25">
+                    <KeycapFace qmkId={qmkId} className="whitespace-nowrap" />
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-auto pt-3 text-center text-sm tracking-widest opacity-55">
-              → <KeycapFace qmkId={entry.output} className="whitespace-pre-line" />
+            <div className="mt-auto flex items-center justify-center gap-2 border-t border-[#434b5b]/15 pt-3 text-sm tracking-widest opacity-55 dark:border-[#d7dfeb]/15">
+              →
+              <span className="inline-block rounded-btn border border-[#434b5b]/25 px-2 py-0.5 dark:border-[#d7dfeb]/25">
+                <KeycapFace qmkId={entry.output} className="whitespace-nowrap" />
+              </span>
             </div>
           </div>
         </div>
@@ -392,7 +494,7 @@ function ComboPreviewCard({
         {editable && (
           <div
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", gridArea: "1 / 1" }}
-            className="card relative h-[21rem] overflow-hidden border-2 border-dashed border-[#576373]/50 bg-white shadow-lg shadow-slate-900/10 dark:border-[#d7dfeb]/30 dark:bg-[#232326] dark:shadow-black/40"
+            className="card relative h-[38rem] overflow-hidden border-2 border-dashed border-[#576373]/50 bg-white shadow-lg shadow-slate-900/10 dark:border-[#d7dfeb]/30 dark:bg-[#232326] dark:shadow-black/40"
           >
             {/* Absolutely positioned (rather than sized by normal flex flow) so its
                 height is pinned to the card's own fixed 21rem box regardless of how
@@ -429,13 +531,36 @@ function ComboPreviewCard({
 
               <label className="fieldset-label text-xs text-neutral-400">{t("comboOutput")}</label>
               <div className="mb-1.5">
-                <ComboKeySlot
-                  qmkId={entry.output}
-                  onChange={(id) => onSave?.({ output: id })}
-                  className={`btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line ${
-                    entry.output !== "KC_NO" ? "btn-soft" : "btn-dash"
-                  }`}
-                />
+                {activeField === "output" ? (
+                  <ComboKeySlot
+                    qmkId={entry.output}
+                    onChange={(id) => onSave?.({ output: id })}
+                    className="btn btn-sm min-h-9 flex-wrap py-0.5 text-xs whitespace-pre-line btn-soft"
+                    trailing={
+                      <ConfirmButton
+                        disabled={!comboFieldValid(entry.output) || entry.output === "KC_NO"}
+                        onClick={() => setActiveField(null)}
+                      />
+                    }
+                  />
+                ) : entry.output === "KC_NO" ? (
+                  // Untouched slot: switches this field to the editor above instead of popping the
+                  // picker directly, and (being the new active field) collapses whichever other
+                  // field was mid-edit back to its display row.
+                  <button
+                    type="button"
+                    onClick={() => setActiveField("output")}
+                    className="btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line btn-dash"
+                  >
+                    {t("comboAddRegularKey")}
+                  </button>
+                ) : (
+                  <ConfiguredFieldRow
+                    qmkId={entry.output}
+                    onEdit={() => setActiveField("output")}
+                    onDelete={() => onSave?.({ output: "KC_NO" })}
+                  />
+                )}
               </div>
 
               <div className="flex flex-col gap-2">
@@ -447,13 +572,33 @@ function ComboPreviewCard({
                 {visibleKeyIndices.map((i) => (
                   <div key={i}>
                     <label className="fieldset-label text-xs text-neutral-400">{t("comboKeyN", { n: i + 1 })}</label>
-                    <ComboKeySlot
-                      qmkId={entry.keys[i]}
-                      onChange={(id) => setKeyAt(i, id)}
-                      className={`btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line ${
-                        entry.keys[i] !== "KC_NO" ? "btn-soft" : "btn-dash"
-                      }`}
-                    />
+                    {activeField === i ? (
+                      <ComboKeySlot
+                        qmkId={entry.keys[i]}
+                        onChange={(id) => setKeyAt(i, id)}
+                        className="btn btn-sm min-h-9 flex-wrap py-0.5 text-xs whitespace-pre-line btn-soft"
+                        trailing={
+                          <ConfirmButton
+                            disabled={!comboFieldValid(entry.keys[i]) || entry.keys[i] === "KC_NO"}
+                            onClick={() => setActiveField(null)}
+                          />
+                        }
+                      />
+                    ) : entry.keys[i] === "KC_NO" ? (
+                      <button
+                        type="button"
+                        onClick={() => setActiveField(i)}
+                        className="btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line btn-dash"
+                      >
+                        {t("comboAddRegularKey")}
+                      </button>
+                    ) : (
+                      <ConfiguredFieldRow
+                        qmkId={entry.keys[i]}
+                        onEdit={() => setActiveField(i)}
+                        onDelete={() => setKeyAt(i, "KC_NO")}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
