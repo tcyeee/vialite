@@ -59,8 +59,8 @@ export function SiteSettingsPanel() {
       {/* Banner: logo card, the thanks caption, and the participant marquee read
           as one block, set apart from the settings lists by the extra bottom
           margin (on top of the container's gap). */}
-      <div className="mb-4 flex flex-col gap-4">
-        <section className="flex aspect-square w-full max-w-xs flex-col items-center justify-center gap-4 self-center rounded-box bg-brand-surface-variant/30 p-6 text-center">
+      <div className="mb-20 flex flex-col gap-5">
+        <section className="flex w-full max-w-lg flex-col items-center justify-center gap-6 self-center rounded-box bg-brand-surface-variant/30 p-6 text-center">
           <img src="/logo-full.svg" alt="Vialite" className="h-15 w-auto" />
           <p className="text-sm leading-relaxed text-brand-on-surface-variant">
             {t("siteAboutIntro")}
@@ -86,7 +86,6 @@ export function SiteSettingsPanel() {
             </a>
           </div>
         </section>
-
         <ThanksMarquee />
       </div>
 
