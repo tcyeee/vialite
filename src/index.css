@@ -242,6 +242,51 @@ textarea,
   }
 }
 
+/* 感谢名单 danmaku (see components/site/ThanksMarquee.tsx). The mask is what
+   makes names fade in as they enter from the right and fade out as they leave
+   on the left — it's applied to the viewport rather than the moving track, so
+   the fade zones stay put while the chips slide through them. */
+.thanks-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+}
+
+.thanks-marquee-track {
+  display: flex;
+  width: max-content;
+  /* Duration is set per-lane inline so lanes drift at different speeds. */
+  animation: thanks-marquee linear infinite;
+}
+
+/* Blank tail on each copy of a lane — the pause between rounds. Sized in vw so
+   the gap reads as a real breather on a phone as well as a wide window. */
+.thanks-marquee-gap {
+  flex: none;
+  width: min(70vw, 26rem);
+}
+
+/* Let a curious user stop the stream to read a name / hover an avatar. */
+.thanks-marquee:hover .thanks-marquee-track {
+  animation-play-state: paused;
+}
+
+/* -50%, not -100%: the track holds exactly two copies of the lane, so half a
+   track width is one full copy — the wrap is invisible. */
+@keyframes thanks-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thanks-marquee-track {
+    animation: none;
+  }
+}
+
 @keyframes sidebar-appear {
   from {
     opacity: 0;

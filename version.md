@@ -1,6 +1,7 @@
 
 > [!INFO] Title
-> 页面记录[Vialite](src/202607141935-Vialite.md)的更新日志.
+> 页面记录[Vialite](src/202607141935-Vialite.md)的更新日志.  
+> https://vialite.viii.me
 
 ## TODO
 
@@ -8,6 +9,8 @@
 	- [ ] 4.完善RGB配置
 - [ ] 使用driver.js完成引导页适配
 - [ ] 使用three.js完成键盘3D重建
+- [ ] `@龟心四贱`
+	- [ ] combo功能想同时按e和r输出ctrl+h，现在只能选到修饰键这里，括号里的键值改不了
 
 
 

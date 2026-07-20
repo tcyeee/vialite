@@ -4,6 +4,7 @@ import { useI18n } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
 import { DebugLogToggle } from "../common/DebugLogToggle.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
+import { ThanksMarquee } from "./ThanksMarquee.tsx";
 
 /**
  * Wipe every localStorage entry this app owns (all `vialite-` keys: keyboard
@@ -79,6 +80,8 @@ export function SiteSettingsPanel() {
           </a>
         </div>
       </section>
+
+      <ThanksMarquee />
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">{t("siteGeneralTitle")}</h2>

@@ -2,6 +2,8 @@
   "compilerOptions": {
     "target": "ES2023",
     "lib": ["ES2023"],
+    // vite.config.ts reads public/participant/ off disk (see participantFiles).
+    "types": ["node"],
     "module": "ESNext",
     "skipLibCheck": true,
 

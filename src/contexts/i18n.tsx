@@ -330,6 +330,11 @@ const MESSAGES = {
   },
   siteAboutGithub: { en: "GitHub", zh: "GitHub 项目" },
   siteAboutDiscord: { en: "Discord", zh: "Discord 社区" },
+  siteThanksTitle: { en: "Thanks", zh: "感谢名单" },
+  siteThanksDesc: {
+    en: "Thanks to everyone who sent feedback — the project is better because you took part.",
+    zh: "感谢每一位参与反馈的朋友,正是因为你们的参与,项目才变得更好。",
+  },
   siteGeneralTitle: { en: "General", zh: "通用" },
   siteDiagnosticsTitle: { en: "Diagnostics", zh: "诊断" },
   debugLogTitle: { en: "Debug logging", zh: "调试日志" },
