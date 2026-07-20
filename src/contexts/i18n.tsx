@@ -430,6 +430,7 @@ const MESSAGES = {
   navMacro: { en: "Macros", zh: "宏配置" },
   navTapDance: { en: "Tap Dance", zh: "Tap Dance" },
   navCombo: { en: "Combos", zh: "Combos" },
+  navRgb: { en: "RGB Lighting", zh: "RGB 配置" },
   navKeyboardColor: { en: "Personalization", zh: "个性化" },
   navAdvanced: { en: "QMK Settings", zh: "QMK 设置" },
   navPreview3d: { en: "3D Preview", zh: "3D 预览" },
@@ -551,6 +552,32 @@ const MESSAGES = {
     en: "Press all input keys together to trigger the output key.",
     zh: "同时按下所有输入按键,即可触发输出按键。",
   },
+  // RGB (VialRGB / QMK rgb_matrix)
+  rgbHint: {
+    en: "Lighting settings apply to the whole board: one effect plus a shared color, brightness, and speed. Vial's protocol has no per-key color command, so per-key lighting isn't available here.",
+    zh: "灯光设置对整块键盘生效:一个效果,加上共用的颜色、亮度与速度。Vial 协议没有逐键配色的指令,所以这里不支持单键灯光。",
+  },
+  rgbUnsupported: {
+    en: "This keyboard's firmware wasn't built with VialRGB lighting. The settings below are shown for reference only and can't be changed.",
+    zh: "这块键盘的固件没有启用 VialRGB 灯光。下方设置仅供参考,无法修改。",
+  },
+  rgbEffect: { en: "Effect", zh: "灯光效果" },
+  rgbEffectDesc: { en: "{n} effect(s) available on this keyboard", zh: "这块键盘可用 {n} 种效果" },
+  rgbColor: { en: "Color", zh: "颜色" },
+  rgbColorIgnoredHelp: {
+    en: "This effect cycles through colors on its own, so the color setting has no visible effect on it.",
+    zh: "该效果会自行循环变换颜色,所以这里的颜色设置对它不起作用。",
+  },
+  rgbBrightness: { en: "Brightness", zh: "亮度" },
+  rgbSpeed: { en: "Speed", zh: "速度" },
+  rgbSave: { en: "Save to keyboard", zh: "保存到键盘" },
+  rgbSaving: { en: "Saving…", zh: "保存中…" },
+  rgbSaved: { en: "Lighting settings saved to the keyboard.", zh: "灯光设置已保存到键盘。" },
+  rgbSaveHint: {
+    en: "Changes apply instantly but are lost on replug until you save them.",
+    zh: "改动会立即生效,但在保存之前,重新插拔键盘就会丢失。",
+  },
+  rgbWriteFailed: { en: "Failed to write lighting settings: {error}", zh: "写入灯光设置失败:{error}" },
   comboUsedHelp: {
     en: "This bar shows how many combo slots are in use out of the total this keyboard provides.",
     zh: "这个进度条表示已使用的组合键槽位数占键盘可用总数的比例。",
@@ -970,6 +997,18 @@ const MESSAGES = {
   matrixInstructions: {
     en: "Press every key on the keyboard; keys light up while held and stay marked once they have registered.",
     zh: "逐个按下键盘上的每个按键:按住时高亮,成功触发过的按键会保持标记。",
+  },
+  matrixLogEmpty: {
+    en: "Waiting for a keypress…",
+    zh: "等待按键触发…",
+  },
+  matrixLogPress: {
+    en: 'Row {row}, col {col} — "{key}" — press #{n}',
+    zh: "第 {row} 行第 {col} 列 —— “{key}” 键 —— 第 {n} 次触发",
+  },
+  matrixLogChord: {
+    en: "(+{n} held)",
+    zh: "(同时按住 {n} 个键)",
   },
   reset: { en: "Reset", zh: "重置" },
 

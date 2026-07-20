@@ -90,6 +90,14 @@ themselves (Enter, LShift, ...) stay in English regardless of UI language, match
 
 ## Known gaps / in-progress state
 
-Not yet implemented: macro recording, combos, tap dance, RGB. These are parsed-through/preserved in
-`.vil` files where applicable but have no UI. QMK settings and VialRGB command constants exist in
-`constants.ts` but are unused.
+Not yet implemented: key overrides, alt-repeat key, and the two legacy VIA lighting backends
+(`qmk_backlight` / `qmk_rgblight` — their command constants exist in `constants.ts` but are unused).
+These are parsed-through/preserved in `.vil` files where applicable but have no UI.
+
+RGB is implemented for VialRGB only (`vial.json`'s `lighting === "vialrgb"`, i.e. QMK `rgb_matrix`):
+`Keyboard.reloadRgb` + `setRgb*`/`saveRgb` in `keyboard.ts`, the effect-id table in
+`protocol/vialRgbEffects.ts` (must stay in sync with `vial-gui`'s `VIALRGB_EFFECTS`), and the
+`RGB 配置 (Beta)` page in `components/rgb/RgbPanel.tsx`. Scope is what the protocol exposes: one
+global effect + shared HSV/speed — Vial has no per-key color command. Writes are RAM-only until
+`saveRgb()` (the Save button) commits them to EEPROM. Unlike every other reload step, a VialRGB
+handshake failure is non-fatal: `reload()` catches it so the board still connects without the page.

@@ -24,6 +24,7 @@ import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { Navbar } from "./components/shell/Navbar.tsx";
 import { QmkSettingsPanel } from "./components/qmk/QmkSettingsPanel.tsx";
+import { RgbPanel } from "./components/rgb/RgbPanel.tsx";
 import { Sidebar, SidebarDrawer } from "./components/shell/Sidebar.tsx";
 import { KeyboardColorPanel } from "./components/color/KeyboardColorPanel.tsx";
 import { SiteSettingsPanel } from "./components/site/SiteSettingsPanel.tsx";
@@ -38,7 +39,7 @@ import { useToast } from "./contexts/toast.tsx";
 import { track } from "./analytics.ts";
 import { debugWarn } from "./debug.ts";
 
-type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io" | "preview3d";
+type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "rgb" | "color" | "advanced" | "site" | "io" | "preview3d";
 
 type Selected =
   | { kind: "key"; row: number; col: number; part?: KeyPart }
@@ -644,7 +645,7 @@ function App() {
               macroSupported={!!keyboard && keyboard.macroCount > 0}
               tapDanceSupported={!!keyboard && keyboard.tapDanceCount > 0}
               comboSupported={!!keyboard && keyboard.comboCount > 0}
-              qmkSections={qmkSections}
+                qmkSections={qmkSections}
               onNavigate={navigate}
               appear={!inTransition}
             />
@@ -661,6 +662,8 @@ function App() {
                         ? t("navTapDance")
                         : mode === "combo"
                           ? t("navCombo")
+                          : mode === "rgb"
+                            ? t("navRgb")
                           : mode === "color"
                             ? t("navKeyboardColor")
                             : mode === "advanced"
@@ -673,6 +676,7 @@ function App() {
                 {mode === "macro" && <HelpIcon text={t("macroHint")} />}
                 {mode === "tapdance" && <HelpIcon text={t("tapDanceHint")} />}
                 {mode === "combo" && <HelpIcon text={t("comboHint")} />}
+                {mode === "rgb" && <HelpIcon text={t("rgbHint")} />}
               </div>
               )}
               {keyboard && mode === "keymap" && (
@@ -813,6 +817,9 @@ function App() {
               )}
               {keyboard && mode === "combo" && (
                 <ComboPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+              )}
+              {keyboard && mode === "rgb" && (
+                <RgbPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
               )}
               {keyboard && mode === "advanced" && (
                 <QmkSettingsPanel

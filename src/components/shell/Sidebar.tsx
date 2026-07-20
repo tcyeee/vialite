@@ -8,7 +8,7 @@ import { Icon } from "@iconify/react";
 import { useLenis } from "lenis/react";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 
-type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "color" | "advanced" | "site" | "io" | "preview3d";
+type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "rgb" | "color" | "advanced" | "site" | "io" | "preview3d";
 
 const SIDEBAR_WIDTH_KEY = "vialite-sidebar-width";
 const SIDEBAR_COLLAPSED_KEY = "vialite-sidebar-collapsed";
@@ -105,6 +105,7 @@ type NavKind =
   | "macro"
   | "tapDance"
   | "combo"
+  | "rgb"
   | "keyboardColor"
   | "advanced"
   | "site"
@@ -117,6 +118,7 @@ const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; icon: st
   { kind: "macro", mode: "macro", labelKey: "navMacro", icon: "mdi:script-text-outline" },
   { kind: "tapDance", mode: "tapdance", labelKey: "navTapDance", icon: "mdi:animation" },
   { kind: "combo", mode: "combo", labelKey: "navCombo", icon: "mdi:vector-combine" },
+  { kind: "rgb", mode: "rgb", labelKey: "navRgb", icon: "mdi:led-strip-variant", beta: true },
   { kind: "importExport", mode: "io", labelKey: "navImportExport", icon: "mdi:swap-horizontal" },
   { kind: "matrixTest", mode: "matrix", labelKey: "navMatrixTest", icon: "mdi:view-grid-outline" },
   { kind: "advanced", mode: "advanced", labelKey: "navAdvanced", icon: "mdi:tune-variant" },
@@ -142,6 +144,9 @@ export function Sidebar({
     macro: macroSupported,
     tapDance: tapDanceSupported,
     combo: comboSupported,
+    // Deliberately absent: the RGB page is reachable on every board, and
+    // explains there for itself when the firmware has no VialRGB lighting —
+    // more useful than a greyed-out nav item with a "coming soon" tooltip.
   };
   const [collapsed, setCollapsed] = useState(readStoredCollapsed);
   const showQmkToc = !collapsed && mode === "advanced" && qmkSections.length > 0;
@@ -452,6 +457,9 @@ export function SidebarDrawer({
     macro: macroSupported,
     tapDance: tapDanceSupported,
     combo: comboSupported,
+    // Deliberately absent: the RGB page is reachable on every board, and
+    // explains there for itself when the firmware has no VialRGB lighting —
+    // more useful than a greyed-out nav item with a "coming soon" tooltip.
   };
   const showQmkToc = mode === "advanced" && qmkSections.length > 0;
   const activeSection = useScrollSpy(qmkSections, open && showQmkToc);

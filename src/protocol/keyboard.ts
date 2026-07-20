@@ -1,7 +1,8 @@
 // Ported (MVP subset) from vial-gui's protocol/keyboard_comm.py::Keyboard.
-// Only what's needed for "view layers + remap keys/encoders + layout options"
-// is implemented; macros, tap dance, combos, key overrides, RGB, QMK settings,
-// and unlock/RESET are intentionally left out for now.
+// Covers layers, keymap/encoder remapping, layout options, macros, tap dance,
+// combos, QMK settings, the unlock/matrix-tester flow, and VialRGB lighting.
+// Key overrides, alt-repeat key, and the legacy VIA lighting backends
+// (qmk_backlight / qmk_rgblight) are intentionally left out for now.
 
 import pkg from "xz-decompress";
 import { debugLog, isDebugEnabled } from "../debug.ts";
@@ -141,6 +142,8 @@ interface VialDefinition {
   matrix: { rows: number; cols: number };
   layouts: { keymap: KleData; labels?: LayoutLabel[] };
   customKeycodes?: CustomKeycode[];
+  /** "none" | "qmk_backlight" | "qmk_rgblight" | "qmk_backlight_rgblight" | "vialrgb". */
+  lighting?: string;
 }
 
 /** Number of bits a layout-options entry occupies in the packed u32 (mirrors vial-gui's LayoutEditor). */
@@ -186,6 +189,11 @@ function tapDanceEqual(a: TapDanceEntry | undefined, b: TapDanceEntry): boolean 
     a.onTapHold === b.onTapHold &&
     a.tappingTerm === b.tappingTerm
   );
+}
+
+/** Rounds and clamps a UI-supplied value into the 0-255 range the protocol uses. */
+function clampByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
 }
 
 function comboEqual(a: ComboEntry | undefined, b: ComboEntry): boolean {
@@ -281,6 +289,24 @@ export class Keyboard {
   /** Packed layout-options value as reported by the device (-1 = none/unknown). */
   layoutOptions = -1;
 
+  /**
+   * vial.json's `lighting` field — which lighting backend the firmware was built
+   * with. Only "vialrgb" (QMK's rgb_matrix, driven by Vial's own commands) has a
+   * UI here; the two legacy VIA backends ("qmk_backlight", "qmk_rgblight") are
+   * recognized but not implemented.
+   */
+  lighting = "none";
+  /** VialRGB protocol version from VIALRGB_GET_INFO; only 1 exists so far. */
+  rgbVersion = 0;
+  /** Brightness ceiling the firmware reports — the value slider's max. */
+  rgbMaxBrightness = 255;
+  /** Effect ids this firmware actually compiled in (VIALRGB_GET_SUPPORTED). */
+  rgbSupportedEffects = new Set<number>();
+  rgbMode = 0;
+  rgbSpeed = 0;
+  /** Current [hue, saturation, value], each 0-255. `value` doubles as brightness. */
+  rgbHsv: [number, number, number] = [0, 0, 0];
+
   tapDanceCount = 0;
   comboCount = 0;
   tapDanceEntries: TapDanceEntry[] = [];
@@ -359,6 +385,19 @@ export class Keyboard {
       await step("reloadMacros", () => this.reloadMacros());
       debugLog(`[vialite]   macroCount: ${this.macroCount}, macroMemory: ${this.macroMemory}`);
       await step("reloadQmkSettings", () => this.reloadQmkSettings());
+      // Deliberately non-fatal, unlike every step above: lighting is a side
+      // feature, and a board that misbehaves on the VialRGB commands (or reports
+      // an RGB protocol version we don't know) should still connect — it just
+      // won't get the RGB page.
+      try {
+        await step("reloadRgb", () => this.reloadRgb());
+        debugLog(
+          `[vialite]   lighting: ${this.lighting}, rgbEffects: ${this.rgbSupportedEffects.size}, rgbMode: ${this.rgbMode}`,
+        );
+      } catch (err) {
+        console.error("[vialite]   RGB unavailable, continuing without it:", err);
+        this.rgbSupportedEffects.clear();
+      }
     } catch (err) {
       console.error("[vialite] Keyboard.reload() aborted:", err);
       throw err;
@@ -656,6 +695,7 @@ export class Keyboard {
 
     this.rows = definition.matrix.rows;
     this.cols = definition.matrix.cols;
+    this.lighting = definition.lighting ?? "none";
     this.layoutLabels = definition.layouts.labels?.length ? definition.layouts.labels : null;
     // Register this device's custom keycodes (Bluetooth switches, etc.) so the
     // picker can list them and label() can name their USER0n slots.
@@ -919,6 +959,145 @@ export class Keyboard {
         this.qmkSettings.set(qsid, value >>> 0);
       }
     }
+  }
+
+  /**
+   * Whether this board speaks VialRGB (QMK rgb_matrix) *and* answered the
+   * handshake — the gate for showing the RGB page. `lighting` alone isn't
+   * enough: `reloadRgb` leaves the effect set empty when the handshake failed
+   * or reported an RGB protocol version we don't understand.
+   */
+  get supportsVialRgb(): boolean {
+    return this.lighting === "vialrgb" && this.rgbSupportedEffects.size > 0;
+  }
+
+  /**
+   * VialRGB state: protocol info, the effect ids this firmware compiled in, and
+   * the currently active mode/speed/HSV. Ported from vial-gui's
+   * `reload_persistent_rgb` + the `lighting_vialrgb` half of `reload_rgb`.
+   *
+   * The two legacy VIA backends (qmk_backlight / qmk_rgblight) are skipped
+   * entirely — recognized in `lighting`, but with no UI to feed.
+   */
+  private async reloadRgb(): Promise<void> {
+    this.rgbSupportedEffects.clear();
+    if (this.lighting !== "vialrgb") {
+      return;
+    }
+
+    const info = await this.transport.send(
+      new Uint8Array([C.CMD_VIA_LIGHTING_GET_VALUE, C.VIALRGB_GET_INFO]),
+      20,
+    );
+    // VIA lighting commands echo the two command bytes back, so the payload
+    // starts at byte 2 (vial-gui slices the reply with `[2:]` for the same reason).
+    this.rgbVersion = info[2] | (info[3] << 8);
+    if (this.rgbVersion !== 1) {
+      throw new ProtocolError(`unsupported VialRGB protocol version ${this.rgbVersion}`);
+    }
+    this.rgbMaxBrightness = info[4];
+
+    // Effect ids come back 15-per-packet, ascending, terminated by 0xffff; each
+    // round asks for ids above the highest seen so far. Effect 0 (Disable) is
+    // always available and isn't necessarily enumerated. The round cap is ours,
+    // not upstream's: a firmware that never sends the 0xffff terminator would
+    // otherwise spin here forever, which in a browser tab means a hung page.
+    const effects = new Set<number>([0]);
+    let maxEffect = 0;
+    for (let round = 0; maxEffect < 0xffff && round < 64; round++) {
+      const cmd = new Uint8Array(4);
+      cmd[0] = C.CMD_VIA_LIGHTING_GET_VALUE;
+      cmd[1] = C.VIALRGB_GET_SUPPORTED;
+      new DataView(cmd.buffer).setUint16(2, maxEffect, true);
+      const data = await this.transport.send(cmd, 20);
+      const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      const before = maxEffect;
+      for (let i = 2; i + 1 < data.length; i += 2) {
+        const value = dv.getUint16(i, true);
+        if (value !== 0xffff) {
+          effects.add(value);
+        }
+        maxEffect = Math.max(maxEffect, value);
+      }
+      if (maxEffect === before) {
+        // No new ids and no terminator — the device isn't advancing; stop rather
+        // than re-request the same window.
+        break;
+      }
+    }
+    this.rgbSupportedEffects = effects;
+
+    const mode = await this.transport.send(
+      new Uint8Array([C.CMD_VIA_LIGHTING_GET_VALUE, C.VIALRGB_GET_MODE]),
+      20,
+    );
+    this.rgbMode = new DataView(mode.buffer, mode.byteOffset, mode.byteLength).getUint16(2, true);
+    this.rgbSpeed = mode[4];
+    this.rgbHsv = [mode[5], mode[6], mode[7]];
+  }
+
+  /**
+   * Pushes the whole mode/speed/HSV tuple at once — VIALRGB_SET_MODE has no
+   * per-field variant, so every setter below rewrites all of it (as vial-gui's
+   * `_vialrgb_set_mode` does).
+   */
+  private async writeRgbMode(): Promise<void> {
+    const cmd = new Uint8Array(8);
+    cmd[0] = C.CMD_VIA_LIGHTING_SET_VALUE;
+    cmd[1] = C.VIALRGB_SET_MODE;
+    new DataView(cmd.buffer).setUint16(2, this.rgbMode, true);
+    cmd[4] = this.rgbSpeed;
+    cmd[5] = this.rgbHsv[0];
+    cmd[6] = this.rgbHsv[1];
+    cmd[7] = this.rgbHsv[2];
+    await this.transport.send(cmd, 20);
+  }
+
+  async setRgbMode(mode: number): Promise<void> {
+    if (this.rgbMode === mode) {
+      return;
+    }
+    this.rgbMode = mode;
+    await this.writeRgbMode();
+  }
+
+  async setRgbSpeed(speed: number): Promise<void> {
+    const next = clampByte(speed);
+    if (this.rgbSpeed === next) {
+      return;
+    }
+    this.rgbSpeed = next;
+    await this.writeRgbMode();
+  }
+
+  /** Brightness is HSV's `value`, capped at the firmware-reported maximum. */
+  async setRgbBrightness(value: number): Promise<void> {
+    const next = Math.min(this.rgbMaxBrightness, clampByte(value));
+    if (this.rgbHsv[2] === next) {
+      return;
+    }
+    this.rgbHsv = [this.rgbHsv[0], this.rgbHsv[1], next];
+    await this.writeRgbMode();
+  }
+
+  /** Hue/saturation only — brightness stays on its own slider. Both 0-255. */
+  async setRgbColor(hue: number, sat: number): Promise<void> {
+    const h = clampByte(hue);
+    const s = clampByte(sat);
+    if (this.rgbHsv[0] === h && this.rgbHsv[1] === s) {
+      return;
+    }
+    this.rgbHsv = [h, s, this.rgbHsv[2]];
+    await this.writeRgbMode();
+  }
+
+  /**
+   * Commits the live lighting state to EEPROM. VIALRGB_SET_MODE only changes it
+   * in RAM, so without this the board reverts to its stored settings on the next
+   * power cycle — hence the explicit Save button, same as vial-gui.
+   */
+  async saveRgb(): Promise<void> {
+    await this.transport.send(new Uint8Array([C.CMD_VIA_LIGHTING_SAVE]), 20);
   }
 
   /** Whether the connected keyboard exposes the given QMK Settings qsid at all. */
