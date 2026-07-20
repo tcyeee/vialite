@@ -56,32 +56,39 @@ export function SiteSettingsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex aspect-square w-full max-w-xs flex-col items-center justify-center gap-4 self-center rounded-box bg-brand-surface-variant/30 p-6 text-center">
-        <img src="/logo-full.svg" alt="Vialite" className="h-15 w-auto" />
-        <p className="text-sm leading-relaxed text-brand-on-surface-variant">{t("siteAboutIntro")}</p>
-        <div className="flex items-center gap-2">
-          <a
-            href="https://github.com/tcyeee/vialite"
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-ghost btn-circle"
-            aria-label={t("siteAboutGithub")}
-          >
-            <Icon icon="mdi:github" className="h-9 w-9" />
-          </a>
-          <a
-            href="https://discord.gg/J8GkuQG3aF"
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-ghost btn-circle"
-            aria-label={t("siteAboutDiscord")}
-          >
-            <Icon icon="mdi:discord" className="h-8 w-8" />
-          </a>
-        </div>
-      </section>
+      {/* Banner: logo card, the thanks caption, and the participant marquee read
+          as one block, set apart from the settings lists by the extra bottom
+          margin (on top of the container's gap). */}
+      <div className="mb-4 flex flex-col gap-4">
+        <section className="flex aspect-square w-full max-w-xs flex-col items-center justify-center gap-4 self-center rounded-box bg-brand-surface-variant/30 p-6 text-center">
+          <img src="/logo-full.svg" alt="Vialite" className="h-15 w-auto" />
+          <p className="text-sm leading-relaxed text-brand-on-surface-variant">
+            {t("siteAboutIntro")}
+          </p>
+          <div className="flex items-center gap-2">
+            <a
+              href="https://github.com/tcyeee/vialite"
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-ghost btn-circle"
+              aria-label={t("siteAboutGithub")}
+            >
+              <Icon icon="mdi:github" className="h-9 w-9" />
+            </a>
+            <a
+              href="https://discord.gg/J8GkuQG3aF"
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-ghost btn-circle"
+              aria-label={t("siteAboutDiscord")}
+            >
+              <Icon icon="mdi:discord" className="h-8 w-8" />
+            </a>
+          </div>
+        </section>
 
-      <ThanksMarquee />
+        <ThanksMarquee />
+      </div>
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">{t("siteGeneralTitle")}</h2>

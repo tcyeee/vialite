@@ -125,27 +125,24 @@ export function ThanksMarquee() {
   if (lanes.length === 0) return null;
 
   return (
-    <section>
-      <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
-        {t("siteThanksTitle")}
-      </h2>
-      <div className="py-1">
-        <p className="mb-3 text-xs leading-relaxed text-brand-on-surface-variant">
-          {t("siteThanksDesc")}
-        </p>
-        {/* The lanes repeat and duplicate each name several times, which reads
-            as nonsense aloud — hide the animation from AT and expose the list
-            once instead. */}
-        <ul className="sr-only">
-          {PARTICIPANTS.map((person) => (
-            <li key={person.name}>{person.name}</li>
-          ))}
-        </ul>
-        <div className="thanks-marquee flex flex-col gap-2" aria-hidden="true">
-          {lanes.map((lane, laneIndex) => (
-            <Lane key={laneIndex} people={lane} speed={LANE_SPEEDS[laneIndex] ?? 30} />
-          ))}
-        </div>
+    <section className="flex flex-col gap-3">
+      {/* No heading: the marquee sits in the page banner, where the subtitle
+          reads as the caption for the logo block above it. */}
+      <p className="text-center text-xs leading-relaxed text-brand-on-surface-variant">
+        {t("siteThanksDesc")}
+      </p>
+      {/* The lanes repeat and duplicate each name several times, which reads
+          as nonsense aloud — hide the animation from AT and expose the list
+          once instead. */}
+      <ul className="sr-only">
+        {PARTICIPANTS.map((person) => (
+          <li key={person.name}>{person.name}</li>
+        ))}
+      </ul>
+      <div className="thanks-marquee flex flex-col gap-2" aria-hidden="true">
+        {lanes.map((lane, laneIndex) => (
+          <Lane key={laneIndex} people={lane} speed={LANE_SPEEDS[laneIndex] ?? 30} />
+        ))}
       </div>
     </section>
   );
