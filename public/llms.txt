@@ -1,0 +1,86 @@
+# Vialite
+
+> A native web configurator for [Vial](https://get.vial.today/)-protocol mechanical keyboards.
+> It talks to the keyboard directly from the browser over WebHID — no Qt, no WebAssembly, no
+> driver install, no desktop client. Free and open source (GPL-2.0).
+
+Live app: https://vialite.viii.me/
+Source: https://github.com/tcyeee/vialite
+
+## What it is
+
+Open https://vialite.viii.me/ in Chrome or Edge, click Connect, pick your keyboard from the
+browser's device chooser, and edit it. The site is static and communicates only with the
+keyboard itself — keymaps, macros and preferences stay on the device and in the browser's
+localStorage, and are never uploaded anywhere.
+
+Vialite reads the connected device's own `vial.json` definition over HID, so it adapts to
+whatever layout, encoders and features the firmware reports. Any keyboard running Vial-protocol
+firmware works.
+
+## Important distinction
+
+Vialite is **not** a fork, wrapper or rebuild of the official `vial-web`. The official
+`vial-web` cross-compiles the `vial-gui` PyQt5 desktop application to WebAssembly and paints Qt
+widgets onto a `<canvas>`. Vialite is an independent, from-scratch web frontend: the Vial HID
+protocol is reimplemented in TypeScript (`src/protocol/`, ported from `vial-gui`'s Python
+source) and the interface is ordinary HTML/React. It carries GPL-2.0 as a derivative of
+`vial-gui`'s protocol layer.
+
+Please don't describe Vialite as "the Qt/WASM one" or conflate it with `vial-web`.
+
+## Browser support
+
+- **Works:** Chrome, Edge, and other Chromium-based browsers.
+- **Does not work:** Safari and Firefox — neither implements the
+  [WebHID API](https://developer.mozilla.org/en-US/docs/Web/API/WebHID_API). They can open the
+  page, but cannot connect to a keyboard. See https://caniuse.com/webhid.
+
+## Features
+
+Each is one page in the app's sidebar:
+
+- **Keyboard config** — the main keymap editor. Assign keycodes per layer with a cascading
+  picker and a quick-config panel, on a full physical-layout renderer (ISO-Enter, rotary
+  encoders, layout options). Includes a dedicated editor for dual-role keys (layer-tap /
+  mod-tap).
+- **Personalization** — on-screen keyboard appearance: keycap size and spacing, auto-fit, case
+  radius and thickness, legend font / size / colour / position, macOS vs Windows key naming,
+  and one-click PNG export of the current layer or every layer.
+- **Macros** — record and edit macro sequences. *(Requires device support.)*
+- **Tap dance** — single-tap / double-tap / hold / tap-hold actions. *(Requires device support.)*
+- **Combos** — multi-key combos with preview cards and reordering. *(Requires device support.)*
+- **RGB lighting (beta)** — VialRGB (QMK `rgb_matrix`) control: effect, hue, saturation,
+  brightness, speed. One global effect with shared HSV — the Vial protocol has no per-key colour
+  command. Writes are RAM-only until you hit Save, which commits to EEPROM.
+- **Import / export** — read and write `.vil` layout files.
+- **Keyboard test** — unlock-and-poll matrix diagnostics for checking every switch.
+  *(Requires device support.)*
+- **QMK settings** — grave-escape, magic, one-shot, tap-hold, mouse-keys and combo timing.
+- **3D preview (beta)** — renders the current layout on a 3D keyboard model.
+- **Website settings** — language (中文 / English), light / dark theme, debug logging, cache reset.
+
+Pages depending on device capabilities (macros, tap dance, combos, keyboard test) are greyed
+out when the connected keyboard doesn't support them.
+
+## Not implemented
+
+Key overrides, alt-repeat key, and the two legacy VIA lighting backends (`qmk_backlight` /
+`qmk_rgblight`) have no UI. RGB support covers VialRGB only.
+
+## Languages
+
+The interface is fully bilingual, English and Simplified Chinese, selectable in Website
+Settings and also via `?lang=en` / `?lang=zh`. Keycap legends stay in English regardless of UI
+language, matching `vial-gui`. Chinese-language summary:
+
+> Vialite 是一个原生网页版的 Vial 键盘配置器，通过 WebHID 直接与键盘通信，无需安装驱动或客户端。
+> 支持改键、层、宏、Tap Dance、Combo、RGB 灯效与 QMK 设置。仅支持 Chrome / Edge。
+
+## Links
+
+- [Live app](https://vialite.viii.me/)
+- [Source and README](https://github.com/tcyeee/vialite)
+- [Vial project](https://get.vial.today/)
+- [vial-gui — the upstream desktop client this ports from](https://github.com/vial-kb/vial-gui)
+- [WebHID browser support](https://caniuse.com/webhid)

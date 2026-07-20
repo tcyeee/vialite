@@ -48,7 +48,9 @@
     />
     <meta name="twitter:image" content="https://vialite.viii.me/og-image.png" />
 
-    <!-- Structured data -->
+    <!-- Structured data. featureList mirrors the sidebar pages (and the README
+         feature table) — it's the most machine-readable statement of what the app
+         actually does, which matters for LLM crawlers that never run our JS. -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -60,14 +62,163 @@
         "browserRequirements": "Requires a WebHID-capable browser (Chrome or Edge)",
         "description": "A native web configurator for Vial-protocol keyboards, talking to the keyboard directly over WebHID — no Qt, no WebAssembly, no driver install.",
         "inLanguage": ["en", "zh-Hans"],
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "license": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
+        "sameAs": ["https://github.com/tcyeee/vialite"],
+        "codeRepository": "https://github.com/tcyeee/vialite",
+        "programmingLanguage": "TypeScript",
+        "featureList": [
+          "Keymap editor — assign keycodes per layer on a rendered physical layout (ISO-Enter, rotary encoders, layout options)",
+          "Dual-role key editor for layer-tap and mod-tap",
+          "Macro recording and editing",
+          "Tap dance configuration (tap, double-tap, hold, tap-hold)",
+          "Combo editor with preview cards and reordering",
+          "VialRGB (QMK rgb_matrix) lighting control — effect, hue, saturation, brightness, speed",
+          "QMK settings — grave-escape, magic, one-shot, tap-hold, mouse keys, combo timing",
+          "Import and export .vil layout files",
+          "Keyboard matrix tester for switch diagnostics",
+          "3D preview of the current layout",
+          "Keycap appearance customization and PNG export of any or all layers",
+          "Bilingual interface (English and Simplified Chinese)"
+        ]
+      }
+    </script>
+
+    <!-- FAQ — these are the questions people (and assistants answering for them)
+         actually ask about this app; the answers are otherwise only reachable by
+         running the SPA. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Which browsers does Vialite work in?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Chrome and Edge (and other Chromium-based browsers). Vialite talks to the keyboard over the WebHID API, which Safari and Firefox do not implement, so those browsers can open the site but cannot connect to a device."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Vialite the same as the official vial-web?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. The official vial-web cross-compiles the vial-gui PyQt5 desktop application to WebAssembly and paints Qt widgets onto a canvas. Vialite is an independent, from-scratch web frontend: the Vial HID protocol is reimplemented in TypeScript and the interface is ordinary HTML and React. It is not a fork or a wrapper of vial-web."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need to install anything to use Vialite?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. There is no driver, no desktop application and no browser extension. Open the site in Chrome or Edge, click Connect, and pick your keyboard from the browser's device chooser."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which keyboards are supported?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Any keyboard running Vial-protocol firmware. Vialite reads the device's own vial.json definition over HID, so it adapts to whatever layout, encoders and features the firmware reports. Macros, tap dance, combos and the matrix tester appear only when the connected board supports them."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Vialite send my keymap to a server?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Vialite is a static site and communicates only with the keyboard itself over WebHID. Keymaps, macros and preferences stay on the device and in the browser's localStorage."
+            }
+          }
+        ]
       }
     </script>
 
     <script data-goatcounter="https://vialite.stats.viii.me/count" async src="https://vialite.stats.viii.me/count.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The markup inside #root is the pre-JS fallback. createRoot() clears the
+         container on first render, so anyone with working JS never keeps it —
+         but crawlers that don't execute JavaScript (most LLM crawlers) would
+         otherwise see a completely empty <body>, since this is a pure SPA.
+         It's revealed on a 400ms CSS delay so the normal fast path doesn't
+         flash it before React mounts; a slow connection or failed bundle still
+         gets a readable page. -->
+    <style>
+      #boot-fallback {
+        opacity: 0;
+        animation: boot-fallback-in 0s linear 0.4s forwards;
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 3rem 1.5rem;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.6;
+        color: #2e2427;
+      }
+      #boot-fallback h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
+      #boot-fallback h2 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+      #boot-fallback a { color: #78555e; }
+      @keyframes boot-fallback-in { to { opacity: 1; } }
+      @media (prefers-color-scheme: dark) {
+        #boot-fallback { color: #ece4e6; }
+        #boot-fallback a { color: #d3a9b5; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-fallback { animation-duration: 0s; }
+      }
+    </style>
+    <div id="root">
+      <div id="boot-fallback">
+        <h1>Vialite — web configurator for Vial keyboards</h1>
+        <p>
+          Vialite configures <a href="https://get.vial.today/">Vial</a>-protocol mechanical keyboards
+          directly in the browser over
+          <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebHID_API">WebHID</a>. There is no
+          Qt, no WebAssembly and no driver install — open the page in Chrome or Edge, click Connect,
+          and pick your keyboard from the browser's device chooser. Your keymap never leaves your
+          machine: the site is static and talks only to the keyboard itself.
+        </p>
+        <p lang="zh-Hans">
+          Vialite 是一个原生网页版的 Vial 键盘配置器，通过 WebHID 直接与键盘通信，无需安装驱动或客户端。
+          支持改键、层、宏、Tap Dance、Combo、RGB 灯效与 QMK 设置，界面支持中文和英文。
+        </p>
+
+        <h2>What you can do</h2>
+        <ul>
+          <li><strong>Keyboard config</strong> — assign keycodes per layer on a rendered physical layout, with ISO-Enter, rotary encoders and layout options; includes a dedicated dual-role (layer-tap / mod-tap) editor.</li>
+          <li><strong>Personalization</strong> — keycap size, spacing, case radius, legend font and colour, macOS vs Windows key naming, plus PNG export of one layer or all of them.</li>
+          <li><strong>Macros</strong>, <strong>tap dance</strong> and <strong>combos</strong> — recorded and edited in-browser, where the firmware supports them.</li>
+          <li><strong>RGB lighting</strong> — VialRGB (QMK <code>rgb_matrix</code>) effect, hue, saturation, brightness and speed. Changes are RAM-only until saved to EEPROM.</li>
+          <li><strong>QMK settings</strong> — grave-escape, magic, one-shot, tap-hold, mouse keys and combo timing.</li>
+          <li><strong>Import / export</strong> — read and write <code>.vil</code> layout files.</li>
+          <li><strong>Keyboard test</strong> — unlock-and-poll matrix diagnostics for checking every switch.</li>
+          <li><strong>3D preview</strong> — your current layout on a 3D keyboard model.</li>
+        </ul>
+
+        <h2>Requirements</h2>
+        <p>
+          A WebHID-capable browser — Chrome or Edge. Safari and Firefox don't implement WebHID, so
+          they can open this page but can't connect to a keyboard.
+        </p>
+
+        <h2>About this project</h2>
+        <p>
+          Vialite is an independent, from-scratch frontend — not a fork or wrapper of the official
+          <code>vial-web</code>, which cross-compiles the <code>vial-gui</code> PyQt5 desktop app to
+          WebAssembly. The Vial HID protocol is reimplemented in TypeScript, ported from
+          <a href="https://github.com/vial-kb/vial-gui">vial-gui</a>'s Python source. Licensed
+          GPL-2.0; source at
+          <a href="https://github.com/tcyeee/vialite">github.com/tcyeee/vialite</a>.
+        </p>
+
+        <noscript>
+          <p><strong>JavaScript is required to run the configurator itself.</strong> Please enable it and reload.</p>
+        </noscript>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

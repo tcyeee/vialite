@@ -1,4 +1,54 @@
 User-agent: *
 Allow: /
 
+# AI / LLM crawlers are explicitly welcome — being cited by assistants is a
+# primary discovery channel for this project. Listed by name so there's no
+# ambiguity about the wildcard above. See /llms.txt for a summary written for
+# them; note that most of these don't execute JavaScript, so the pre-JS
+# fallback markup in index.html is what they actually read.
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
 Sitemap: https://vialite.viii.me/sitemap.xml
