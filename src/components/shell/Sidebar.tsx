@@ -490,8 +490,11 @@ export function SidebarDrawer({
       <aside
         data-lenis-prevent
         className={
-          "fixed bottom-0 left-0 top-16 z-[60] flex w-[min(82vw,320px)] flex-col overflow-y-auto rounded-r-[2rem] bg-brand-background px-6 py-6 shadow-2xl transition-transform duration-300 ease-out " +
-          (open ? "translate-x-0" : "-translate-x-full")
+          // The shadow is tied to `open`: parked off-screen the drawer's edge sits exactly at x=0,
+          // so a permanent shadow-2xl would still smudge the page edge with the menu hidden.
+          // It fades out with the slide (hence box-shadow in the transition) rather than snapping.
+          "fixed bottom-0 left-0 top-16 z-[60] flex w-[min(82vw,320px)] flex-col overflow-y-auto rounded-r-[2rem] bg-brand-background px-6 py-6 transition-[transform,box-shadow] duration-300 ease-out " +
+          (open ? "translate-x-0 shadow-2xl" : "-translate-x-full shadow-none")
         }
       >
         <div className="mb-2 flex justify-start">
