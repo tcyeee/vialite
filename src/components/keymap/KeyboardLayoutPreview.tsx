@@ -8,6 +8,7 @@ import {
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import type { KeycodeDef } from "../../protocol/keycodes.ts";
+import { useSettledLive } from "../common/useSettledLive.ts";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
 import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
@@ -100,6 +101,19 @@ export function fontPositionClass(pos: FontPosition): string {
   return pos === "center" ? "" : ` key-pos-${pos}`;
 }
 
+/**
+ * Board rendering style (立体感/风格), 4 states: `wireframe` (线稿 — outline only,
+ * no fill), `default` (flat fill, no shading), `relief` (浮雕 — highlight/shadow
+ * 3D shading, what the old `depth` boolean's `true` meant), and `3d` (未实现 —
+ * reserved for a future true-3D render; renders identically to `default` until
+ * then). Only `default`/`relief` are reachable today, via the 立体感 toggle on
+ * the 键盘配色 page (`KeyboardColorPanel`); `wireframe`/`3d` are wired through the
+ * rendering pipeline but have no UI entry point yet.
+ */
+export type PreviewStyle = "wireframe" | "default" | "relief" | "3d";
+export const PREVIEW_STYLES: PreviewStyle[] = ["wireframe", "default", "relief", "3d"];
+export const DEFAULT_PREVIEW_STYLE: PreviewStyle = "relief";
+
 /** Defaults for the tunable case/plate appearance. */
 export const DEFAULT_KEY_SPACING: SpacingLevel = "s";
 export const DEFAULT_FONT_SIZE: FontSize = "m";
@@ -129,8 +143,8 @@ export interface PreviewAppearance {
   plateColor?: string;
   /** Whether each keycap draws a thin outline (键帽边框). Default off. */
   keycapBorder?: boolean;
-  /** Whether to draw the highlight/shadow 3D shading (立体感). Default on. */
-  depth?: boolean;
+  /** Board rendering style (立体感/风格) — see {@link PreviewStyle}. */
+  style?: PreviewStyle;
   /** Keycap label font size level (字体大小). */
   fontSize?: FontSize;
   /** Keycap label text/icon color (字体颜色). */
@@ -325,11 +339,14 @@ export function KeyboardLayoutPreview({
     caseColor,
     plateColor,
     keycapBorder,
-    depth,
+    style,
     fontSize,
     fontColor,
     fontPosition,
   } = { ...appearance, ...overrides };
+  // `3d` has no distinct render yet — falls back to `default` (flat, no shading).
+  const depth = style === "relief";
+  const wireframe = style === "wireframe";
   const {
     PITCH,
     inset,
@@ -339,6 +356,7 @@ export function KeyboardLayoutPreview({
     zoom: sizeZoom,
   } = appearanceMetrics(size, spacing, keycapWidth, caseRadius, caseThickness);
   const zoom = zoomOverride ?? sizeZoom;
+  const zoomLive = useSettledLive(zoomOverride != null);
   const posClass = fontPositionClass(fontPosition);
 
   // Right-click assign: the cascade selector anchored at the click point. It
@@ -374,10 +392,14 @@ export function KeyboardLayoutPreview({
 
   const board = (
     <div
-      className={"keyboard-case" + (showCase && depth && !caseShape ? " keyboard-case-shaded" : "")}
+      className={
+        "keyboard-case" +
+        (showCase && depth && !caseShape ? " keyboard-case-shaded" : "")
+      }
       style={{
         padding: caseThickness,
-        background: showCase && !caseShape ? caseColor : "transparent",
+        background: showCase && !caseShape && !wireframe ? caseColor : "transparent",
+        border: showCase && !caseShape && wireframe ? `1.5px solid ${caseColor}` : undefined,
         borderRadius: showCase && !caseShape ? outerRadius : 0,
         width: "fit-content",
       }}
@@ -388,6 +410,7 @@ export function KeyboardLayoutPreview({
           caseColor={caseColor}
           plateColor={plateColor}
           depth={depth}
+          wireframe={wireframe}
         />
       )}
       <div
@@ -396,12 +419,14 @@ export function KeyboardLayoutPreview({
           (depth ? " keyboard-layout-shaded" : "") +
           (caseShape ? " keyboard-layout-outlined" : "") +
           (keycapBorder ? " keyboard-layout-bordered" : "") +
+          (wireframe ? " keyboard-layout-wireframe" : "") +
           (menu ? " keyboard-layout-has-selection" : "")
         }
         style={{
           width: plateWidth,
           height: plateHeight,
-          background: caseShape ? "transparent" : plateColor,
+          background: caseShape || wireframe ? "transparent" : plateColor,
+          border: !caseShape && wireframe ? `1.5px solid ${plateColor}` : undefined,
           borderRadius: caseShape ? 0 : innerRadius,
           // Display-only by default; the caps only need to receive events when
           // there's a right-click menu to open.
@@ -476,7 +501,7 @@ export function KeyboardLayoutPreview({
     <>
       <KeyboardZoom
         zoom={zoom}
-        live={zoomOverride != null}
+        live={zoomLive}
         width={plateWidth + caseThickness * 2}
         height={plateHeight + caseThickness * 2}
       >

@@ -13,7 +13,6 @@ import {
 } from "./components/connect/preview3dParams.ts";
 import { useAutoFitZoom } from "./components/keymap/autoFitSize.ts";
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
-import { ImportExportPanel } from "./components/io/ImportExportPanel.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
 import {
   ALWAYS_ENABLED_ATTR,
@@ -23,6 +22,7 @@ import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { Navbar } from "./components/shell/Navbar.tsx";
+import { NewHomePage } from "./components/shell/NewHomePage.tsx";
 import { QmkSettingsPanel } from "./components/qmk/QmkSettingsPanel.tsx";
 import { RgbPanel } from "./components/rgb/RgbPanel.tsx";
 import { Sidebar, SidebarDrawer } from "./components/shell/Sidebar.tsx";
@@ -46,7 +46,7 @@ import {
   shouldSkipAutoConnect,
 } from "./components/connect/lastDevice.ts";
 
-type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "rgb" | "color" | "advanced" | "site" | "io" | "preview3d";
+type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "rgb" | "color" | "advanced" | "site" | "preview3d" | "newHome";
 
 type Selected =
   | { kind: "key"; row: number; col: number; part?: KeyPart }
@@ -195,10 +195,20 @@ function App() {
   // Narrow/medium-viewport (`< lg`) sidebar drawer open state; ignored at lg+, where the floating
   // Sidebar card is shown instead. Always starts closed.
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // Connect-success page transition. "zoom": the waiting page's 3D model
-  // scales up to fill a blackened screen; "rise": the config page slides up
-  // from below over that black. Driven from below and cleared once complete.
-  const [transition, setTransition] = useState<"none" | "zoom" | "rise">("none");
+  // Connect/disconnect page transition. Connect plays "zoom" (the waiting
+  // page's 3D model scales up to fill a blackened screen) then "rise" (the
+  // config page slides up from below over that black). Disconnect is
+  // simpler: "darken" fades a black curtain in over the config page (which
+  // mounts the waiting page off-screen above it, primed and ready but not yet
+  // visible), then "reveal" slides that waiting page straight down from the
+  // top edge into place over the blackened screen. Driven below and cleared
+  // once complete.
+  const [transition, setTransition] = useState<"none" | "zoom" | "rise" | "darken" | "reveal">("none");
+  // Set at the start of a disconnect animation, consumed once "reveal"
+  // finishes to decide which cleanup/toast path to run. A ref (not state) so
+  // the possibly-stale closure captured by transport.onDisconnect (set once
+  // per attachTransport call) always reads the current value.
+  const pendingDisconnectRef = useRef<"manual" | "lost" | null>(null);
   const transportRef = useRef<HidTransport | null>(null);
   // Target mode of a navigation attempt that got intercepted by qmkLeaveRequested; applied once
   // QmkSettingsPanel reports how the user resolved the "unsaved changes" dialog.
@@ -224,16 +234,11 @@ function App() {
       await teardown();
       transportRef.current = transport;
       transport.onDisconnect = () => {
-        transportRef.current = null;
-        setKeyboard(null);
-        setProductName(undefined);
-        setSelected(null);
-        setStatus("idle");
-        setErrorInfo({ key: "keyboardDisconnected" });
-        setQmkPendingCount(0);
-        setQmkLeaveRequested(false);
-        qmkPendingNavigationRef.current = null;
-        showToast(t("keyboardDisconnected"), "warning");
+        if (pendingDisconnectRef.current) {
+          return;
+        }
+        pendingDisconnectRef.current = "lost";
+        setTransition("darken");
       };
       const kb = new Keyboard(transport);
       await kb.reload();
@@ -354,8 +359,38 @@ function App() {
     }
   }, [tryAttachAuthorizedDevice, teardown]);
 
-  const handleDisconnect = useCallback(async () => {
-    await teardown();
+  // Runs once the disconnect darken+reveal choreography finishes: the actual
+  // teardown was deliberately deferred until now so the config page still had
+  // real keyboard data to render while it slid away. "manual" closes the
+  // transport properly (button-triggered); "lost" skips that — the device is
+  // already gone, so there's nothing left to close.
+  const finishDisconnect = useCallback(
+    async (reason: "manual" | "lost") => {
+      if (reason === "manual") {
+        await teardown();
+        setErrorInfo(null);
+      } else {
+        transportRef.current = null;
+        setKeyboard(null);
+        setProductName(undefined);
+        setSelected(null);
+        setErrorInfo({ key: "keyboardDisconnected" });
+      }
+      setStatus("idle");
+      setQmkSections([]);
+      setQmkPendingCount(0);
+      setQmkLeaveRequested(false);
+      qmkPendingNavigationRef.current = null;
+      setTransition("none");
+      showToast(t(reason === "lost" ? "keyboardDisconnected" : "deviceDisconnected"), "warning");
+    },
+    [teardown, t, showToast],
+  );
+
+  const handleDisconnect = useCallback(() => {
+    if (pendingDisconnectRef.current) {
+      return;
+    }
     // Mark this as an explicit disconnect so the next page load won't
     // silently auto-reconnect to the same board. Deliberately *not*
     // transport.forget(): that revokes the WebHID grant outright, which also
@@ -365,14 +400,9 @@ function App() {
     // without touching the grant; attachTransport clears it on the next real
     // connect (manual or via the shortcut).
     markSkipAutoConnect();
-    setErrorInfo(null);
-    setStatus("idle");
-    setQmkSections([]);
-    setQmkPendingCount(0);
-    setQmkLeaveRequested(false);
-    qmkPendingNavigationRef.current = null;
-    showToast(t("deviceDisconnected"), "warning");
-  }, [teardown, t, showToast]);
+    pendingDisconnectRef.current = "manual";
+    setTransition("darken");
+  }, []);
 
   // Bails out (returns the same array reference) when the section list is unchanged, so this
   // doesn't cause QmkSettingsPanel's per-render effect to re-trigger a parent re-render forever.
@@ -491,8 +521,11 @@ function App() {
     })();
   }, [tryAttachAuthorizedDevice, teardown]);
 
-  // Drives the connect-success transition timeline: hold on the model zoom,
-  // then let the config page rise, then clear the overlay entirely.
+  // Drives both transition timelines. Connect: hold on the model zoom, then
+  // let the config page rise, then clear the overlay entirely. Disconnect:
+  // hold on the black curtain fading in (the waiting page mounts off-screen
+  // above during this same hold, so it's primed and ready), then slide it
+  // down into view, then finally run the deferred teardown.
   useEffect(() => {
     if (transition === "zoom") {
       const id = setTimeout(() => setTransition("rise"), 380);
@@ -502,7 +535,19 @@ function App() {
       const id = setTimeout(() => setTransition("none"), 560);
       return () => clearTimeout(id);
     }
-  }, [transition]);
+    if (transition === "darken") {
+      const id = setTimeout(() => setTransition("reveal"), 350);
+      return () => clearTimeout(id);
+    }
+    if (transition === "reveal") {
+      const id = setTimeout(() => {
+        const reason = pendingDisconnectRef.current ?? "manual";
+        pendingDisconnectRef.current = null;
+        void finishDisconnect(reason);
+      }, 600);
+      return () => clearTimeout(id);
+    }
+  }, [transition, finishDisconnect]);
 
   // Assigns a keycode to the currently-selected key/encoder. Unlike the old
   // popup flow, the selection is kept so the user can keep re-assigning the
@@ -663,6 +708,10 @@ function App() {
   // Keep the waiting page mounted through the transition so its 3D model
   // (three.js scene) isn't torn down and re-created mid-animation.
   const showWaiting = !connected || inTransition;
+  // Only connect uses the waiting page's 3D-model zoom/curtain; disconnect
+  // has its own black curtain (below) and never touches it.
+  const waitingZoom = transition === "zoom" || transition === "rise";
+  const disconnecting = transition === "darken" || transition === "reveal";
 
   return (
     <>
@@ -675,19 +724,25 @@ function App() {
           {...(inTransition ? { "data-lenis-prevent": "" } : {})}
           className={
             inTransition
-              ? "fixed inset-0 z-50 overflow-y-auto bg-white dark:bg-black/30 dark:backdrop-blur-md"
+              ? `fixed inset-0 ${disconnecting ? "z-30" : "z-50"} overflow-y-auto bg-white dark:bg-black/30 dark:backdrop-blur-md`
               : "min-h-screen bg-white dark:bg-brand-background"
           }
           style={
             inTransition
               ? {
-                  transform: transition === "rise" ? "translateY(0)" : "translateY(100%)",
+                  // Disconnect never moves the config page itself — it just sits still
+                  // under the black curtain while the waiting page slides down over it.
+                  transform: transition === "zoom" ? "translateY(100%)" : "translateY(0)",
                   transition:
                     transition === "rise" ? "transform 520ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
                 }
               : undefined
           }
         >
+          {mode === "newHome" && keyboard ? (
+            <NewHomePage keyboard={keyboard} layer={layer} onNavigate={navigate} />
+          ) : (
+            <>
           <Navbar onMenuClick={() => setDrawerOpen((v) => !v)} />
           <SidebarDrawer
             productName={productName}
@@ -738,7 +793,7 @@ function App() {
                               ? t("navAdvanced")
                               : mode === "preview3d"
                                 ? t("navPreview3d")
-                                : t("navImportExport")}
+                                : t("navNewHome")}
                 </h1>
                 {mode === "preview3d" && <HelpIcon text={t("preview3dHint")} />}
                 {mode === "macro" && <HelpIcon text={t("macroHint")} />}
@@ -849,6 +904,9 @@ function App() {
                           // 选中双功能键的上半区(tap)时,只允许基础键码:除「功能」
                           // 列前三张卡片外的所有卡片置灰不可交互。
                           dualRoleTap={selected?.kind === "key" && selected.part === "tap"}
+                          importing={importing}
+                          onExport={handleExport}
+                          onImportFile={handleImportFile}
                         />
                       </div>
                     </section>
@@ -906,21 +964,40 @@ function App() {
                 />
               )}
               {mode === "site" && <SiteSettingsPanel />}
-              {keyboard && mode === "io" && (
-                <ImportExportPanel importing={importing} onExport={handleExport} onImportFile={handleImportFile} />
-              )}
               </div>
             </main>
           </div>
         </div>
       </div>
           {importing && <div className="io-busy-overlay" />}
+            </>
+          )}
         </div>
       )}
+      {/* Disconnect's black curtain, fading in over the config page during "darken"
+          and staying opaque through "reveal" so the waiting page below has a
+          blackened backdrop to slide down over. Always mounted (rather than only
+          while disconnecting) so the very first opacity change is a genuine CSS
+          transition, not a same-frame mount-and-set that wouldn't animate. */}
+      <div
+        className="pointer-events-none fixed inset-0 z-40 bg-black transition-opacity duration-[350ms] ease-in"
+        style={{ opacity: disconnecting ? 1 : 0 }}
+      />
       {showWaiting && (
         <div
           key="waiting"
-          className={inTransition ? "fixed inset-0 z-40 pointer-events-none" : "fixed inset-0 z-40"}
+          className={`fixed inset-0 ${disconnecting ? "z-50" : "z-40"} ${
+            inTransition ? "pointer-events-none" : ""
+          }`}
+          // Primed off-screen above during "darken" (no transition, so mounting
+          // here doesn't itself animate), then slid down into view during "reveal".
+          style={
+            transition === "darken"
+              ? { transform: "translateY(-100%)", transition: "none" }
+              : transition === "reveal"
+                ? { transform: "translateY(0)", transition: "transform 520ms cubic-bezier(0.4, 0, 0.2, 1)" }
+                : undefined
+          }
         >
           <WaitingForConnection
             status={status}
@@ -929,7 +1006,7 @@ function App() {
             onConnect={handleConnect}
             lastDeviceName={lastDeviceName}
             onReconnectSaved={handleReconnectSaved}
-            zoom={inTransition}
+            zoom={waitingZoom}
           />
         </div>
       )}

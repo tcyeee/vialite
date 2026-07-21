@@ -125,10 +125,10 @@ html[data-theme-anim="reveal"]::view-transition-new(root) {
 }
 
 /* 全屏预览 (fullscreen keyboard preview) toggle: same circular-reveal technique
-   as the theme switch above, driven by FullscreenPreview.tsx's own
+   as the theme switch above, driven by StyleConfig.tsx's own
    `data-fsp-anim`/`--fsp-reveal-*` vars so the two transitions can't clobber
    each other. The board itself is a *separately* named view-transition
-   participant (`keyboard-hero`, set in FullscreenPreview.tsx) — the browser
+   participant (`keyboard-hero`, set in StyleConfig.tsx) — the browser
    extracts it from this root capture automatically and morphs its position/
    size on its own, so the ripple below only ever affects everything else. */
 html[data-fsp-anim="reveal"]::view-transition-old(root),
@@ -152,6 +152,31 @@ html[data-fsp-anim="reveal"]::view-transition-new(root) {
   }
   to {
     clip-path: circle(var(--fsp-reveal-r) at var(--fsp-reveal-x) var(--fsp-reveal-y));
+  }
+}
+
+/* Pull-to-exit curtain hint text (StyleConfig.tsx's FullscreenPreviewOverlay):
+   opacity+scale breathing, distinct from status-breathe's box-shadow glow
+   since there's no LED-style ring to animate here. */
+@keyframes pull-exit-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+}
+
+.animate-pull-exit-breathe {
+  animation: pull-exit-breathe 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pull-exit-breathe {
+    animation: none;
   }
 }
 
@@ -430,6 +455,62 @@ textarea,
 @media (prefers-reduced-motion: reduce) {
   .settings-row-collapse {
     transition: none;
+  }
+}
+
+/* 新版首页 nav-item exit: a quick "pop" (anticipation) followed by a retract up along the
+   item's own -30deg tilt into the hero keyboard strip above. `--exit-dx`/`--exit-delay` are set
+   per-item inline (see NewHomePage.tsx) for the "不规则" stagger/landing jitter; duration here
+   must match ITEM_EXIT_DURATION_MS in NewHomePage.tsx, which times the phase handoff. */
+@keyframes nav-item-exit {
+  0% {
+    transform: rotate(-30deg) translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  18% {
+    transform: rotate(-30deg) translate(calc(var(--exit-dx, 0px) * -0.4), 10px) scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-30deg) translate(var(--exit-dx, 0px), -70vh) scale(0.35);
+    opacity: 0;
+  }
+}
+
+.nav-item-exit {
+  animation: nav-item-exit 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--exit-delay, 0ms);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-item-exit {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* 新版首页 hero strip exit, fired once every nav item has cleared. Duration must match
+   HERO_EXIT_DURATION_MS in NewHomePage.tsx. */
+@keyframes hero-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-60px);
+  }
+}
+
+.hero-exit {
+  animation: hero-exit 520ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-exit {
+    animation: none;
+    opacity: 0;
   }
 }
 
@@ -1229,6 +1310,30 @@ textarea,
 .keyboard-layout .encoder-dir {
   font-size: 0.8rem;
   opacity: 0.6;
+}
+
+/* 线稿(wireframe) 风格：键帽/旋钮只描边、不填充 —— 4 态立体感枚举(PreviewStyle)
+   之一。外壳/底板的描边在 KeyboardLayoutPreview.tsx/KeyboardLayout.tsx 里内联
+   设置（颜色是用户可配的 caseColor/plateColor），这里只补键帽/旋钮的默认色
+   背景（它们的填充色不可配置）。必须排在 `.keyboard-layout .key`/`.encoder`
+   的默认背景规则之后，靠顺序覆盖同特异度的规则。旋钮本就是虚线描边
+   （无填充色可配），去掉背景即可；键帽默认无边框，需要补一条实线。描边颜色走
+   `--wireframe-line-color` 变量，默认回退到原来的固定灰；KeyboardLayout 的
+   `colorOverride`（如 NewHomePage 黑底米白线稿的 hero 区）会内联设置这个变量,
+   覆盖此处的默认值. */
+.keyboard-layout-wireframe .key {
+  background: transparent;
+  border: 1px solid var(--wireframe-line-color, light-dark(#8a8a8a, #888));
+}
+
+.keyboard-layout-wireframe .encoder {
+  background: transparent;
+  border-color: var(--wireframe-line-color, light-dark(#888, #999));
+}
+
+.keyboard-layout-wireframe .key:hover,
+.keyboard-layout-wireframe .encoder:hover {
+  background: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.08));
 }
 
 .keyboard-layout-3d {

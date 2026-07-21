@@ -13,6 +13,7 @@ import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
 import { KeyInfoCard } from "./KeyInfoCard.tsx";
+import { useSettledLive } from "../common/useSettledLive.ts";
 import {
   appearanceMetrics,
   FONT_SCALES,
@@ -20,6 +21,7 @@ import {
   KeyboardZoom,
   KEYCAP_RADIUS_PX,
   shapeStyle,
+  type PreviewStyle,
 } from "./KeyboardLayoutPreview.tsx";
 import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
@@ -50,6 +52,20 @@ interface Props {
    * measured yet, so the configured level applies.
    */
   zoomOverride?: number | null;
+  /**
+   * Overrides the shared 立体感/风格 (`PreviewStyle`) setting for just this board,
+   * e.g. NewHomePage's decorative hero strip forcing 线稿 regardless of what the
+   * user has configured on the 键盘配色 page. Absent (the default) reads `style`
+   * from context like every other appearance knob.
+   */
+  styleOverride?: PreviewStyle;
+  /**
+   * Single color forcing case/plate/font (and, in wireframe, the per-cap outline
+   * color that otherwise comes from a fixed CSS default) regardless of the
+   * user's 键盘配色 settings — same rationale as `styleOverride`, for decorative
+   * boards like NewHomePage's hero strip. Absent reads colors from context.
+   */
+  colorOverride?: string;
 }
 
 export function KeyboardLayout({
@@ -60,6 +76,8 @@ export function KeyboardLayout({
   onEncoderSelect,
   onContextAssign,
   zoomOverride,
+  styleOverride,
+  colorOverride,
 }: Props) {
   // Physical appearance (size, spacing, case/plate) is shared with the 键盘配色
   // page via context, so tuning it there restyles this interactive board too.
@@ -76,11 +94,18 @@ export function KeyboardLayout({
     caseColor,
     plateColor,
     keycapBorder,
-    depth,
+    style: contextStyle,
     fontSize,
     fontColor,
     fontPosition,
   } = usePreviewAppearance();
+  const style = styleOverride ?? contextStyle;
+  // `3d` has no distinct render yet — falls back to `default` (flat, no shading).
+  const depth = style === "relief";
+  const wireframe = style === "wireframe";
+  const caseColorFinal = colorOverride ?? caseColor;
+  const plateColorFinal = colorOverride ?? plateColor;
+  const fontColorFinal = colorOverride ?? fontColor;
   const {
     PITCH,
     inset,
@@ -90,6 +115,7 @@ export function KeyboardLayout({
     zoom: sizeZoom,
   } = appearanceMetrics(size, spacing, keycapWidth, caseRadius, caseThickness);
   const zoom = zoomOverride ?? sizeZoom;
+  const zoomLive = useSettledLive(zoomOverride != null);
   const posClass = fontPositionClass(fontPosition);
 
   // Hover info card: revealed only after the pointer rests on a cap for 0.5s, so
@@ -158,10 +184,14 @@ export function KeyboardLayout({
 
   const board = (
     <div
-      className={"keyboard-case" + (showCase && depth && !caseShape ? " keyboard-case-shaded" : "")}
+      className={
+        "keyboard-case" +
+        (showCase && depth && !caseShape ? " keyboard-case-shaded" : "")
+      }
       style={{
         padding: caseThickness,
-        background: showCase && !caseShape ? caseColor : "transparent",
+        background: showCase && !caseShape && !wireframe ? caseColorFinal : "transparent",
+        border: showCase && !caseShape && wireframe ? `1.5px solid ${caseColorFinal}` : undefined,
         borderRadius: showCase && !caseShape ? outerRadius : 0,
         width: "fit-content",
       }}
@@ -169,9 +199,10 @@ export function KeyboardLayout({
       {caseShape && (
         <KeyboardCaseOutline
           shape={caseShape}
-          caseColor={caseColor}
-          plateColor={plateColor}
+          caseColor={caseColorFinal}
+          plateColor={plateColorFinal}
           depth={depth}
+          wireframe={wireframe}
         />
       )}
       <div
@@ -180,17 +211,20 @@ export function KeyboardLayout({
           (depth ? " keyboard-layout-shaded" : "") +
           (caseShape ? " keyboard-layout-outlined" : "") +
           (keycapBorder ? " keyboard-layout-bordered" : "") +
+          (wireframe ? " keyboard-layout-wireframe" : "") +
           (selected ? " keyboard-layout-has-selection" : "")
         }
         style={{
           width: plateWidth,
           height: plateHeight,
-          background: caseShape ? "transparent" : plateColor,
+          background: caseShape || wireframe ? "transparent" : plateColorFinal,
+          border: !caseShape && wireframe ? `1.5px solid ${plateColorFinal}` : undefined,
           borderRadius: caseShape ? 0 : innerRadius,
           // Shared 字体颜色: cascades to `.key`/`.key-icon` (both `color: inherit`).
-          color: fontColor,
+          color: fontColorFinal,
           "--key-font-scale": FONT_SCALES[fontSize],
           "--key-radius": `${KEYCAP_RADIUS_PX[keycapRadius]}px`,
+          ...(colorOverride ? { "--wireframe-line-color": colorOverride } : {}),
         } as CSSProperties}
       >
         {placed.keys
@@ -297,7 +331,7 @@ export function KeyboardLayout({
     <>
       <KeyboardZoom
         zoom={zoom}
-        live={zoomOverride != null}
+        live={zoomLive}
         width={plateWidth + caseThickness * 2}
         height={plateHeight + caseThickness * 2}
       >

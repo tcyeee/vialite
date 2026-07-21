@@ -237,6 +237,12 @@ interface Props {
   onAutoAdvanceChange: (value: boolean) => void;
   /** 未选中按键:在基础按键的模拟键盘上浮出「请先选择按键」提示。 */
   disabled?: boolean;
+  /** True while a `.vil` import write is in flight — disables both export/import buttons. */
+  importing: boolean;
+  /** Export the current layout to a `.vil` file. */
+  onExport: () => void;
+  /** Import a layout from a user-picked `.vil` file. */
+  onImportFile: (file: File) => void;
   /**
    * 选中了双功能键(dualRole)的上半部分(轻触/tap 半区)时置 true。此时该半区只能
    * 是基础键码,所以除「功能」列前三张卡片(F13~F24 / 鼠标 / 媒体,连同基础模拟键盘)
@@ -262,8 +268,12 @@ export function QuickConfigPanel({
   onAutoAdvanceChange,
   disabled = false,
   dualRoleTap = false,
+  importing,
+  onExport,
+  onImportFile,
 }: Props) {
   const { t } = useI18n();
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   // Preview scaling is no longer duplicated here: the board follows the 个性化
   // page's 预览区域自适应大小 / 预览区域缩放 settings, reachable via the
   // 预览样式 row's "去配置" link below.
@@ -570,6 +580,52 @@ export function QuickConfigPanel({
                       <Icon icon="mdi:chevron-right" className="text-base" aria-hidden="true" />
                     </button>
                   }
+                />
+                <SettingsRow
+                  icon={<Icon icon="mdi:download" className="h-4.5 w-4.5" />}
+                  label={t("exportLayout")}
+                  description={t("exportLayoutDesc")}
+                  control={
+                    <button
+                      type="button"
+                      className="btn btn-circle btn-ghost"
+                      onClick={onExport}
+                      disabled={importing}
+                      aria-label={t("exportLayout")}
+                    >
+                      <Icon icon="mdi:download" className="h-4.5 w-4.5" />
+                    </button>
+                  }
+                />
+                <SettingsRow
+                  icon={<Icon icon="mdi:upload" className="h-4.5 w-4.5" />}
+                  label={t("importLayout")}
+                  description={t("importLayoutDesc")}
+                  control={
+                    <button
+                      type="button"
+                      className="btn btn-circle btn-ghost"
+                      onClick={() => importFileInputRef.current?.click()}
+                      disabled={importing}
+                      aria-label={t("importLayout")}
+                      title={importing ? t("importing") : t("importLayout")}
+                    >
+                      <Icon icon="mdi:upload" className="h-4.5 w-4.5" />
+                    </button>
+                  }
+                />
+                <input
+                  ref={importFileInputRef}
+                  type="file"
+                  accept=".vil,application/json"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) {
+                      onImportFile(file);
+                    }
+                  }}
                 />
               </ul>
             </div>

@@ -25,7 +25,8 @@ import {
   type UIEvent as ReactUIEvent,
 } from "react";
 import { createPortal, flushSync } from "react-dom";
-import { ReactLenis } from "lenis/react";
+import { ReactLenis, type LenisRef } from "lenis/react";
+import type { VirtualScrollData } from "lenis";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
@@ -39,12 +40,35 @@ const HERO_NAME = "keyboard-hero";
 /** Scale applied to the close button while hovered — it grows from its corner-anchored resting size back into full view. */
 const CLOSE_HOVER_SCALE = 2;
 
+/** Matches the close button's own `h-20 w-20` Tailwind size (5rem) — used below to locate its resting center without reading back a `getBoundingClientRect` that the magnet effect's own translate would otherwise feed back into. */
+const CLOSE_BTN_SIZE = 80;
+/** Matches the close button's `-right-5 -top-5` Tailwind offset (-1.25rem) — how far outside the viewport corner it rests before any magnet pull is applied. */
+const CLOSE_BTN_REST_OFFSET = -20;
+/** Distance (px, from the close button's resting center) within which the cursor starts pulling it closer — see {@link CLOSE_MAGNET_MAX_SHIFT}. Falls off linearly to 0 at this radius so the pull eases in instead of snapping on. */
+const CLOSE_MAGNET_RADIUS = 220;
+/** Cap (px) on how far the cursor can pull the close button down/left from its corner — it only ever moves toward the page content, never further up/right off-screen. */
+const CLOSE_MAGNET_MAX_SHIFT = 50;
+
+/** The close button's resting center (before any magnet translate), derived from its own fixed Tailwind offset/size rather than measuring the live (possibly already-translated) DOM rect. */
+function closeButtonRestCenter() {
+  return {
+    x: window.innerWidth - CLOSE_BTN_REST_OFFSET - CLOSE_BTN_SIZE / 2,
+    y: CLOSE_BTN_REST_OFFSET + CLOSE_BTN_SIZE / 2,
+  };
+}
+
 /** Scroll distance (px) over which the board's parallax shift and shrink both ramp from 0 to their max — one shared progress value drives both. */
 const BOARD_PARALLAX_SCROLL_RANGE = 200;
-/** Cap (px) on how far the parallax nudge can push the board up. */
-const BOARD_PARALLAX_MAX_SHIFT = 40;
+/** Matches the sticky board container's `pt-28` (7rem) — the board's untransformed resting distance from the viewport top while pinned, used below to derive the shift that lands it at {@link BOARD_SCROLLED_TOP}. */
+const BOARD_TOP_PADDING = 112;
+/** Where the board's top edge should end up once fully scrolled/parallaxed, in px from the viewport top. */
+const BOARD_SCROLLED_TOP = 50;
+/** Cap (px) on how far the parallax nudge can push the board up — sized so the board settles at {@link BOARD_SCROLLED_TOP}. Relies on the board wrapper's `transformOrigin: "top"` so the shrink below doesn't also move the top edge. */
+const BOARD_PARALLAX_MAX_SHIFT = BOARD_TOP_PADDING - BOARD_SCROLLED_TOP;
 /** Cap on how much the board shrinks (as a fraction of its size) by the end of the parallax scroll range. */
-const BOARD_SHRINK_MAX = 0.2;
+const BOARD_SHRINK_MAX = 0.1;
+/** Height (px) of the gradient scrim hung off the bottom of the sticky board container — softens the seam where the settings grid, scrolling up from underneath, would otherwise pop into view right at the board's edge. */
+const BOARD_FADE_ZONE_HEIGHT = 64;
 
 /** Breathing room (px) reserved on either side of the board inside the fullscreen viewport. */
 const VIEWPORT_PADDING = 96;
@@ -52,6 +76,29 @@ const VIEWPORT_PADDING = 96;
 const MAX_FULLSCREEN_ZOOM = 3.5;
 /** Cap the board's height to a share of the viewport rather than fitting it in full, since the settings grid sits below and the page scrolls — the board shouldn't claim the whole screen before a user even sees there's more below. */
 const BOARD_HEIGHT_VH_SHARE = 0.62;
+
+/** Extra breathing room appended after the settings grid, before the pull-to-exit curtain zone below can engage. */
+const CONTENT_BOTTOM_SPACER = 50;
+
+/** Temporarily off — flip back to `true` to re-enable the pull-to-exit curtain below. While `false`, `handleVirtualScroll` bails out immediately so scrolling at the bottom behaves exactly like it did before that feature existed. */
+const PULL_TO_EXIT_ENABLED = false;
+
+/** Pull-to-exit "curtain": once the page is scrolled all the way down, further downward wheel/touch input no longer scrolls (there's nothing left to scroll) and instead grows a dome-shaped curtain from the bottom edge, rubber-banded so it gets progressively harder to pull — see {@link rubberBand}. Sustained pulling past {@link PULL_EXIT_RAW_THRESHOLD} exits the page. */
+const PULL_CURTAIN_MAX_HEIGHT = 220;
+/** Rubber-band stiffness for the curtain, in the same `(x*d*c)/(d+c*x)` form iOS uses for overscroll — smaller resists harder. */
+const PULL_RUBBER_BAND_CONSTANT = 0.5;
+/** Raw accumulated pull distance (px, pre-rubber-band) needed to trigger the exit. Deliberately well past where the curtain's visual height saturates, so reaching it takes sustained pulling rather than a single flick. */
+const PULL_EXIT_RAW_THRESHOLD = 1400;
+/** If no further forward (downward) wheel input arrives within this window, the curtain is treated as released and springs back — there's no discrete "wheel end" event to key off like there is for touch (`touchend`). */
+const PULL_WHEEL_IDLE_RELEASE_MS = 150;
+/** Multiplier applied to the pull amount each spring-back animation frame — smaller snaps back faster. */
+const PULL_RELEASE_DECAY = 0.72;
+
+/** iOS-style diminishing-returns resistance curve: approaches `max` as `raw` grows, but each additional unit of input yields a smaller visual gain the further in you already are. */
+function rubberBand(raw: number, max: number, constant: number) {
+  if (raw <= 0) return 0;
+  return (raw * max * constant) / (max + constant * raw);
+}
 
 function setRevealGeometry(origin: Element) {
   const rect = origin.getBoundingClientRect();
@@ -190,6 +237,11 @@ export function FullscreenPreviewOverlay({
   // `transformOrigin: "top right"` — so hovering grows it back into full view
   // instead of growing further off-screen.
   const [closeHover, setCloseHover] = useState(false);
+  // Magnetic pull: as the cursor nears the tucked-away close button, it
+  // slides down/left to meet it (see CLOSE_MAGNET_* above) instead of making
+  // the user hunt for a target that starts mostly off-screen. `x`/`y` are
+  // each 0..CLOSE_MAGNET_MAX_SHIFT, applied as translate(-x, y) below.
+  const [closeMagnet, setCloseMagnet] = useState({ x: 0, y: 0 });
   // Scroll-linked parallax: nudges the sticky board further up than plain
   // `sticky top-0` pinning would, so it visibly slides as the settings below
   // scroll past it.
@@ -199,9 +251,155 @@ export function FullscreenPreviewOverlay({
   const boardParallaxShift = scrollProgress * BOARD_PARALLAX_MAX_SHIFT;
   const boardScale = 1 - scrollProgress * BOARD_SHRINK_MAX;
 
+  // Pull-to-exit curtain (see PULL_* constants above). `handle` is a fresh
+  // object every render (its `close`/`open` are plain closures over the
+  // memoized `run`, not themselves memoized), so it's mirrored into a ref —
+  // `handleVirtualScroll` below is intentionally created once (`useCallback`
+  // with `[]`) and must only ever read *current* values through refs, since
+  // ReactLenis's own effect that wires up `options.virtualScroll` keys off
+  // `JSON.stringify(options)`, which silently drops function values, so a
+  // fresh closure passed on a later render would never actually get rewired.
+  const handleRef = useRef(handle);
+  handleRef.current = handle;
+  const lenisRef = useRef<LenisRef>(null);
+  const exitAnchorRef = useRef<HTMLDivElement>(null);
+  const pullRawRef = useRef(0);
+  const exitingRef = useRef(false);
+  const wheelIdleTimerRef = useRef<number | null>(null);
+  const releaseRafRef = useRef<number | null>(null);
+  const [pullRaw, setPullRaw] = useState(0);
+
+  const stopWheelIdleTimer = useCallback(() => {
+    if (wheelIdleTimerRef.current != null) {
+      window.clearTimeout(wheelIdleTimerRef.current);
+      wheelIdleTimerRef.current = null;
+    }
+  }, []);
+  const stopReleaseAnimation = useCallback(() => {
+    if (releaseRafRef.current != null) {
+      cancelAnimationFrame(releaseRafRef.current);
+      releaseRafRef.current = null;
+    }
+  }, []);
+  /** Spring the curtain back to 0 — the user let go (touchend, scrolled back up, or stopped generating wheel events) before reaching the exit threshold. */
+  const retractPull = useCallback(() => {
+    stopWheelIdleTimer();
+    stopReleaseAnimation();
+    const step = () => {
+      pullRawRef.current *= PULL_RELEASE_DECAY;
+      if (pullRawRef.current < 1) {
+        pullRawRef.current = 0;
+        setPullRaw(0);
+        releaseRafRef.current = null;
+        return;
+      }
+      setPullRaw(pullRawRef.current);
+      releaseRafRef.current = requestAnimationFrame(step);
+    };
+    releaseRafRef.current = requestAnimationFrame(step);
+  }, [stopReleaseAnimation, stopWheelIdleTimer]);
+  const scheduleWheelIdleRelease = useCallback(() => {
+    stopWheelIdleTimer();
+    wheelIdleTimerRef.current = window.setTimeout(() => {
+      wheelIdleTimerRef.current = null;
+      if (!exitingRef.current) retractPull();
+    }, PULL_WHEEL_IDLE_RELEASE_MS);
+  }, [retractPull, stopWheelIdleTimer]);
+  /** Reached the threshold — exit via the same view-transition `handle.close` the close button/Escape use, but anchored at the bottom-center anchor below so the reveal expands upward from the bottom instead of from wherever the button sits. */
+  const triggerPullExit = useCallback(() => {
+    if (exitingRef.current) return;
+    exitingRef.current = true;
+    stopWheelIdleTimer();
+    stopReleaseAnimation();
+    pullRawRef.current = 0;
+    setPullRaw(0);
+    const anchor = exitAnchorRef.current;
+    if (anchor) handleRef.current.close(anchor);
+  }, [stopReleaseAnimation, stopWheelIdleTimer]);
+  // The interception point: Lenis calls this for every wheel/touch tick
+  // before consuming it (see the `virtualScroll` option below), letting us
+  // read deltas past the scroll limit that would otherwise just be clamped
+  // away. Returning `false` tells Lenis to ignore that tick entirely.
+  const handleVirtualScroll = useCallback(
+    (data: VirtualScrollData): boolean => {
+      if (!PULL_TO_EXIT_ENABLED) return true;
+      if (exitingRef.current) return false;
+      const lenis = lenisRef.current?.lenis;
+      if (!lenis) return true;
+      if (data.event.type === "touchend") {
+        if (pullRawRef.current > 0) {
+          retractPull();
+          return false;
+        }
+        return true;
+      }
+      // `targetScroll` (not `progress`/`scroll`, which track the *animated*,
+      // lerp-smoothed position) is what Lenis clamps to `limit` synchronously
+      // the instant cumulative wheel/touch input would scroll past the
+      // bottom — checking the animated position instead meant waiting for it
+      // to visually catch up, which can lag up to ~1s behind a fast/continuous
+      // scroll and made the curtain feel like it never engaged at all.
+      const atBottom = lenis.targetScroll >= lenis.limit - 0.5;
+      if (!atBottom && pullRawRef.current === 0) return true;
+      if (data.deltaY <= 0) {
+        if (pullRawRef.current > 0) {
+          retractPull();
+          return false;
+        }
+        return true;
+      }
+      stopWheelIdleTimer();
+      stopReleaseAnimation();
+      pullRawRef.current = Math.min(pullRawRef.current + data.deltaY, PULL_EXIT_RAW_THRESHOLD);
+      setPullRaw(pullRawRef.current);
+      if (pullRawRef.current >= PULL_EXIT_RAW_THRESHOLD) {
+        triggerPullExit();
+      } else if (data.event.type === "wheel") {
+        scheduleWheelIdleRelease();
+      }
+      return false;
+    },
+    [retractPull, scheduleWheelIdleRelease, stopReleaseAnimation, stopWheelIdleTimer, triggerPullExit],
+  );
+  const curtainHeight = rubberBand(pullRaw, PULL_CURTAIN_MAX_HEIGHT, PULL_RUBBER_BAND_CONSTANT);
+
+  useEffect(() => {
+    if (!handle.fullscreen) return;
+    setCloseMagnet({ x: 0, y: 0 });
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf: number | null = null;
+    const onMouseMove = (e: MouseEvent) => {
+      if (raf != null) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        const rest = closeButtonRestCenter();
+        const dx = rest.x - e.clientX; // positive: cursor is left of the resting corner
+        const dy = e.clientY - rest.y; // positive: cursor is below the resting corner
+        const distance = Math.hypot(dx, dy);
+        if (distance >= CLOSE_MAGNET_RADIUS) {
+          setCloseMagnet({ x: 0, y: 0 });
+          return;
+        }
+        const pull = 1 - distance / CLOSE_MAGNET_RADIUS;
+        setCloseMagnet({
+          x: Math.max(0, Math.min(dx, CLOSE_MAGNET_MAX_SHIFT)) * pull,
+          y: Math.max(0, Math.min(dy, CLOSE_MAGNET_MAX_SHIFT)) * pull,
+        });
+      });
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      if (raf != null) cancelAnimationFrame(raf);
+    };
+  }, [handle.fullscreen]);
+
   useEffect(() => {
     if (!handle.fullscreen) return;
     setScrollTop(0);
+    exitingRef.current = false;
+    pullRawRef.current = 0;
+    setPullRaw(0);
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && closeBtnRef.current) {
         handle.close(closeBtnRef.current);
@@ -213,6 +411,8 @@ export function FullscreenPreviewOverlay({
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = prevOverflow;
+      stopWheelIdleTimer();
+      stopReleaseAnimation();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handle.fullscreen]);
@@ -233,9 +433,10 @@ export function FullscreenPreviewOverlay({
     // page behind it. `scrollbar-hide` keeps the native scrollbar chrome off
     // since the parallax/shrink effect below already reads scroll position.
     <ReactLenis
+      ref={lenisRef}
       data-lenis-prevent
       onScroll={handleScroll}
-      options={{ smoothWheel: !reduceMotion }}
+      options={{ smoothWheel: !reduceMotion, virtualScroll: handleVirtualScroll }}
       className="scrollbar-hide fixed inset-0 z-[999] overflow-y-auto bg-brand-background"
     >
       <button
@@ -248,7 +449,7 @@ export function FullscreenPreviewOverlay({
         className="fixed -right-5 -top-5 z-20 flex h-20 w-20 items-center justify-center rounded-full bg-black/5 text-brand-on-surface-variant backdrop-blur transition-transform duration-200 ease-out hover:bg-red-500/15 hover:text-red-500 dark:bg-white/10 dark:hover:bg-red-500/20"
         style={{
           transformOrigin: "top right",
-          transform: `scale(${closeHover ? CLOSE_HOVER_SCALE : 1})`,
+          transform: `translate(${-closeMagnet.x}px, ${closeMagnet.y}px) scale(${closeHover ? CLOSE_HOVER_SCALE : 1})`,
         }}
       >
         <Icon icon="mdi:close" className="h-10 w-10" />
@@ -264,11 +465,35 @@ export function FullscreenPreviewOverlay({
             the user scrolls, for the parallax feel. */}
         <div
           className="sticky top-0 z-10 flex w-full justify-center bg-brand-background pb-6 pt-28"
-          style={{ transform: `translateY(-${boardParallaxShift}px) scale(${boardScale})` }}
+          style={{ transform: `translateY(-${boardParallaxShift}px)` }}
         >
-          <div ref={boardRef} style={{ width: "fit-content", viewTransitionName: handle.heroName }}>
+          {/* The shrink lives on this inner wrapper, not the outer sticky container
+              above: that container's `w-full bg-brand-background` is what hides the
+              settings grid scrolling up behind it, and `scale()` shrinks a box's
+              full visual footprint including its background — put on the outer
+              div, it would pull the opaque background in from both edges too,
+              uncovering strips down either side for whatever's underneath to show
+              through (confirmed: the settings text "beside the keyboard" bug). */}
+          <div
+            ref={boardRef}
+            style={{
+              width: "fit-content",
+              viewTransitionName: handle.heroName,
+              transform: `scale(${boardScale})`,
+              transformOrigin: "top",
+            }}
+          >
             <KeyboardLayoutPreview keyboard={keyboard} layer={layer} zoomOverride={zoom} />
           </div>
+          {/* Hangs off the container's own bottom edge (unaffected by the board's
+              scale/translate above, which are purely visual) so it stays put at
+              the seam between the pinned board and the settings grid scrolling
+              up from underneath — fading that content out as it nears the board
+              instead of letting it pop into view at a hard edge. */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-full bg-gradient-to-b from-brand-background to-transparent"
+            style={{ height: BOARD_FADE_ZONE_HEIGHT }}
+          />
         </div>
         {settings && (
           // CSS multi-column rather than `grid-cols-2`: a grid pairs sections into
@@ -282,7 +507,46 @@ export function FullscreenPreviewOverlay({
             {settings}
           </div>
         )}
+        {/* Extra breathing room before the pull-to-exit curtain can engage — see CONTENT_BOTTOM_SPACER. */}
+        <div style={{ height: CONTENT_BOTTOM_SPACER }} aria-hidden="true" />
       </div>
+      {/* Zero-size, fixed at the viewport's bottom-center — used only as the
+          `origin` element for `handle.close()` when exiting via the pull
+          gesture below, so `setRevealGeometry`'s rect-center math lands the
+          circular reveal's origin at the bottom-center of the screen instead
+          of wherever the close button sits. */}
+      {PULL_TO_EXIT_ENABLED && (
+        <div ref={exitAnchorRef} aria-hidden="true" className="pointer-events-none fixed bottom-0 left-1/2 h-0 w-0" />
+      )}
+      {PULL_TO_EXIT_ENABLED && curtainHeight > 0 && (
+        <div
+          aria-hidden="true"
+          // `items-end`: the dome below has a *fixed* height (PULL_CURTAIN_MAX_HEIGHT)
+          // and is bottom-aligned in this variable-height, overflow-hidden window —
+          // so as curtainHeight grows from 0, the window uncovers the dome from its
+          // flat base (anchored at the viewport's bottom edge, same as this window's
+          // own bottom) upward toward its rounded peak, like a curtain rising off the
+          // floor rather than a shape sliding down from the top.
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end justify-center overflow-hidden"
+          style={{ height: curtainHeight }}
+        >
+          <div
+            className="w-full max-w-xl bg-brand-surface-container-highest shadow-[0_-8px_24px_rgba(0,0,0,0.12)]"
+            style={{ height: PULL_CURTAIN_MAX_HEIGHT, borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }}
+          />
+          {/* Positioned within the (variable-height) clip window rather than the
+              fixed-height dome itself, so it tracks the curtain's current top edge
+              as it rises instead of staying pinned near the dome's peak and only
+              popping into view once the pull is nearly complete. Opacity is left to
+              the breathing keyframe itself (an inline fade-in would just fight the
+              animation's own opacity keyframes once mounted). */}
+          {curtainHeight > 28 && (
+            <span className="absolute inset-x-0 top-2 animate-pull-exit-breathe text-center text-sm font-medium text-brand-on-surface-variant">
+              {t("fullscreenPreviewPullExit")}
+            </span>
+          )}
+        </div>
+      )}
     </ReactLenis>,
     document.body,
   );

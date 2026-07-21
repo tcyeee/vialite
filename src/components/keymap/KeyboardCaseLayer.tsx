@@ -121,18 +121,22 @@ export function useCaseShape({ placed, PITCH, inset, caseThickness, showCase }: 
  *
  * `depth` (立体感) adds the drop shadows and the two bevel strokes; with it off
  * the layer is flat fills, matching what the div rendering does without
- * `.keyboard-case-shaded` / `.keyboard-layout-shaded`.
+ * `.keyboard-case-shaded` / `.keyboard-layout-shaded`. `wireframe` (线稿) instead
+ * strokes the outlines with no fill, matching the div rendering's border-only
+ * treatment for that style.
  */
 export function KeyboardCaseOutline({
   shape,
   caseColor,
   plateColor,
   depth,
+  wireframe,
 }: {
   shape: CaseShape;
   caseColor: string;
   plateColor: string;
   depth: boolean;
+  wireframe?: boolean;
 }) {
   // Clip ids must be unique per mounted board — two previews can share a page.
   const uid = useId();
@@ -158,7 +162,18 @@ export function KeyboardCaseOutline({
           ))}
         </defs>
       )}
-      {shape.clusters.map((c, i) => c.casePath && <path key={i} d={c.casePath} fill={caseColor} />)}
+      {shape.clusters.map(
+        (c, i) =>
+          c.casePath && (
+            <path
+              key={i}
+              d={c.casePath}
+              fill={wireframe ? "none" : caseColor}
+              stroke={wireframe ? caseColor : undefined}
+              strokeWidth={wireframe ? 1.5 : undefined}
+            />
+          ),
+      )}
       {/* Bezel rim highlight: a stroke centred on the outline, clipped to it, so
           only the inner half survives — the SVG equivalent of an inset shadow. */}
       {depth &&
@@ -174,7 +189,13 @@ export function KeyboardCaseOutline({
             ),
         )}
       {shape.clusters.map((c, i) => (
-        <path key={i} d={c.platePath} fill={plateColor} />
+        <path
+          key={i}
+          d={c.platePath}
+          fill={wireframe ? "none" : plateColor}
+          stroke={wireframe ? plateColor : undefined}
+          strokeWidth={wireframe ? 1.5 : undefined}
+        />
       ))}
       {/* Plate groove, pairing with `.keyboard-layout-shaded`'s inset shadow. */}
       {depth &&

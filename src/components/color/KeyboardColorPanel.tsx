@@ -10,7 +10,7 @@ import { ColorPicker } from "../common/ColorPicker.tsx";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { LayerTabBar } from "../keymap/LayerTabs.tsx";
 import { useAutoFitZoom } from "../keymap/autoFitSize.ts";
-import { FullscreenPreviewOverlay, useFullscreenPreview } from "../keymap/FullscreenPreview.tsx";
+import { FullscreenPreviewOverlay, useFullscreenPreview } from "../keymap/StyleConfig.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
   FONT_SIZES,
@@ -55,12 +55,13 @@ function store(key: string, value: string) {
 }
 
 /**
- * 键盘配色 (Keyboard Color) page. For now a display-only preview of the physical
- * layout read from the connected board — no per-key color action wired up yet.
- * The Layout section (when the board exposes layout options) and the Appearance
- * settings below tune the preview's physical layout, display size, key spacing,
- * case, and plate; their rows reuse {@link SettingsRow} for a consistent look
- * with the QMK Settings page.
+ * 键盘配色 (Keyboard Color) page. Shows a compact, display-only preview of the
+ * physical layout read from the connected board — no per-key color action
+ * wired up yet — plus a button into the fullscreen config page
+ * (`FullscreenPreviewOverlay`), which is where every appearance setting
+ * (size, font, keycap, case, layout options) actually lives: physical layout,
+ * display size, key spacing, case, and plate. Their rows reuse {@link
+ * SettingsRow} for a consistent look with the QMK Settings page.
  */
 export function KeyboardColorPanel({
   keyboard,
@@ -85,7 +86,7 @@ export function KeyboardColorPanel({
     caseThickness,
     caseColor,
     plateColor,
-    depth,
+    style,
     fontSize,
     fontColor,
     fontPosition,
@@ -97,7 +98,7 @@ export function KeyboardColorPanel({
     setCaseThickness,
     setCaseColor,
     setPlateColor,
-    setDepth,
+    setStyle,
     setFontSize,
     setFontColor,
     setFontPosition,
@@ -243,83 +244,20 @@ export function KeyboardColorPanel({
   const rememberPlateColor = remember(PLATE_RECENT_KEY, setPlateRecent);
   const rememberFontColor = remember(FONT_RECENT_KEY, setFontRecent);
 
-  return (
-    <>
-    <div className="flex flex-col gap-4 pb-[30px]" hidden={fsPreview.fullscreen}>
-      <p className="text-xs text-brand-on-surface-variant/70">
-        {t("colorDisplayNote")}
-      </p>
-      {/* The layer tabs stay in normal flow (they scroll away); only the board
-          below is pinned. Kept as a sibling of the sticky board — not its
-          child — so the board's sticky containing block is the whole panel. */}
-      <LayerTabBar
-        layers={keyboard.layers}
-        active={previewLayer}
-        onSelect={setPreviewLayer}
-        isConfigured={(l) => keyboard.isLayerConfigured(l)}
-      />
-      {/* Pin only the board to the top so it stays visible while the settings
-          rows below scroll under it (see ColorPicker's fixed-popover note).
-          `top-16` clears the sticky Navbar (h-16); the page-matching background
-          occludes content scrolling beneath, and z-20 keeps it under the z-30
-          Navbar. The `-mx-4 … px-4` self-cancelling margins give the shaded case
-          shadow room without clipping it in `overflow-x-auto`. */}
-      <div
-        ref={previewViewportRef}
-        className="sticky top-16 z-20 -mx-4 -mb-4 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background"
-      >
-        {/* Keyed on the active layer so switching tabs re-fires the appear
-            animation, mirroring LayerTabs' own content box. */}
-        <div key={previewLayer} className="tab-panel-appear w-fit">
-          {/* Reads every appearance value from the shared context, so it stays in
-              sync with the controls below and identical to previews elsewhere.
-              The ref wrapper is the exact node rasterized for the current-layer
-              image (fit-content, so it hugs the board with no extra margin).
-              The save actions live in the 整体配置 settings list below rather
-              than as a hover overlay here, so the board is never covered. */}
-          <div
-            ref={currentBoardRef}
-            style={{ width: "fit-content", viewTransitionName: fsPreview.heroName }}
-          >
-            <KeyboardLayoutPreview
-              keyboard={keyboard}
-              layer={previewLayer}
-              zoomOverride={autoFitZoom}
-              onContextAssign={handleContextAssign}
-            />
-          </div>
-        </div>
-      </div>
+  // All appearance settings now live on the fullscreen config page (see
+  // `FullscreenPreviewOverlay`'s `settings` prop below) rather than under the
+  // compact preview — each `<section>` becomes one cell of its responsive
+  // grid. Device layout options only get a section when the board actually
+  // exposes any (mirrors `LayoutOptions`' own render-nothing guard, since it's
+  // no longer passed the 全屏预览 trigger as a fallback child here).
+  const hasLayoutOptions = !!keyboard.layoutLabels?.length && keyboard.layoutOptions >= 0;
 
-      {/* Offscreen boards, one per configured layer, kept mounted so the
-          all-layers export can rasterize each without flipping the visible tab.
-          Rendered with the same shared appearance context as the visible board.
-          `aria-hidden` + off-viewport positioning keeps them out of the a11y tree
-          and layout flow while still being real, measurable DOM for capture. */}
-      <div
-        aria-hidden
-        style={{ position: "absolute", left: -99999, top: 0, pointerEvents: "none" }}
-      >
-        {configuredLayers.map((l) => (
-          <div
-            key={l}
-            ref={(el) => {
-              hiddenBoardRefs.current[l] = el;
-            }}
-            style={{ width: "fit-content" }}
-          >
-            {/* Same zoom as the visible board, so the all-layers export and the
-                current-layer export come out at one consistent scale. */}
-            <KeyboardLayoutPreview keyboard={keyboard} layer={l} zoomOverride={autoFitZoom} />
-          </div>
-        ))}
-      </div>
-
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
-          {t("colorSizeSectionTitle")}
-        </h2>
-        <ul className="list rounded-box border border-brand-outline/30">
+  const sizeSection = (
+    <section>
+      <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+        {t("colorSizeSectionTitle")}
+      </h2>
+      <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
             icon={<Icon icon="mdi:fit-to-screen-outline" className="h-5 w-5" />}
             label={t("previewAutoFitTitle")}
@@ -360,6 +298,10 @@ export function KeyboardColorPanel({
               </div>
             }
           />
+          {/* Binary switch over the 4-value `style` enum (wireframe/default/relief/3d,
+              see PreviewStyle) — on/off only ever set relief/default, matching the
+              two states this toggle has always exposed. wireframe/3d have no UI
+              entry point yet. */}
           <SettingsRow
             icon={<Icon icon="mdi:cube-outline" className="h-5 w-5" />}
             label={t("depthTitle")}
@@ -368,8 +310,8 @@ export function KeyboardColorPanel({
               <input
                 type="checkbox"
                 className="toggle toggle-primary"
-                checked={depth}
-                onChange={(e) => setDepth(e.target.checked)}
+                checked={style === "relief"}
+                onChange={(e) => setStyle(e.target.checked ? "relief" : "default")}
                 aria-label={t("depthTitle")}
               />
             }
@@ -403,14 +345,16 @@ export function KeyboardColorPanel({
               </div>
             }
           />
-        </ul>
-      </section>
+      </ul>
+    </section>
+  );
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
-          {t("colorFontSectionTitle")}
-        </h2>
-        <ul className="list rounded-box border border-brand-outline/30">
+  const fontSection = (
+    <section>
+      <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+        {t("colorFontSectionTitle")}
+      </h2>
+      <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
             icon={<Icon icon="mdi:keyboard-outline" className="h-5 w-5" />}
             label={t("keyDisplayTitle")}
@@ -519,14 +463,16 @@ export function KeyboardColorPanel({
               />
             }
           />
-        </ul>
-      </section>
+      </ul>
+    </section>
+  );
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
-          {t("colorKeycapSectionTitle")}
-        </h2>
-        <ul className="list rounded-box border border-brand-outline/30">
+  const keycapSection = (
+    <section>
+      <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+        {t("colorKeycapSectionTitle")}
+      </h2>
+      <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
             icon={<Icon icon="mdi:arrow-expand-horizontal" className="h-5 w-5" />}
             label={t("keySpacingTitle")}
@@ -569,14 +515,16 @@ export function KeyboardColorPanel({
               </div>
             }
           />
-        </ul>
-      </section>
+      </ul>
+    </section>
+  );
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
-          {t("colorCaseSectionTitle")}
-        </h2>
-        <ul className="list rounded-box border border-brand-outline/30">
+  const caseSection = (
+    <section>
+      <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+        {t("colorCaseSectionTitle")}
+      </h2>
+      <ul className="list rounded-box border border-brand-outline/30">
           <SettingsRow
             icon={<Icon icon="mdi:rounded-corner" className="h-5 w-5" />}
             label={t("caseRadiusTitle")}
@@ -667,33 +615,117 @@ export function KeyboardColorPanel({
               </div>
             }
           />
-        </ul>
-      </section>
+      </ul>
+    </section>
+  );
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
-          {t("colorLayoutTitle")}
-        </h2>
-        <LayoutOptions keyboard={keyboard} onChange={onChange}>
-          <SettingsRow
-            icon={<Icon icon="mdi:fullscreen" className="h-4.5 w-4.5" />}
-            label={t("fullscreenPreviewTitle")}
-            description={t("fullscreenPreviewDesc")}
-            control={
-              <button
-                type="button"
-                className="btn btn-sm btn-outline gap-1"
-                onClick={(e) => fsPreview.open(e.currentTarget)}
-              >
-                <Icon icon="mdi:fullscreen" className="h-4 w-4" />
-                {t("fullscreenPreviewButton")}
-              </button>
-            }
-          />
-        </LayoutOptions>
-      </section>
-    </div>
-    <FullscreenPreviewOverlay keyboard={keyboard} layer={previewLayer} handle={fsPreview} />
+  const layoutSection = hasLayoutOptions ? (
+    <section>
+      <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+        {t("colorLayoutTitle")}
+      </h2>
+      <LayoutOptions keyboard={keyboard} onChange={onChange} />
+    </section>
+  ) : null;
+
+  return (
+    <>
+      <div className="flex flex-col gap-4 pb-[30px]" hidden={fsPreview.fullscreen}>
+        <p className="text-xs text-brand-on-surface-variant/70">{t("colorDisplayNote")}</p>
+        {/* The layer tabs stay in normal flow (they scroll away); only the board
+            below is pinned. Kept as a sibling of the sticky board — not its
+            child — so the board's sticky containing block is the whole panel. */}
+        <LayerTabBar
+          layers={keyboard.layers}
+          active={previewLayer}
+          onSelect={setPreviewLayer}
+          isConfigured={(l) => keyboard.isLayerConfigured(l)}
+        />
+        {/* Pin only the board to the top so it stays visible while the page
+            scrolls under it (see ColorPicker's fixed-popover note). `top-16`
+            clears the sticky Navbar (h-16); the page-matching background
+            occludes content scrolling beneath, and z-20 keeps it under the z-30
+            Navbar. The `-mx-4 … px-4` self-cancelling margins give the shaded
+            case shadow room without clipping it in `overflow-x-auto`. */}
+        <div
+          ref={previewViewportRef}
+          className="sticky top-16 z-20 -mx-4 -mb-4 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background"
+        >
+          {/* Keyed on the active layer so switching tabs re-fires the appear
+              animation, mirroring LayerTabs' own content box. */}
+          <div key={previewLayer} className="tab-panel-appear w-fit">
+            {/* Reads every appearance value from the shared context, so it stays
+                in sync with the fullscreen page's controls and identical to
+                previews elsewhere. The ref wrapper is the exact node rasterized
+                for the current-layer image (fit-content, so it hugs the board
+                with no extra margin). */}
+            <div
+              ref={currentBoardRef}
+              style={{ width: "fit-content", viewTransitionName: fsPreview.heroName }}
+            >
+              <KeyboardLayoutPreview
+                keyboard={keyboard}
+                layer={previewLayer}
+                zoomOverride={autoFitZoom}
+                onContextAssign={handleContextAssign}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* All appearance settings (size, font, keycap, case, layout) now live
+            on the fullscreen config page opened by this button, rather than
+            scrolling below the board here — see `FullscreenPreviewOverlay`'s
+            `settings` prop below. */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            className="btn btn-outline gap-2"
+            onClick={(e) => fsPreview.open(e.currentTarget)}
+          >
+            <Icon icon="mdi:fullscreen" className="h-4 w-4" />
+            {t("fullscreenPreviewButton")}
+          </button>
+        </div>
+      </div>
+
+      {/* Offscreen boards, one per configured layer, kept mounted (even while
+          the compact view above is `hidden`) so the all-layers export — its
+          buttons now live in the fullscreen page's settings grid — can
+          rasterize each without flipping the visible tab. `aria-hidden` +
+          off-viewport positioning keeps them out of the a11y tree and layout
+          flow while still being real, measurable DOM for capture. */}
+      <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, pointerEvents: "none" }}>
+        {configuredLayers.map((l) => (
+          <div
+            key={l}
+            ref={(el) => {
+              hiddenBoardRefs.current[l] = el;
+            }}
+            style={{ width: "fit-content" }}
+          >
+            {/* Same zoom as the visible board, so the all-layers export and the
+                current-layer export come out at one consistent scale. */}
+            <KeyboardLayoutPreview keyboard={keyboard} layer={l} zoomOverride={autoFitZoom} />
+          </div>
+        ))}
+      </div>
+
+      <FullscreenPreviewOverlay
+        keyboard={keyboard}
+        layer={previewLayer}
+        handle={fsPreview}
+        boardRef={currentBoardRef}
+        settings={
+          <>
+            {sizeSection}
+            {fontSection}
+            {keycapSection}
+            {caseSection}
+            {layoutSection}
+          </>
+        }
+      />
     </>
   );
 }
