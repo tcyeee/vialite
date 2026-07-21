@@ -62,6 +62,16 @@ export const CAP_RATIOS: Record<SpacingLevel, number> = { s: 0.8, m: 0.87, l: 0.
 export const CASE_RADIUS_PX: Record<SpacingLevel, number> = { s: 4, m: 10, l: 18, xl: 28 };
 
 /**
+ * Keycap corner radius (键帽圆角) as a 3-level setting, in px at 1×, applied via
+ * the `--key-radius` CSS var consumed by `.keyboard-layout .key` in index.css.
+ * Only s/m/l are offered (no `xl`) — unlike the 4-level knobs above, rounder
+ * than `l` starts looking like a pill rather than a keycap.
+ */
+export type KeycapRadiusLevel = "s" | "m" | "l";
+export const KEYCAP_RADIUS_LEVELS: KeycapRadiusLevel[] = ["s", "m", "l"];
+export const KEYCAP_RADIUS_PX: Record<KeycapRadiusLevel, number> = { s: 2, m: 4, l: 8 };
+
+/**
  * Keycap label font size (字体大小) as a 4-level setting: a multiplier applied to
  * the label/icon size via the `--key-font-scale` CSS var, so `m` = 1× is the
  * baseline and the others scale the on-cap text without touching cap geometry.
@@ -97,6 +107,7 @@ export const DEFAULT_FONT_COLOR = "#1a1a1a";
 export const DEFAULT_FONT_POSITION: FontPosition = "center";
 export const DEFAULT_KEYCAP_WIDTH: SpacingLevel = "xl";
 export const DEFAULT_CASE_RADIUS: SpacingLevel = "l";
+export const DEFAULT_KEYCAP_RADIUS: KeycapRadiusLevel = "m";
 export const DEFAULT_CASE_THICKNESS = 15;
 export const DEFAULT_CASE_COLOR = "#b0b0b0";
 export const DEFAULT_PLATE_COLOR = "#8a8a8a";
@@ -108,6 +119,8 @@ export interface PreviewAppearance {
   keycapWidth?: SpacingLevel;
   /** Case corner radius level (外壳圆角). */
   caseRadius?: SpacingLevel;
+  /** Keycap corner radius level (键帽圆角). */
+  keycapRadius?: KeycapRadiusLevel;
   /** Case bezel thickness in px around the plate (外壳厚度). */
   caseThickness?: number;
   /** Case (外壳) fill color. */
@@ -307,6 +320,7 @@ export function KeyboardLayoutPreview({
     spacing,
     keycapWidth,
     caseRadius,
+    keycapRadius,
     caseThickness,
     caseColor,
     plateColor,
@@ -396,6 +410,7 @@ export function KeyboardLayoutPreview({
           // mdi icons pick up the chosen 字体颜色.
           color: fontColor,
           "--key-font-scale": FONT_SCALES[fontSize],
+          "--key-radius": `${KEYCAP_RADIUS_PX[keycapRadius]}px`,
         } as CSSProperties}
       >
         {placed.keys

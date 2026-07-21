@@ -20,13 +20,16 @@ import {
   DEFAULT_FONT_POSITION,
   DEFAULT_FONT_SIZE,
   DEFAULT_KEY_SPACING,
+  DEFAULT_KEYCAP_RADIUS,
   DEFAULT_KEYCAP_WIDTH,
   DEFAULT_PLATE_COLOR,
   FONT_POSITIONS,
   FONT_SIZES,
+  KEYCAP_RADIUS_LEVELS,
   SPACING_LEVELS,
   type FontPosition,
   type FontSize,
+  type KeycapRadiusLevel,
   type PreviewSize,
   type SpacingLevel,
 } from "../components/keymap/KeyboardLayoutPreview.tsx";
@@ -36,6 +39,7 @@ const AUTO_FIT_KEY = "vialite-color-preview-autofit";
 const SPACING_KEY = "vialite-color-key-spacing";
 const KEYCAP_WIDTH_KEY = "vialite-color-keycap-width";
 const CASE_RADIUS_KEY = "vialite-color-case-radius";
+const KEYCAP_RADIUS_KEY = "vialite-color-keycap-radius";
 const CASE_THICKNESS_KEY = "vialite-color-case-thickness";
 const CASE_COLOR_KEY = "vialite-color-case-color";
 const PLATE_COLOR_KEY = "vialite-color-plate-color";
@@ -81,6 +85,18 @@ function readStoredLevel(key: string, fallback: SpacingLevel): SpacingLevel {
     // Fall through to default.
   }
   return fallback;
+}
+
+function readStoredKeycapRadius(): KeycapRadiusLevel {
+  try {
+    const raw = window.localStorage.getItem(KEYCAP_RADIUS_KEY);
+    if (raw && (KEYCAP_RADIUS_LEVELS as string[]).includes(raw)) {
+      return raw as KeycapRadiusLevel;
+    }
+  } catch {
+    // Fall through to default.
+  }
+  return DEFAULT_KEYCAP_RADIUS;
 }
 
 function readStoredSize(): PreviewSize {
@@ -147,6 +163,7 @@ interface PreviewAppearanceValue {
   spacing: SpacingLevel;
   keycapWidth: SpacingLevel;
   caseRadius: SpacingLevel;
+  keycapRadius: KeycapRadiusLevel;
   caseThickness: number;
   caseColor: string;
   plateColor: string;
@@ -161,6 +178,7 @@ interface PreviewAppearanceValue {
   setSpacing: (value: SpacingLevel) => void;
   setKeycapWidth: (value: SpacingLevel) => void;
   setCaseRadius: (value: SpacingLevel) => void;
+  setKeycapRadius: (value: KeycapRadiusLevel) => void;
   setCaseThickness: (value: number) => void;
   setCaseColor: (value: string) => void;
   setPlateColor: (value: string) => void;
@@ -185,6 +203,8 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
   const [caseRadius, setCaseRadiusState] = useState<SpacingLevel>(() =>
     readStoredLevel(CASE_RADIUS_KEY, DEFAULT_CASE_RADIUS),
   );
+  const [keycapRadius, setKeycapRadiusState] =
+    useState<KeycapRadiusLevel>(readStoredKeycapRadius);
   const [caseThickness, setCaseThicknessState] = useState(() =>
     readStoredNumber(CASE_THICKNESS_KEY, DEFAULT_CASE_THICKNESS),
   );
@@ -224,6 +244,10 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
   const setCaseRadius = useCallback((value: SpacingLevel) => {
     setCaseRadiusState(value);
     store(CASE_RADIUS_KEY, value);
+  }, []);
+  const setKeycapRadius = useCallback((value: KeycapRadiusLevel) => {
+    setKeycapRadiusState(value);
+    store(KEYCAP_RADIUS_KEY, value);
   }, []);
   const setCaseThickness = useCallback((value: number) => {
     setCaseThicknessState(value);
@@ -265,6 +289,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       spacing,
       keycapWidth,
       caseRadius,
+      keycapRadius,
       caseThickness,
       caseColor,
       plateColor,
@@ -278,6 +303,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setSpacing,
       setKeycapWidth,
       setCaseRadius,
+      setKeycapRadius,
       setCaseThickness,
       setCaseColor,
       setPlateColor,
@@ -293,6 +319,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       spacing,
       keycapWidth,
       caseRadius,
+      keycapRadius,
       caseThickness,
       caseColor,
       plateColor,
@@ -306,6 +333,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setSpacing,
       setKeycapWidth,
       setCaseRadius,
+      setKeycapRadius,
       setCaseThickness,
       setCaseColor,
       setPlateColor,

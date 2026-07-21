@@ -14,6 +14,7 @@ import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
   FONT_SIZES,
   KeyboardLayoutPreview,
+  KEYCAP_RADIUS_LEVELS,
   SPACING_LEVELS,
   type FontPosition,
   type PreviewContextTarget,
@@ -82,6 +83,7 @@ export function KeyboardColorPanel({
     size,
     spacing,
     caseRadius,
+    keycapRadius,
     caseThickness,
     caseColor,
     plateColor,
@@ -93,6 +95,7 @@ export function KeyboardColorPanel({
     setSize,
     setSpacing,
     setCaseRadius,
+    setKeycapRadius,
     setCaseThickness,
     setCaseColor,
     setPlateColor,
@@ -187,6 +190,7 @@ export function KeyboardColorPanel({
   const fontSizeIndex = FONT_SIZES.indexOf(fontSize);
   const spacingIndex = SPACING_LEVELS.indexOf(spacing);
   const caseRadiusIndex = SPACING_LEVELS.indexOf(caseRadius);
+  const keycapRadiusIndex = KEYCAP_RADIUS_LEVELS.indexOf(keycapRadius);
   // Thickness 0 hides the case entirely, so its color has nothing to paint —
   // grey the row out to signal it's inert.
   const caseHidden = caseThickness === 0;
@@ -205,6 +209,12 @@ export function KeyboardColorPanel({
 
   const onCaseRadiusChange = (index: number) => {
     setCaseRadius(SPACING_LEVELS[Math.min(SPACING_LEVELS.length - 1, Math.max(0, index))]);
+  };
+
+  const onKeycapRadiusChange = (index: number) => {
+    setKeycapRadius(
+      KEYCAP_RADIUS_LEVELS[Math.min(KEYCAP_RADIUS_LEVELS.length - 1, Math.max(0, index))],
+    );
   };
 
   const onCaseThicknessChange = (value: number) => {
@@ -532,6 +542,27 @@ export function KeyboardColorPanel({
                 />
                 <span className="w-10 shrink-0 text-right text-sm tabular-nums text-brand-on-surface-variant">
                   {LEVEL_LABELS[spacing]}
+                </span>
+              </div>
+            }
+          />
+          <SettingsRow
+            icon={<Icon icon="mdi:rounded-corner" className="h-5 w-5" />}
+            label={t("keycapRadiusTitle")}
+            control={
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={KEYCAP_RADIUS_LEVELS.length - 1}
+                  step={1}
+                  value={keycapRadiusIndex}
+                  onChange={(e) => onKeycapRadiusChange(Number(e.target.value))}
+                  className="range range-primary range-xs w-40"
+                  aria-label={t("keycapRadiusTitle")}
+                />
+                <span className="w-10 shrink-0 text-right text-sm tabular-nums text-brand-on-surface-variant">
+                  {LEVEL_LABELS[keycapRadius]}
                 </span>
               </div>
             }

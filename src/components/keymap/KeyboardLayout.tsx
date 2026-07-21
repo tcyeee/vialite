@@ -18,6 +18,7 @@ import {
   FONT_SCALES,
   fontPositionClass,
   KeyboardZoom,
+  KEYCAP_RADIUS_PX,
   shapeStyle,
 } from "./KeyboardLayoutPreview.tsx";
 import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
@@ -70,6 +71,7 @@ export function KeyboardLayout({
     spacing,
     keycapWidth,
     caseRadius,
+    keycapRadius,
     caseThickness,
     caseColor,
     plateColor,
@@ -188,6 +190,7 @@ export function KeyboardLayout({
           // Shared 字体颜色: cascades to `.key`/`.key-icon` (both `color: inherit`).
           color: fontColor,
           "--key-font-scale": FONT_SCALES[fontSize],
+          "--key-radius": `${KEYCAP_RADIUS_PX[keycapRadius]}px`,
         } as CSSProperties}
       >
         {placed.keys

@@ -404,6 +404,7 @@ const MESSAGES = {
   displaySizeLarger: { en: "Larger", zh: "放大" },
   keySpacingTitle: { en: "Keycap spacing", zh: "键帽间距" },
   keycapWidthTitle: { en: "Keycap width", zh: "键帽宽度" },
+  keycapRadiusTitle: { en: "Keycap corner radius", zh: "键帽圆角" },
   caseRadiusTitle: { en: "Case corner radius", zh: "外壳圆角" },
   caseThicknessTitle: { en: "Case thickness", zh: "外壳厚度" },
   caseColorTitle: { en: "Case color", zh: "外壳颜色" },

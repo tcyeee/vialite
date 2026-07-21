@@ -628,7 +628,7 @@ textarea,
   color: inherit;
   background: light-dark(#f2f2f2, #3a3a3a);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--key-radius, 4px);
   cursor: pointer;
 }
 
