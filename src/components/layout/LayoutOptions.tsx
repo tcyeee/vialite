@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Icon } from "@iconify/react";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
@@ -6,15 +7,23 @@ interface Props {
   keyboard: Keyboard;
   /** Called after an option was written to the device, so the parent re-renders. */
   onChange: () => void;
+  /**
+   * Extra rows appended after the device-defined options (e.g. the 全屏预览
+   * trigger), which aren't tied to `vial.json` layout labels at all. Kept
+   * `LayoutOptions` rendering even when the device exposes no layout choices,
+   * so these still show up under the same 布局选项 heading.
+   */
+  children?: ReactNode;
 }
 
 /**
  * Layout-option switches from vial.json `layouts.labels`: a bare string is a
  * boolean toggle, an array is a label followed by its choices.
  */
-export function LayoutOptions({ keyboard, onChange }: Props) {
+export function LayoutOptions({ keyboard, onChange, children }: Props) {
   const labels = keyboard.layoutLabels;
-  if (!labels || labels.length === 0 || keyboard.layoutOptions < 0) {
+  const hasDeviceOptions = !!labels && labels.length > 0 && keyboard.layoutOptions >= 0;
+  if (!hasDeviceOptions && !children) {
     return null;
   }
   const choices = keyboard.layoutChoices;
@@ -31,44 +40,46 @@ export function LayoutOptions({ keyboard, onChange }: Props) {
 
   return (
     <ul className="list rounded-box border border-brand-outline/30">
-      {labels.map((item, i) =>
-        typeof item === "string" ? (
-          <SettingsRow
-            key={i}
-            icon={<Icon icon="mdi:view-list-outline" className="h-4.5 w-4.5" />}
-            label={item}
-            control={
-              <input
-                type="checkbox"
-                className="toggle mr-2"
-                checked={choices[i] === 1}
-                onChange={(e) => void update(i, e.target.checked ? 1 : 0)}
-                aria-label={item}
-              />
-            }
-          />
-        ) : (
-          <SettingsRow
-            key={i}
-            icon={<Icon icon="mdi:view-list-outline" className="h-4.5 w-4.5" />}
-            label={item[0]}
-            control={
-              <select
-                className="select select-sm select-bordered"
-                value={choices[i] ?? 0}
-                onChange={(e) => void update(i, Number(e.target.value))}
-                aria-label={item[0]}
-              >
-                {item.slice(1).map((opt, j) => (
-                  <option key={j} value={j}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            }
-          />
-        ),
-      )}
+      {hasDeviceOptions &&
+        labels!.map((item, i) =>
+          typeof item === "string" ? (
+            <SettingsRow
+              key={i}
+              icon={<Icon icon="mdi:view-list-outline" className="h-4.5 w-4.5" />}
+              label={item}
+              control={
+                <input
+                  type="checkbox"
+                  className="toggle mr-2"
+                  checked={choices[i] === 1}
+                  onChange={(e) => void update(i, e.target.checked ? 1 : 0)}
+                  aria-label={item}
+                />
+              }
+            />
+          ) : (
+            <SettingsRow
+              key={i}
+              icon={<Icon icon="mdi:view-list-outline" className="h-4.5 w-4.5" />}
+              label={item[0]}
+              control={
+                <select
+                  className="select select-sm select-bordered"
+                  value={choices[i] ?? 0}
+                  onChange={(e) => void update(i, Number(e.target.value))}
+                  aria-label={item[0]}
+                >
+                  {item.slice(1).map((opt, j) => (
+                    <option key={j} value={j}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              }
+            />
+          ),
+        )}
+      {children}
     </ul>
   );
 }

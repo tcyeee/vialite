@@ -64,6 +64,18 @@ export function boardNaturalWidth(
   return placed.width * PITCH + inset + caseThickness * 2;
 }
 
+/** Same as {@link boardNaturalWidth}, but the board's outer height. */
+export function boardNaturalHeight(
+  keyboard: Keyboard,
+  spacing: SpacingLevel,
+  keycapWidth: SpacingLevel,
+  caseThickness: number,
+): number {
+  const placed = placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices);
+  const { PITCH, inset } = appearanceMetrics("m", spacing, keycapWidth, "m", caseThickness);
+  return placed.height * PITCH + inset + caseThickness * 2;
+}
+
 /** Horizontal padding the preview container reserves around the board (px-4 × 2). */
 const CONTAINER_PADDING_PX = 32;
 

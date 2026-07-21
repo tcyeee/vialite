@@ -124,6 +124,44 @@ html[data-theme-anim="reveal"]::view-transition-new(root) {
   }
 }
 
+/* 全屏预览 (fullscreen keyboard preview) toggle: same circular-reveal technique
+   as the theme switch above, driven by FullscreenPreview.tsx's own
+   `data-fsp-anim`/`--fsp-reveal-*` vars so the two transitions can't clobber
+   each other. The board itself is a *separately* named view-transition
+   participant (`keyboard-hero`, set in FullscreenPreview.tsx) — the browser
+   extracts it from this root capture automatically and morphs its position/
+   size on its own, so the ripple below only ever affects everything else. */
+html[data-fsp-anim="reveal"]::view-transition-old(root),
+html[data-fsp-anim="reveal"]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html[data-fsp-anim="reveal"]::view-transition-old(root) {
+  z-index: 0;
+}
+
+html[data-fsp-anim="reveal"]::view-transition-new(root) {
+  z-index: 1;
+  animation: fsp-reveal 480ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fsp-reveal {
+  from {
+    clip-path: circle(0 at var(--fsp-reveal-x) var(--fsp-reveal-y));
+  }
+  to {
+    clip-path: circle(var(--fsp-reveal-r) at var(--fsp-reveal-x) var(--fsp-reveal-y));
+  }
+}
+
+/* Pace the board's own grow/shrink morph to match the 480ms ripple above,
+   instead of the View Transition default (250ms ease). */
+::view-transition-group(keyboard-hero) {
+  animation-duration: 480ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 body {
   margin: 0;
   font-family:

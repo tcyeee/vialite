@@ -389,6 +389,13 @@ const MESSAGES = {
   },
   colorEditKeymap: { en: "Configure key layout", zh: "配置按键布局" },
   colorLayoutTitle: { en: "Layout options", zh: "布局选项" },
+  fullscreenPreviewTitle: { en: "Fullscreen preview", zh: "全屏预览" },
+  fullscreenPreviewDesc: {
+    en: "Enlarge the keyboard preview to fill the window, hiding everything else.",
+    zh: "将虚拟键盘放大至充满整个窗口，隐藏其余内容。",
+  },
+  fullscreenPreviewButton: { en: "Enter fullscreen", zh: "进入全屏" },
+  fullscreenPreviewExit: { en: "Exit fullscreen preview", zh: "退出全屏预览" },
   colorAppearanceTitle: { en: "Appearance", zh: "外观" },
   colorSizeSectionTitle: { en: "Overall", zh: "整体配置" },
   colorFontSectionTitle: { en: "Keyboard font", zh: "键盘字体" },

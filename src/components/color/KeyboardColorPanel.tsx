@@ -10,6 +10,7 @@ import { ColorPicker } from "../common/ColorPicker.tsx";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { LayerTabBar } from "../keymap/LayerTabs.tsx";
 import { useAutoFitZoom } from "../keymap/autoFitSize.ts";
+import { FullscreenPreviewOverlay, useFullscreenPreview } from "../keymap/FullscreenPreview.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
   FONT_SIZES,
@@ -72,10 +73,7 @@ export function KeyboardColorPanel({
   const { t } = useI18n();
   const { showToast } = useToast();
   const { keyDisplay, setKeyDisplay, mediaReset, setMediaReset } = useKeyDisplay();
-  const hasLayoutOptions =
-    !!keyboard.layoutLabels &&
-    keyboard.layoutLabels.length > 0 &&
-    keyboard.layoutOptions >= 0;
+  const fsPreview = useFullscreenPreview();
   // Appearance settings are shared with the main keymap board via context, so
   // tuning them here also restyles the interactive layout on the 键位 page.
   const {
@@ -246,7 +244,8 @@ export function KeyboardColorPanel({
   const rememberFontColor = remember(FONT_RECENT_KEY, setFontRecent);
 
   return (
-    <div className="flex flex-col gap-4 pb-[30px]">
+    <>
+    <div className="flex flex-col gap-4 pb-[30px]" hidden={fsPreview.fullscreen}>
       <p className="text-xs text-brand-on-surface-variant/70">
         {t("colorDisplayNote")}
       </p>
@@ -278,7 +277,10 @@ export function KeyboardColorPanel({
               image (fit-content, so it hugs the board with no extra margin).
               The save actions live in the 整体配置 settings list below rather
               than as a hover overlay here, so the board is never covered. */}
-          <div ref={currentBoardRef} style={{ width: "fit-content" }}>
+          <div
+            ref={currentBoardRef}
+            style={{ width: "fit-content", viewTransitionName: fsPreview.heroName }}
+          >
             <KeyboardLayoutPreview
               keyboard={keyboard}
               layer={previewLayer}
@@ -668,15 +670,31 @@ export function KeyboardColorPanel({
         </ul>
       </section>
 
-      {hasLayoutOptions && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
-            {t("colorLayoutTitle")}
-          </h2>
-          <LayoutOptions keyboard={keyboard} onChange={onChange} />
-        </section>
-      )}
+      <section>
+        <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
+          {t("colorLayoutTitle")}
+        </h2>
+        <LayoutOptions keyboard={keyboard} onChange={onChange}>
+          <SettingsRow
+            icon={<Icon icon="mdi:fullscreen" className="h-4.5 w-4.5" />}
+            label={t("fullscreenPreviewTitle")}
+            description={t("fullscreenPreviewDesc")}
+            control={
+              <button
+                type="button"
+                className="btn btn-sm btn-outline gap-1"
+                onClick={(e) => fsPreview.open(e.currentTarget)}
+              >
+                <Icon icon="mdi:fullscreen" className="h-4 w-4" />
+                {t("fullscreenPreviewButton")}
+              </button>
+            }
+          />
+        </LayoutOptions>
+      </section>
     </div>
+    <FullscreenPreviewOverlay keyboard={keyboard} layer={previewLayer} handle={fsPreview} />
+    </>
   );
 }
 
