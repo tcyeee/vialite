@@ -740,7 +740,7 @@ function App() {
           }
         >
           {mode === "newHome" && keyboard ? (
-            <NewHomePage keyboard={keyboard} layer={layer} onNavigate={navigate} />
+            <NewHomePage keyboard={keyboard} layer={layer} onNavigate={navigate} onDisconnect={handleDisconnect} />
           ) : (
             <>
           <Navbar onMenuClick={() => setDrawerOpen((v) => !v)} />

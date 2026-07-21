@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import { KeyboardLayout } from "../keymap/KeyboardLayout.tsx";
@@ -6,13 +7,27 @@ import { appearanceMetrics } from "../keymap/KeyboardLayoutPreview.tsx";
 import { boardNaturalHeight } from "../keymap/autoFitSize.ts";
 import { Keyboard } from "../../protocol/keyboard.ts";
 import { NAV_ITEMS } from "./Sidebar.tsx";
+import { HomeSitePage } from "./HomeSitePage.tsx";
+import type { MessageKey } from "../../contexts/i18n.tsx";
 
 type NavMode = (typeof NAV_ITEMS)[number]["mode"];
+
+/**
+ * Nav item `mode`s that already have a real new-home page (rendered in-place, below) instead of
+ * falling through to `onNavigate` and jumping into the old Navbar/Sidebar layout. Grows one entry
+ * at a time as more of `HOME_NAV_ITEMS` gets converted — see `HomePage` below.
+ */
+type HomePageMode = "site";
+
+function isHomePageMode(mode: NavMode): mode is HomePageMode {
+  return mode === "site";
+}
 
 interface Props {
   keyboard: Keyboard;
   layer: number;
   onNavigate: (mode: NavMode) => void;
+  onDisconnect: () => void;
 }
 
 /** Height budget for the hero keyboard strip, as a fraction of the window height. */
@@ -21,15 +36,20 @@ const HERO_MAX_HEIGHT_RATIO = 0.35;
 /** 米白色线稿颜色, forced via `colorOverride` regardless of the user's 键盘配色. */
 const HERO_LINE_COLOR = "#f2ead8";
 
-/** Hover background for every nav item — black, matching the hero strip's own `bg-black`, so the
- * reveal reads as the same surface rather than a colored highlight. Items are transparent at rest. */
-const NAV_HOVER_BG = "group-hover:bg-black";
+/** Element shape shared by every rendered menu item, real `NAV_ITEMS` entries and the synthetic
+ * exit item below alike — only the fields the menu strip actually reads. */
+type HomeNavItem = { kind: string; mode: NavMode; labelKey: MessageKey; beta?: boolean };
 
 /**
  * NAV_ITEMS reversed, with the "新版首页" (this page itself) entry dropped — this strip is a
- * static showcase of the other nav destinations, not a full nav replica.
+ * static showcase of the other nav destinations, not a full nav replica — plus one synthetic
+ * "退出新版首页" item appended at the end that always falls through to the old Navbar/Sidebar
+ * layout (mode "keymap"), regardless of `isHomePageMode`.
  */
-const HOME_NAV_ITEMS = NAV_ITEMS.filter((item) => item.kind !== "newHome").reverse();
+const HOME_NAV_ITEMS: HomeNavItem[] = [
+  ...NAV_ITEMS.filter((item) => item.kind !== "newHome").reverse(),
+  { kind: "exitNewHome", mode: "keymap", labelKey: "navExitNewHome" },
+];
 
 /**
  * Timings for the exit sequence (see `ExitPhase` below). Kept as named constants because the
@@ -70,12 +90,14 @@ type ExitPhase = "idle" | "items" | "hero";
  * 超过窗口高度的 35vh,则把 hero 条本身裁到 35vh,内部键盘整体上移(translateY 负
  * 值),让超出的部分移出屏幕上方,只露出底部那部分——而不是从顶部随意裁切。
  */
-export function NewHomePage({ keyboard, layer, onNavigate }: Props) {
+export function NewHomePage({ keyboard, layer, onNavigate, onDisconnect }: Props) {
   const { t } = useI18n();
   const { size, spacing, keycapWidth, caseRadius, caseThickness } = usePreviewAppearance();
   const [windowHeight, setWindowHeight] = useState(() => window.innerHeight);
   const [exitPhase, setExitPhase] = useState<ExitPhase>("idle");
   const [exitTarget, setExitTarget] = useState<NavMode | null>(null);
+  // Which in-place new-home page (if any) is currently showing instead of the hero+nav strip.
+  const [homePage, setHomePage] = useState<HomePageMode | null>(null);
 
   useEffect(() => {
     const onResize = () => setWindowHeight(window.innerHeight);
@@ -83,7 +105,17 @@ export function NewHomePage({ keyboard, layer, onNavigate }: Props) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Drives the "items" → "hero" → onNavigate handoff on a plain timer rather than
+  // Real new-home pages (see `isHomePageMode`) render in place; everything else still falls
+  // through to the old Navbar/Sidebar layout via `onNavigate` until it gets its own page.
+  const navigateOrShowHomePage = (target: NavMode) => {
+    if (isHomePageMode(target)) {
+      setHomePage(target);
+    } else {
+      onNavigate(target);
+    }
+  };
+
+  // Drives the "items" → "hero" → navigate/show-page handoff on a plain timer rather than
   // per-element animationend listeners — simpler to keep in sync with the staggered/jittered
   // per-item delays, at the cost of the JS constants above having to match index.css by hand.
   useEffect(() => {
@@ -94,19 +126,24 @@ export function NewHomePage({ keyboard, layer, onNavigate }: Props) {
     if (exitPhase === "hero") {
       const timer = window.setTimeout(() => {
         if (exitTarget) {
-          onNavigate(exitTarget);
+          navigateOrShowHomePage(exitTarget);
         }
+        setExitPhase("idle");
+        setExitTarget(null);
       }, HERO_EXIT_DURATION_MS);
       return () => window.clearTimeout(timer);
     }
-  }, [exitPhase, exitTarget, onNavigate]);
+    // navigateOrShowHomePage is intentionally omitted: it closes over onNavigate/setHomePage,
+    // neither of which change identity in a way that should re-trigger this timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exitPhase, exitTarget]);
 
   const handleNavClick = (itemMode: NavMode) => {
     if (exitPhase !== "idle") {
       return;
     }
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      onNavigate(itemMode);
+      navigateOrShowHomePage(itemMode);
       return;
     }
     setExitTarget(itemMode);
@@ -128,12 +165,29 @@ export function NewHomePage({ keyboard, layer, onNavigate }: Props) {
 
   const exiting = exitPhase !== "idle";
 
+  if (homePage === "site") {
+    return <HomeSitePage onBack={() => setHomePage(null)} />;
+  }
+
   return (
     <div className="flex h-screen flex-col items-center gap-10 overflow-hidden pb-16">
       <div
         className={"relative z-10 w-full overflow-x-auto overflow-y-hidden bg-black pb-[50px] " + (exitPhase === "hero" ? "hero-exit" : "")}
         style={clipped ? { height: maxHeight } : undefined}
       >
+        <button
+          type="button"
+          onClick={onDisconnect}
+          disabled={exiting}
+          aria-label={t("disconnect")}
+          className={
+            "absolute right-6 top-6 z-20 flex items-center gap-2 rounded-full border-none bg-transparent px-4 py-2 text-brand-on-surface-variant transition hover:bg-white/10 hover:text-white " +
+            (exiting ? "pointer-events-none opacity-0" : "")
+          }
+        >
+          <Icon icon="mdi:power" className="h-5 w-5" />
+          {t("disconnect")}
+        </button>
         <div
           className="flex w-full justify-center"
           style={shiftUp ? { transform: `translateY(-${shiftUp}px)` } : undefined}
@@ -148,7 +202,7 @@ export function NewHomePage({ keyboard, layer, onNavigate }: Props) {
           />
         </div>
       </div>
-      <nav className={"flex w-full max-w-md items-start justify-center gap-8 px-6 " + (exiting ? "pointer-events-none" : "")}>
+      <nav className={"relative z-20 flex w-full max-w-md items-start justify-center px-6 " + (exiting ? "pointer-events-none" : "")}>
         {HOME_NAV_ITEMS.map(({ kind, mode: itemMode, labelKey, beta }, index) => (
           <div
             key={kind}
@@ -162,7 +216,7 @@ export function NewHomePage({ keyboard, layer, onNavigate }: Props) {
               }
             }}
             className={
-              "group relative flex h-[500px] w-14 cursor-pointer rotate-[-30deg] items-start justify-start transition-[width] duration-300 ease-out hover:w-[4.55rem] " +
+              "group relative flex h-[500px] w-14 cursor-pointer rotate-[-30deg] items-start justify-start " +
               (exitPhase === "items" ? "nav-item-exit" : "")
             }
             style={
@@ -175,18 +229,18 @@ export function NewHomePage({ keyboard, layer, onNavigate }: Props) {
             }
           >
             {/* Sized to the text/badge content (not the oversized 500px hover-room box above),
-                so the background layer below matches it exactly at rest. */}
+                so the reveal window below matches it exactly at rest. */}
             <div className="relative">
-              {/* Background layer, pinned to the content's bottom edge (bottom-0 stays fixed via
-                  inset-0). On hover only `top` moves negative, so the extra 100px grows upward —
-                  back toward the keyboard preview above — rather than down into empty space,
-                  reading as the menu item extending out from the keyboard. */}
-              <div
-                className={
-                  "absolute inset-0 bg-transparent transition-all duration-300 ease-out group-hover:-top-[100px] " +
-                  NAV_HOVER_BG
-                }
-              />
+              {/* Reveal window: a fixed box reaching from 120px above the text (up toward the
+                  hero keyboard strip) down to the text's own bottom edge — it never resizes
+                  itself, it only clips. */}
+              <div className="absolute inset-x-0 -top-[120px] bottom-0 overflow-hidden">
+                {/* The actual black surface. Parked fully above the window at rest (hidden) and
+                    slides straight down to fill it on hover, so the reveal reads as the
+                    keyboard's own black sliding down over the item, rather than the item's
+                    background growing outward from within itself. */}
+                <div className="h-full w-full -translate-y-full bg-black transition-transform duration-300 ease-out group-hover:translate-y-0" />
+              </div>
               <div className="relative z-10 flex flex-col items-start justify-start gap-2 px-2 py-4 text-brand-on-surface transition-colors duration-300 ease-out group-hover:text-white">
                 <span className="text-5xl font-bold transition-transform duration-300 ease-out group-hover:scale-110 [writing-mode:vertical-rl] [text-orientation:sideways]">
                   {t(labelKey)}

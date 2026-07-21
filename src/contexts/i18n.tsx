@@ -468,6 +468,13 @@ const MESSAGES = {
   preview3dCopied: { en: "Copied", zh: "已复制" },
   navSiteSettings: { en: "Website Info", zh: "网站信息" },
   navNewHome: { en: "New Home", zh: "新版首页" },
+  // 新版首页专属页面(区别于旧版 siteXxx/SiteSettingsPanel,见 HomeSitePage.tsx)。
+  homeSitePagePlaceholder: {
+    en: "This page is still under construction — more of the home menu items will turn into real pages like this over time.",
+    zh: "该页面还在建设中——新版首页的菜单项会陆续变成像这样的真实页面。",
+  },
+  homeBack: { en: "Back", zh: "返回" },
+  navExitNewHome: { en: "Exit New Home", zh: "退出新版首页" },
   comingSoon: { en: "Coming soon", zh: "即将推出" },
   resizeSidebar: { en: "Resize sidebar", zh: "拖动调整侧边栏宽度" },
   collapseSidebar: { en: "Collapse sidebar", zh: "收起侧边栏" },
