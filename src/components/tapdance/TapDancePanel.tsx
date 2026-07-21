@@ -6,10 +6,15 @@ import { KeycapFace } from "../keymap/KeycapFace.tsx";
 import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
 import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
-import { KeySlot } from "../common/KeySlot.tsx";
 import { RenumberPicker } from "../common/RenumberPicker.tsx";
 import { ConfirmDialog } from "../common/ConfirmDialog.tsx";
 import { startViewTransition } from "../common/viewTransition.ts";
+import {
+  ConfiguredFieldRow,
+  FieldConfirmButton,
+  fieldKeyValid,
+  ModifierFieldSlot,
+} from "../common/ModifierFieldSlot.tsx";
 
 const PREVIEW_STATES: { labelKey: MessageKey; field: keyof TapDanceEntry }[] = [
   { labelKey: "tapDanceOnTap", field: "onTap" },
@@ -17,6 +22,13 @@ const PREVIEW_STATES: { labelKey: MessageKey; field: keyof TapDanceEntry }[] = [
   { labelKey: "tapDanceOnDoubleTap", field: "onDoubleTap" },
   { labelKey: "tapDanceOnTapHold", field: "onTapHold" },
 ];
+
+/** Shared keycap-box treatment for the front (display-state) card face — same border weight,
+ *  radius, and minimum footprint for every state key shown there, so the border reads as one
+ *  consistent size regardless of each slot's font size or how long its label is. Mirrors
+ *  ComboPanel's `CARD_KEY_BOX`, palette-swapped to tap dance's own card tones. */
+const CARD_KEY_BOX =
+  "flex min-h-9 w-full items-center justify-center rounded-lg border border-[#5b434b]/25 px-2 dark:border-[#e7d8dd]/25";
 
 interface PreviewCardProps {
   index: number;
@@ -45,7 +57,10 @@ interface PreviewCardProps {
 /**
  * Summary of one tap dance entry. When `onSave`/`onDelete` are given, hovering reveals an
  * Edit/Delete toolbar; Edit flips the card (CSS 3D transform) to reveal an inline editor on
- * the back face, so editing happens in place instead of in a separate form.
+ * the back face, so editing happens in place instead of in a separate form. Structurally mirrors
+ * {@link ../combo/ComboPanel}'s `ComboPreviewCard` (fixed card height, absolutely-positioned
+ * scrollable edit body, add-flow flip-in) — only the card's background palette and field set
+ * stay tap-dance-specific.
  */
 function TapDancePreviewCard({
   index,
@@ -64,6 +79,41 @@ function TapDancePreviewCard({
   const { t } = useI18n();
   const flipped = !!editing;
   const editable = !!onSave;
+  const cardBodyRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Each of the four state fields is either "being configured" (the {@link ModifierFieldSlot}
+   * picker plus a confirm button) or, once it holds a real value, "configured" (collapsed to a
+   * compact modifier+key display with modify/delete buttons). Only one field may be under
+   * configuration at a time — `activeField` names it, and setting it to a different field
+   * implicitly collapses whichever one it was pointing at back to its display row, since that
+   * row's own "is this the active field" check simply stops matching. Reset to null whenever the
+   * card (re-)enters edit mode. Mirrors {@link ../combo/ComboPanel}'s `ComboPreviewCard`.
+   */
+  const [activeField, setActiveField] = useState<keyof TapDanceEntry | null>(null);
+  useEffect(() => {
+    if (!editing) return;
+    setActiveField(null);
+    // Only re-seed when a card newly enters edit mode, not on every entry edit within the session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
+  /**
+   * Chromium has a known bug where a scroller that becomes visible purely through a CSS
+   * transform — no layout change, which is exactly what flipping this card is: only the
+   * ancestor's `transform` changes, the scroller's own box never moves or resizes — doesn't get
+   * its wheel-scrollable region registered with the compositor. Forcing a synchronous reflow on
+   * the scroller right as the flip settles makes Blink re-register its scrollable region. See
+   * https://issues.chromium.org/issues/40394725.
+   */
+  const handleFlipSettled = (e: React.TransitionEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget || e.propertyName !== "transform" || !flipped) return;
+    const el = cardBodyRef.current;
+    if (!el) return;
+    el.style.display = "none";
+    void el.offsetHeight;
+    el.style.display = "";
+  };
 
   return (
     <div
@@ -91,12 +141,13 @@ function TapDancePreviewCard({
         </div>
       )}
       <div
-        className="grid h-[16.5rem] transition-transform duration-500"
+        className="grid transition-transform duration-500"
         style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : undefined }}
+        onTransitionEnd={handleFlipSettled}
       >
         <div
           style={{ backfaceVisibility: "hidden", gridArea: "1 / 1" }}
-          className="card relative overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#73575e14_35%,transparent_36%),radial-gradient(circle_at_top_right,#73575e14_35%,transparent_36%)] bg-[#f5ecef] bg-size-[4.95em_4.95em] text-[#5b434b] shadow-lg shadow-stone-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-stone-900/15 dark:bg-[radial-gradient(circle_at_bottom_left,#ffffff12_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff12_35%,transparent_36%)] dark:bg-[#2a2125] dark:text-[#e7d8dd] dark:shadow-black/40 dark:group-hover/card:shadow-black/55"
+          className="card relative h-[26rem] overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#73575e14_35%,transparent_36%),radial-gradient(circle_at_top_right,#73575e14_35%,transparent_36%)] bg-[#f5ecef] bg-size-[4.95em_4.95em] text-[#5b434b] shadow-lg shadow-stone-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-stone-900/15 dark:bg-[radial-gradient(circle_at_bottom_left,#ffffff12_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff12_35%,transparent_36%)] dark:bg-[#2a2125] dark:text-[#e7d8dd] dark:shadow-black/40 dark:group-hover/card:shadow-black/55"
         >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden select-none">
             <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
@@ -116,17 +167,17 @@ function TapDancePreviewCard({
               <Icon icon="mdi:animation" className="h-9 w-9" />
               {index}
             </div>
-            <div className="grid grid-cols-2 gap-y-3">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
               {PREVIEW_STATES.map(({ labelKey, field }) => (
                 <div key={field}>
                   <div className="text-xs opacity-45 uppercase">{t(labelKey)}</div>
-                  <div className="text-xl font-bold">
-                    <KeycapFace qmkId={entry[field] as string} className="whitespace-pre-line" />
+                  <div className={`${CARD_KEY_BOX} bg-white/60 text-xl font-bold dark:bg-white/10`}>
+                    <KeycapFace qmkId={entry[field] as string} className="whitespace-nowrap" />
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-auto pt-3 text-center text-xs tracking-widest opacity-55">
+            <div className="mt-auto flex items-center justify-center gap-2 border-t border-[#5b434b]/15 pt-3 text-sm tracking-widest opacity-55 dark:border-[#e7d8dd]/15">
               {t("tapDanceTermMs", { ms: entry.tappingTerm })}
             </div>
           </div>
@@ -135,9 +186,17 @@ function TapDancePreviewCard({
         {editable && (
           <div
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", gridArea: "1 / 1" }}
-            className="card overflow-hidden border-2 border-dashed border-[#73575e]/50 bg-white shadow-lg shadow-stone-900/10 dark:border-[#e7d8dd]/30 dark:bg-[#232326] dark:shadow-black/40"
+            className="card relative h-[26rem] overflow-hidden border-2 border-dashed border-[#73575e]/50 bg-white shadow-lg shadow-stone-900/10 dark:border-[#e7d8dd]/30 dark:bg-[#232326] dark:shadow-black/40"
           >
-            <div className="card-body gap-1.5 px-4 pt-4 pb-2">
+            {/* Absolutely positioned (rather than sized by normal flex flow) so its height is
+                pinned to the card's own fixed height box regardless of how tall the fields
+                inside grow — see `handleFlipSettled` above for why this plus `translateZ(0)`
+                is needed for mouse-wheel scrolling to actually work here once flipped in. */}
+            <div
+              ref={cardBodyRef}
+              className="card-body scrollbar-hide absolute inset-0 gap-1.5 overflow-y-auto px-4 pt-4 pb-2"
+              style={{ transform: "translateZ(0)" }}
+            >
               <div className="mb-1 flex items-center justify-between">
                 <RenumberPicker
                   index={index}
@@ -170,25 +229,49 @@ function TapDancePreviewCard({
                 <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("msUnit")}</span>
               </div>
 
-              {/* Same 2x2 arrangement as the front face's grid, so a field's position doesn't
-                  move when the card flips between display and edit state. */}
-              <div className="grid grid-cols-2 gap-2">
+              {/* One field per row: a ModifierFieldSlot's modifier chips + key button don't fit
+                  two across in the card's 20rem width — see ComboPanel's edit face. */}
+              <div className="flex flex-col gap-2">
                 {PREVIEW_STATES.map(({ labelKey, field }) => {
-                  const configured = (entry[field] as string) !== "KC_NO";
+                  const qmkId = entry[field] as string;
                   return (
                     <div key={field}>
                       <label className="fieldset-label text-xs text-neutral-400">{t(labelKey)}</label>
-                      <KeySlot
-                        qmkId={entry[field] as string}
-                        onChange={(id) => onSave?.({ [field]: id } as Partial<TapDanceEntry>)}
-                        className={`btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line ${
-                          configured ? "btn-soft" : "btn-dash"
-                        }`}
-                      />
+                      {activeField === field ? (
+                        <ModifierFieldSlot
+                          qmkId={qmkId}
+                          onChange={(id) => onSave?.({ [field]: id } as Partial<TapDanceEntry>)}
+                          className="btn btn-sm min-h-9 flex-wrap py-0.5 text-xs whitespace-pre-line btn-soft"
+                          trailing={
+                            <FieldConfirmButton
+                              disabled={!fieldKeyValid(qmkId) || qmkId === "KC_NO"}
+                              onClick={() => setActiveField(null)}
+                            />
+                          }
+                        />
+                      ) : qmkId === "KC_NO" ? (
+                        <button
+                          type="button"
+                          onClick={() => setActiveField(field)}
+                          className="btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line btn-dash"
+                        >
+                          {t("fieldAddRegularKey")}
+                        </button>
+                      ) : (
+                        <ConfiguredFieldRow
+                          qmkId={qmkId}
+                          onEdit={() => setActiveField(field)}
+                          onDelete={() => onSave?.({ [field]: "KC_NO" } as Partial<TapDanceEntry>)}
+                        />
+                      )}
                     </div>
                   );
                 })}
               </div>
+
+              {/* Bottom breathing room so the last field doesn't sit flush against the
+                  card edge when scrolled all the way down. */}
+              <div className="h-5 shrink-0" aria-hidden="true" />
             </div>
           </div>
         )}
@@ -216,6 +299,14 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
    */
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   /**
+   * A freshly added, still-unused slot that's visible but not yet flipped — set for the two
+   * animation frames between "新增" being clicked and {@link editingIndex} taking over, so the
+   * new card mounts showing its front face first and then flips into the editor face exactly
+   * like clicking the pencil icon on an existing card, instead of popping directly into the
+   * editor face with no transition.
+   */
+  const [addingIndex, setAddingIndex] = useState<number | null>(null);
+  /**
    * When set, overrides the natural (ascending) card order so a just-renumbered card stays put for
    * a beat before it animates to its sorted position. Cleared inside a View Transition.
    */
@@ -225,9 +316,18 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
   const reorderTimer = useRef<number | null>(null);
   /** The entry's value captured when editing began, restored verbatim if the user clicks Cancel. */
   const editSnapshot = useRef<TapDanceEntry | null>(null);
+  /** Pending `requestAnimationFrame` id(s) for the add-flow's delayed flip, cancelled on unmount
+   *  or if another action pre-empts it before the two frames elapse. */
+  const addRaf = useRef<number[]>([]);
+
+  const cancelPendingAddFlip = () => {
+    addRaf.current.forEach((id) => cancelAnimationFrame(id));
+    addRaf.current = [];
+  };
 
   useEffect(() => () => {
     if (reorderTimer.current) clearTimeout(reorderTimer.current);
+    cancelPendingAddFlip();
   }, []);
 
   const cancelPendingReorder = () => {
@@ -250,11 +350,27 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
   const handleEdit = (i: number) => {
     // Switching to another card settles the previous card's pending re-sort first.
     if (pendingOrder) settlePendingReorder(0);
+    cancelPendingAddFlip();
+    setAddingIndex(null);
     editSnapshot.current = { ...keyboard.tapDanceEntries[i] };
     setEditingIndex(i);
   };
 
   const handleCloseEdit = () => {
+    if (editingIndex !== null) {
+      const e = keyboard.tapDanceEntries[editingIndex];
+      const invalid =
+        !fieldKeyValid(e.onTap) ||
+        !fieldKeyValid(e.onHold) ||
+        !fieldKeyValid(e.onDoubleTap) ||
+        !fieldKeyValid(e.onTapHold);
+      if (invalid) {
+        showToast(t("fieldInvalidKeycode"));
+        return;
+      }
+    }
+    cancelPendingAddFlip();
+    setAddingIndex(null);
     editSnapshot.current = null;
     setEditingIndex(null);
     // Only now (on "done") does the card animate into its sorted position — after a beat that lets
@@ -268,6 +384,8 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
     const snap = editSnapshot.current;
     editSnapshot.current = null;
     cancelPendingReorder();
+    cancelPendingAddFlip();
+    setAddingIndex(null);
     setEditingIndex(null);
     if (idx !== null && snap) void updateAt(idx, snap);
   };
@@ -298,7 +416,7 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
   /** Cards to show, in the order to show them — `pendingOrder` while a renumber is settling. */
   const sortedVisible = keyboard.tapDanceEntries
     .map((_, i) => i)
-    .filter((i) => isUsed(keyboard.tapDanceEntries[i]) || i === editingIndex);
+    .filter((i) => isUsed(keyboard.tapDanceEntries[i]) || i === editingIndex || i === addingIndex);
   const displayOrder = pendingOrder
     ? pendingOrder.filter((i) => sortedVisible.includes(i))
     : sortedVisible;
@@ -341,12 +459,28 @@ export function TapDancePanel({ keyboard, onChange }: Props) {
       return;
     }
     cancelPendingReorder();
+    cancelPendingAddFlip();
     // Show the freshly added card at the front of the row while it's being edited; the natural
     // (ascending) order animates back into place only when the user clicks Done or Cancel.
     const used = keyboard.tapDanceEntries.flatMap((e, i) => (isUsed(e) ? [i] : []));
     setPendingOrder([freeIdx, ...used]);
     editSnapshot.current = { ...keyboard.tapDanceEntries[freeIdx] };
-    setEditingIndex(freeIdx);
+    // Mount the new card showing its front face first, then flip it into the editor face on the
+    // next paint — the same entrance the pencil-icon edit path gets — instead of popping directly
+    // into the editor face with no transition. Two rAFs so the un-flipped frame actually commits
+    // before the transform change that the flip's CSS transition needs to animate from.
+    setAddingIndex(freeIdx);
+    addRaf.current = [
+      requestAnimationFrame(() => {
+        addRaf.current = [
+          requestAnimationFrame(() => {
+            addRaf.current = [];
+            setEditingIndex(freeIdx);
+            setAddingIndex(null);
+          }),
+        ];
+      }),
+    ];
   };
 
   return (

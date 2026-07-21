@@ -602,18 +602,18 @@ const MESSAGES = {
     en: "All combo slots are already in use.",
     zh: "所有组合键槽位都已被使用。",
   },
-  comboModUnsupported: {
+  fieldModUnsupported: {
     en: "This modifier combination has no fire-together form.",
     zh: "该修饰键组合没有「同时触发」形式。",
   },
-  comboInvalidKeycode: {
+  fieldInvalidKeycode: {
     en: "One of the keys is an incomplete modifier combo — pick a regular key to complete it before saving.",
     zh: "存在未完成的组合按键——请先为修饰键组合选择一个普通按键,再保存。",
   },
-  comboAddModifier: { en: "Add modifier", zh: "添加修饰键" },
-  comboAddRegularKey: { en: "Add", zh: "添加" },
-  comboRemoveModifier: { en: "Remove modifier", zh: "移除修饰键" },
-  comboConfirm: { en: "Confirm", zh: "确认" },
+  fieldAddModifier: { en: "Add modifier", zh: "添加修饰键" },
+  fieldAddRegularKey: { en: "Add", zh: "添加" },
+  fieldRemoveModifier: { en: "Remove modifier", zh: "移除修饰键" },
+  fieldConfirm: { en: "Confirm", zh: "确认" },
 
   // DeviceConnect
   connecting: { en: "Connecting…", zh: "连接中…" },
