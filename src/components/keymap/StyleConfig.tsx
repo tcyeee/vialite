@@ -33,7 +33,7 @@ import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { startViewTransition } from "../common/viewTransition.ts";
 import { KeyboardLayoutPreview } from "./KeyboardLayoutPreview.tsx";
-import { boardNaturalHeight, boardNaturalWidth } from "./autoFitSize.ts";
+import { boardNaturalHeight, boardNaturalWidth, MAX_AUTO_FIT_ZOOM } from "./autoFitSize.ts";
 
 const HERO_NAME = "keyboard-hero";
 
@@ -59,23 +59,41 @@ function closeButtonRestCenter() {
 
 /** Scroll distance (px) over which the board's parallax shift and shrink both ramp from 0 to their max — one shared progress value drives both. */
 const BOARD_PARALLAX_SCROLL_RANGE = 200;
-/** Matches the sticky board container's `pt-28` (7rem) — the board's untransformed resting distance from the viewport top while pinned, used below to derive the shift that lands it at {@link BOARD_SCROLLED_TOP}. */
-const BOARD_TOP_PADDING = 112;
 /** Where the board's top edge should end up once fully scrolled/parallaxed, in px from the viewport top. */
 const BOARD_SCROLLED_TOP = 50;
-/** Cap (px) on how far the parallax nudge can push the board up — sized so the board settles at {@link BOARD_SCROLLED_TOP}. Relies on the board wrapper's `transformOrigin: "top"` so the shrink below doesn't also move the top edge. */
-const BOARD_PARALLAX_MAX_SHIFT = BOARD_TOP_PADDING - BOARD_SCROLLED_TOP;
 /** Cap on how much the board shrinks (as a fraction of its size) by the end of the parallax scroll range. */
 const BOARD_SHRINK_MAX = 0.1;
 /** Height (px) of the gradient scrim hung off the bottom of the sticky board container — softens the seam where the settings grid, scrolling up from underneath, would otherwise pop into view right at the board's edge. */
 const BOARD_FADE_ZONE_HEIGHT = 64;
 
-/** Breathing room (px) reserved on either side of the board inside the fullscreen viewport. */
-const VIEWPORT_PADDING = 96;
-/** Fullscreen may enlarge past the board's natural 1× size (unlike auto-fit, which only ever shrinks) — capped so a tiny layout (e.g. a numpad) doesn't blow up to blurry proportions on a huge monitor. */
-const MAX_FULLSCREEN_ZOOM = 3.5;
+/**
+ * All the breathing room around the fullscreen board — side padding (feeds the
+ * fit-zoom calc below), the sticky container's top padding (clears the close
+ * button and sets the parallax travel, see {@link BOARD_SCROLLED_TOP}), and its
+ * bottom padding — scales with viewport width between these min/max pairs
+ * instead of a fixed value: a phone shouldn't burn a third of its width on
+ * padding, and a 4K monitor shouldn't leave the board looking stranded in a
+ * sliver at its center. See {@link scaleWithViewportWidth}.
+ */
+const VIEWPORT_PADDING_MIN = 96;
+const VIEWPORT_PADDING_MAX = 220;
+const BOARD_TOP_PADDING_MIN = 112;
+const BOARD_TOP_PADDING_MAX = 176;
+const BOARD_BOTTOM_PADDING_MIN = 24;
+const BOARD_BOTTOM_PADDING_MAX = 48;
+/** Viewport width range the paddings above interpolate across — clamped to MIN/MAX outside it. */
+const VIEWPORT_SCALE_MIN_WIDTH = 480;
+const VIEWPORT_SCALE_MAX_WIDTH = 1920;
 /** Cap the board's height to a share of the viewport rather than fitting it in full, since the settings grid sits below and the page scrolls — the board shouldn't claim the whole screen before a user even sees there's more below. */
 const BOARD_HEIGHT_VH_SHARE = 0.62;
+
+/** Linear interpolation from `min` at {@link VIEWPORT_SCALE_MIN_WIDTH} to `max` at {@link VIEWPORT_SCALE_MAX_WIDTH}, clamped outside that range. */
+function scaleWithViewportWidth(viewportWidth: number, min: number, max: number): number {
+  if (viewportWidth <= VIEWPORT_SCALE_MIN_WIDTH) return min;
+  if (viewportWidth >= VIEWPORT_SCALE_MAX_WIDTH) return max;
+  const t = (viewportWidth - VIEWPORT_SCALE_MIN_WIDTH) / (VIEWPORT_SCALE_MAX_WIDTH - VIEWPORT_SCALE_MIN_WIDTH);
+  return min + t * (max - min);
+}
 
 /** Extra breathing room appended after the settings grid, before the pull-to-exit curtain zone below can engage. */
 const CONTENT_BOTTOM_SPACER = 50;
@@ -160,19 +178,25 @@ export function useFullscreenPreview(): FullscreenPreviewHandle {
 }
 
 /**
- * Continuous zoom that fits the board into the viewport (both axes), growing
- * past 1× if there's room — but only while 自适应大小 (`autoFit`) is on. With it
- * off, returns `null` instead of a computed number so {@link
+ * Continuous zoom that fits the board into the viewport (both axes) while
+ * 自适应大小 (`autoFit`) is on, capped at {@link MAX_AUTO_FIT_ZOOM} (the "l"
+ * level, i.e. the board's natural 1× size) — same ceiling the compact page's
+ * `useAutoFitZoom` applies, so fullscreen never blows a tiny layout (e.g. a
+ * numpad) up past its designed size just because a huge monitor has the room.
+ * With `autoFit` off, returns `null` instead of a computed number so {@link
  * KeyboardLayoutPreview} falls back to its own `size`-based zoom exactly like
- * the compact page's `useAutoFitZoom` does — which matters for two reasons:
- * it's how the manual `size` slider actually takes effect in fullscreen at
- * all, and `null` is also what flips {@link KeyboardZoom}'s `live` flag off,
- * re-enabling the `.keyboard-zoom` CSS transition so toggling the switch
- * animates the resize instead of snapping (a non-null override, live 自适应
- * tracking every resize frame, deliberately suppresses that transition so it
- * doesn't restart every frame and lag behind the window edge).
+ * the compact page does — which matters for two reasons: it's how the manual
+ * `size` slider actually takes effect in fullscreen at all, and `null` is
+ * also what flips {@link KeyboardZoom}'s `live` flag off, re-enabling the
+ * `.keyboard-zoom` CSS transition so toggling the switch animates the resize
+ * instead of snapping (a non-null override, live 自适应 tracking every resize
+ * frame, deliberately suppresses that transition so it doesn't restart every
+ * frame and lag behind the window edge).
  */
-function useFullscreenFitZoom(keyboard: Keyboard, active: boolean): number | null {
+function useFullscreenFitZoom(
+  keyboard: Keyboard,
+  active: boolean,
+): { zoom: number | null; viewportWidth: number } {
   const { autoFit, spacing, keycapWidth, caseThickness } = usePreviewAppearance();
   const [viewport, setViewport] = useState(() => ({
     w: window.innerWidth,
@@ -188,13 +212,17 @@ function useFullscreenFitZoom(keyboard: Keyboard, active: boolean): number | nul
   }, [active]);
 
   if (!active || !autoFit) {
-    return null;
+    return { zoom: null, viewportWidth: viewport.w };
   }
   const naturalW = boardNaturalWidth(keyboard, spacing, keycapWidth, caseThickness);
   const naturalH = boardNaturalHeight(keyboard, spacing, keycapWidth, caseThickness);
-  const availW = Math.max(viewport.w - VIEWPORT_PADDING * 2, 100);
+  const sidePadding = scaleWithViewportWidth(viewport.w, VIEWPORT_PADDING_MIN, VIEWPORT_PADDING_MAX);
+  const availW = Math.max(viewport.w - sidePadding * 2, 100);
   const availH = Math.max(viewport.h * BOARD_HEIGHT_VH_SHARE, 240);
-  return Math.min(availW / naturalW, availH / naturalH, MAX_FULLSCREEN_ZOOM);
+  return {
+    zoom: Math.min(availW / naturalW, availH / naturalH, MAX_AUTO_FIT_ZOOM),
+    viewportWidth: viewport.w,
+  };
 }
 
 /**
@@ -231,7 +259,17 @@ export function FullscreenPreviewOverlay({
 }) {
   const { t } = useI18n();
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  const zoom = useFullscreenFitZoom(keyboard, handle.fullscreen);
+  const { zoom, viewportWidth } = useFullscreenFitZoom(keyboard, handle.fullscreen);
+  // Padding around the board — side padding feeds the fit-zoom calc above;
+  // top/bottom are applied directly below in place of a fixed `pt-28`/`pb-6`.
+  // All three scale with viewport width, see VIEWPORT_PADDING_MIN/MAX etc.
+  const boardTopPadding = scaleWithViewportWidth(viewportWidth, BOARD_TOP_PADDING_MIN, BOARD_TOP_PADDING_MAX);
+  const boardBottomPadding = scaleWithViewportWidth(
+    viewportWidth,
+    BOARD_BOTTOM_PADDING_MIN,
+    BOARD_BOTTOM_PADDING_MAX,
+  );
+  const boardParallaxMaxShift = boardTopPadding - BOARD_SCROLLED_TOP;
   // Corner-tucked close button: it rests partly outside the viewport (see its
   // `-top`/`-right` offsets below) and scales up from its top-right corner —
   // `transformOrigin: "top right"` — so hovering grows it back into full view
@@ -248,7 +286,7 @@ export function FullscreenPreviewOverlay({
   const [scrollTop, setScrollTop] = useState(0);
   const handleScroll = (e: ReactUIEvent<HTMLDivElement>) => setScrollTop(e.currentTarget.scrollTop);
   const scrollProgress = Math.min(scrollTop / BOARD_PARALLAX_SCROLL_RANGE, 1);
-  const boardParallaxShift = scrollProgress * BOARD_PARALLAX_MAX_SHIFT;
+  const boardParallaxShift = scrollProgress * boardParallaxMaxShift;
   const boardScale = 1 - scrollProgress * BOARD_SHRINK_MAX;
 
   // Pull-to-exit curtain (see PULL_* constants above). `handle` is a fresh
@@ -458,14 +496,20 @@ export function FullscreenPreviewOverlay({
         {/* 吸顶: sticky (not `fixed`, which would pull it out of flow and stop
             the settings below from actually pushing/scrolling past it) so the
             board scrolls normally until it reaches the top, then pins there
-            while the settings underneath keep scrolling — `pt-28` clears the
-            close button and the matching background keeps scrolled-under
-            settings from showing through. The extra `translateY`/`scale`
+            while the settings underneath keep scrolling — the top padding
+            clears the close button and the matching background keeps
+            scrolled-under settings from showing through. Top/bottom padding
+            is inline (not Tailwind) since it scales with viewport width, see
+            BOARD_TOP_PADDING_MIN/MAX etc. The extra `translateY`/`scale`
             nudge it up and shrink it further than plain pinning would once
             the user scrolls, for the parallax feel. */}
         <div
-          className="sticky top-0 z-10 flex w-full justify-center bg-brand-background pb-6 pt-28"
-          style={{ transform: `translateY(-${boardParallaxShift}px)` }}
+          className="sticky top-0 z-10 flex w-full justify-center bg-brand-background"
+          style={{
+            paddingTop: boardTopPadding,
+            paddingBottom: boardBottomPadding,
+            transform: `translateY(-${boardParallaxShift}px)`,
+          }}
         >
           {/* The shrink lives on this inner wrapper, not the outer sticky container
               above: that container's `w-full bg-brand-background` is what hides the

@@ -176,9 +176,9 @@ function ComboPreviewCard({
                 </div>
               ))}
             </div>
-            <div className="mt-auto flex items-center gap-2 border-t border-[#434b5b]/15 pt-3 text-sm tracking-widest opacity-55 dark:border-[#d7dfeb]/15">
-              →
-              <span className={`${CARD_KEY_BOX} flex-1 bg-[#434b5b]/10 dark:bg-black/20`}>
+            <div className="mt-auto flex items-center gap-2 border-t border-[#434b5b]/15 pt-3 dark:border-[#d7dfeb]/15">
+              <span className="text-sm tracking-widest opacity-55">→</span>
+              <span className={`${CARD_KEY_BOX} flex-1 bg-[#434b5b]/15 text-xl font-bold dark:bg-white/10`}>
                 <KeycapFace qmkId={entry.output} className="whitespace-nowrap" />
               </span>
             </div>
