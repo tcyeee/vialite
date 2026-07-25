@@ -148,9 +148,8 @@ const VISIBLE_CATEGORIES = (() => {
   return out;
 })();
 
-/** Editor pages the Combo Keys cards can jump to via their hover "编辑" action.
- *  "color" is the 个性化 page, reached from the 配置预览样式 row instead. */
-export type ComboEditTarget = "macro" | "tapdance" | "combo" | "color";
+/** Editor pages the Combo Keys cards can jump to via their hover "编辑" action. */
+export type ComboEditTarget = "macro" | "tapdance" | "combo";
 
 /**
  * The two Multi-Function categories the 多功能 card offers:
@@ -539,290 +538,288 @@ export function QuickConfigPanel({
         </div>
       )}
       {isBasic && (
-        <div
-          ref={basicRowRef}
-          // 整块快捷配置区是一个横向滚动的整体:任何断点都不换行、不纵向堆叠,
-          // 屏幕不够宽就横向滚动(滚轮竖滚也被转成横向平移,见 hook)。
-          // pl-[3px]:滚动区左缘与内容盒对齐,首列画到自身 border box 之外的东西
-          // (描边 / 阴影 / hover 位移)会被 overflow-x 裁掉,且没有可滚动的余量把它
-          // 露出来。左内边距属于起始侧的可滚动区域,scrollLeft 为 0 时正好留出这 3px。
-          className="scrollbar-hide quick-config-fullbleed flex flex-row flex-nowrap items-start gap-6 overflow-x-auto pl-[3px]"
-        >
-          {/* Left column: physical keyboard grid + special keys (both inside
-              BasicKeyboardGrid) followed by the config-settings block. */}
-          <div className="shrink-0">
+        // 2026-07-25 起,基础按键改为纵向排布的三个 section(整页向下滚动),
+        // 不再是单条横向滚动的整体:1. 基础按键(89 键模拟键盘 + 特殊按键)
+        // 2. 配置设置 3. 特殊按键区域(功能 / 组合按键 / 其他,这部分内部仍横向滚动)。
+        <div className="mt-4 flex flex-col gap-8">
+          {/* Section 1: physical keyboard grid + special keys (both rendered
+              inside BasicKeyboardGrid). */}
+          <section>
             <BasicKeyboardGrid
               onPick={(qmkId) => pick({ qmkId, label: qmkId })}
               disabled={disabled}
             />
-            {/* 配置设置不跟随 `dim`:它是面板级设置(自动选取下一个 / 预览样式),
-                未选中按键时同样可以调整,所以既不置灰也不被点击拦截器吞掉。 */}
-            <div className="mt-4" {...{ [ALWAYS_ENABLED_ATTR]: "" }}>
-              <h4 className="mb-2 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
-              {/* Same grouped-`list` look as the 个性化 / 网站设置 pages, so a
-                  setting reads identically wherever it surfaces. */}
-              <ul className="list rounded-box border border-brand-outline/30">
-                <SettingsRow
-                  icon={<Icon icon="mdi:cursor-default-click-outline" className="h-4.5 w-4.5" />}
-                  label={t("autoAdvance")}
-                  help={t("autoAdvanceHelp")}
-                  control={
-                    <input
-                      type="checkbox"
-                      className="toggle toggle-sm toggle-primary"
-                      checked={autoAdvance}
-                      onChange={(e) => onAutoAdvanceChange(e.target.checked)}
-                      aria-label={t("autoAdvance")}
-                    />
-                  }
-                />
-                <SettingsRow
-                  icon={<Icon icon="mdi:palette-outline" className="h-4.5 w-4.5" />}
-                  label={t("previewStyle")}
-                  help={t("previewStyleHelp")}
-                  control={
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm gap-1"
-                      onClick={() => onNavigate("color")}
-                    >
-                      {t("goConfigure")}
-                      <Icon icon="mdi:chevron-right" className="text-base" aria-hidden="true" />
-                    </button>
-                  }
-                />
-                <SettingsRow
-                  icon={<Icon icon="mdi:download" className="h-4.5 w-4.5" />}
-                  label={t("exportLayout")}
-                  description={t("exportLayoutDesc")}
-                  control={
-                    <button
-                      type="button"
-                      className="btn btn-circle btn-ghost"
-                      onClick={onExport}
-                      disabled={importing}
-                      aria-label={t("exportLayout")}
-                    >
-                      <Icon icon="mdi:download" className="h-4.5 w-4.5" />
-                    </button>
-                  }
-                />
-                <SettingsRow
-                  icon={<Icon icon="mdi:upload" className="h-4.5 w-4.5" />}
-                  label={t("importLayout")}
-                  description={t("importLayoutDesc")}
-                  control={
-                    <button
-                      type="button"
-                      className="btn btn-circle btn-ghost"
-                      onClick={() => importFileInputRef.current?.click()}
-                      disabled={importing}
-                      aria-label={t("importLayout")}
-                      title={importing ? t("importing") : t("importLayout")}
-                    >
-                      <Icon icon="mdi:upload" className="h-4.5 w-4.5" />
-                    </button>
-                  }
-                />
-                <input
-                  ref={importFileInputRef}
-                  type="file"
-                  accept=".vil,application/json"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (file) {
-                      onImportFile(file);
-                    }
-                  }}
-                />
-              </ul>
-            </div>
-          </div>
-          {/* Middle column: the vertical Fn/Media/Mouse cards. */}
-          <div className={`shrink-0${dim}`}>
-            <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryFnMediaMouse")}</h4>
-            <FnMediaMouseCards
-              groups={[
-                ...FN_MEDIA_MOUSE_GROUPS.map((g) => ({
-                  titleKey: g.titleKey!,
-                  helpKey: g.helpKey,
-                  entries: g.entries,
-                  grid: g.grid,
-                  mouse: g.titleKey === "groupMouse",
-                  // The Mouse card jumps to the QMK Settings "鼠标按键" section.
-                  expandedAction:
-                    g.titleKey === "groupMouse"
-                      ? detailSettingsAction("mouseKeySettingsTitle")
-                      : undefined,
-                  icon:
-                    g.titleKey === "groupFnKeys"
-                      ? "mdi:alpha-f-box-outline"
-                      : g.titleKey === "groupMedia"
-                        ? "mdi:apple-safari"
-                        : undefined,
-                })),
-                // 层按键: below Media, a two-step type → layer-number picker.
-                {
-                  titleKey: "groupLayerKeys" as MessageKey,
-                  entries: [],
-                  icon: "mdi:layers-outline",
-                  watermark: "LAYER",
-                  // 层键不是基础键码,不能作为双功能键的轻触半区。
-                  disabled: dualRoleTap,
-                  placeholder: (
-                    <LayerKeyPicker
-                      layerEntries={entriesOf("Layers")}
-                      layerCount={keyboard.layers}
-                      onPick={pick}
-                    />
-                  ),
-                },
-              ]}
-              onPick={pick}
-              anyExpanded={anyCardExpanded}
-              onExpandedChange={onCardExpandedChange}
-            />
-          </div>
-          {/* Far-right: the former Combo Keys tab, folded in as two columns —
-              Macros / Tap Dance / Combo on the left, Quantum on the right.
-              Always side-by-side; the whole Basic row scrolls horizontally
-              instead of wrapping on narrow viewports. */}
-          <div className={`flex shrink-0 flex-nowrap gap-6${dim}`}>
-            <div className="shrink-0">
-              <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryMacrosTapDance")}</h4>
-              <MacroTapDanceCards
-                groups={[
-                  ...comboKeyGroups.map((g) => ({
-                    titleKey: g.titleKey!,
-                    entries: g.entries,
-                    ...comboMeta(keyboard, g.titleKey!, onNavigate),
-                    disabled: dualRoleTap,
-                  })),
-                  // Combo is a third, non-expandable info card — combos apply on
-                  // creation with no key binding, so it has no keycodes to
-                  // assign. Shown only when the device exposes combo slots.
-                  ...(keyboard.comboCount > 0
-                    ? [
-                        {
-                          titleKey: "groupCombo" as MessageKey,
-                          entries: [],
-                          used: keyboard.comboEntries.filter(
-                            (e) => e.output !== "KC_NO" || e.keys.some((k) => k !== "KC_NO"),
-                          ).length,
-                          total: keyboard.comboCount,
-                          onEdit: () => onNavigate("combo"),
-                          info: true,
-                          disabled: dualRoleTap,
-                        },
-                      ]
-                    : []),
-                  // 多功能: a custom-body card that expands to arbitrary content
-                  // rather than a keycode slot grid.
-                  {
-                    titleKey: "groupMultiFunction" as MessageKey,
-                    entries: [],
-                    disabled: dualRoleTap,
-                    // Jumps to the QMK Settings "轻触与长按 (Tap-Hold)" section.
-                    expandedAction: detailSettingsAction("tapHoldSettingsTitle"),
-                    custom: (
-                      <div className="flex flex-col gap-3">
-                        <p className="text-xs leading-snug opacity-70">
-                          {t("multiFuncIntro")}
-                        </p>
-                        <div className="flex gap-3">
-                          {(
-                            [
-                              {
-                                mode: "modified",
-                                desc: t("multiFuncModified"),
-                                // 修饰键:单个 ⌘ 图标。
-                                iconNode: (
-                                  <Icon
-                                    icon="mdi:apple-keyboard-command"
-                                    className="size-10 shrink-0"
-                                    aria-hidden="true"
-                                  />
-                                ),
-                              },
-                              {
-                                mode: "taphold",
-                                desc: t("multiFuncTapHold"),
-                                // 长按激活层/修饰键:⌘ 叠加 层图标,左上角 ⌘、右下角
-                                // 层,表达"轻触出键、长按切层/修饰"的双重角色。
-                                iconNode: (
-                                  <span className="relative block size-10 shrink-0" aria-hidden="true">
-                                    <Icon
-                                      icon="mdi:apple-keyboard-command"
-                                      className="absolute top-0 left-0 size-6"
-                                    />
-                                    <Icon
-                                      icon="mdi:layers-outline"
-                                      className="absolute right-0 bottom-0 size-6"
-                                    />
-                                    {/* 分隔两枚图标的白色斜线(左下 → 右上)。 */}
-                                    <span
-                                      className="pointer-events-none absolute inset-0"
-                                      style={{
-                                        background:
-                                          "linear-gradient(to bottom right, transparent calc(50% - 0.75px), #ffffff calc(50% - 0.75px), #ffffff calc(50% + 0.75px), transparent calc(50% + 0.75px))",
-                                      }}
-                                    />
-                                  </span>
-                                ),
-                              },
-                            ] as const
-                          ).map(({ mode, desc, iconNode }) => (
-                            <button
-                              key={mode}
-                              type="button"
-                              // Clicking a category is the whole interaction: the
-                              // framework keycode is written to the selected key at
-                              // once. Editing its halves happens later on the
-                              // keyboard itself (out of scope here).
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // 选中键当前是基础键码就叠加进新框架的 tap 半区,
-                                // 否则(非基础键码 / 未选中)清空,用空 KC_NO 基础。
-                                const base =
-                                  currentQmkId && isBasicQmkId(currentQmkId)
-                                    ? currentQmkId
-                                    : "KC_NO";
-                                onPick(withTap(MULTI_FUNC_FRAMEWORK[mode], base));
-                              }}
-                              className="flex flex-1 flex-col items-center gap-3 rounded-lg bg-white/10 p-3 text-center transition-colors hover:bg-white/20"
-                            >
-                              {iconNode}
-                              <span className="text-xs leading-snug">{desc}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ),
-                  },
-                ]}
-                onPick={pick}
-                anyExpanded={anyCardExpanded}
-                onExpandedChange={onCardExpandedChange}
+          </section>
+
+          {/* Section 2: 配置设置不跟随 `dim`:它是面板级设置(自动选取下一个 /
+              导入导出),未选中按键时同样可以调整,所以既不置灰也不被点击拦截器
+              吞掉。「配置预览样式」行已移除——个性化改由 NewHomePage 的入口进入。 */}
+          <section {...{ [ALWAYS_ENABLED_ATTR]: "" }}>
+            <h4 className="mb-2 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
+            {/* Same grouped-`list` look as the 个性化 / 网站设置 pages, so a
+                setting reads identically wherever it surfaces. */}
+            <ul className="list w-full max-w-md rounded-box border border-brand-outline/30">
+              <SettingsRow
+                icon={<Icon icon="mdi:cursor-default-click-outline" className="h-4.5 w-4.5" />}
+                label={t("autoAdvance")}
+                help={t("autoAdvanceHelp")}
+                control={
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-sm toggle-primary"
+                    checked={autoAdvance}
+                    onChange={(e) => onAutoAdvanceChange(e.target.checked)}
+                    aria-label={t("autoAdvance")}
+                  />
+                }
               />
-            </div>
-            {/* 其他 (Other): the Lighting (灯光) and Keyboard Config (键盘配置,
-                the device's Custom keycodes) cards, rendered as the same
-                expandable colored cards the Fn/Media/Mouse column uses. */}
-            <div className="shrink-0">
-              <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryOther")}</h4>
-              <KeyboardFunctionCards
-                groups={keyboardFnCardGroups}
-                onPick={pick}
-                anyExpanded={anyCardExpanded}
-                onExpandedChange={onCardExpandedChange}
+              <SettingsRow
+                icon={<Icon icon="mdi:download" className="h-4.5 w-4.5" />}
+                label={t("exportLayout")}
+                description={t("exportLayoutDesc")}
+                control={
+                  <button
+                    type="button"
+                    className="btn btn-circle btn-ghost"
+                    onClick={onExport}
+                    disabled={importing}
+                    aria-label={t("exportLayout")}
+                  >
+                    <Icon icon="mdi:download" className="h-4.5 w-4.5" />
+                  </button>
+                }
               />
+              <SettingsRow
+                icon={<Icon icon="mdi:upload" className="h-4.5 w-4.5" />}
+                label={t("importLayout")}
+                description={t("importLayoutDesc")}
+                control={
+                  <button
+                    type="button"
+                    className="btn btn-circle btn-ghost"
+                    onClick={() => importFileInputRef.current?.click()}
+                    disabled={importing}
+                    aria-label={t("importLayout")}
+                    title={importing ? t("importing") : t("importLayout")}
+                  >
+                    <Icon icon="mdi:upload" className="h-4.5 w-4.5" />
+                  </button>
+                }
+              />
+              <input
+                ref={importFileInputRef}
+                type="file"
+                accept=".vil,application/json"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) {
+                    onImportFile(file);
+                  }
+                }}
+              />
+            </ul>
+          </section>
+
+          {/* Section 3: 特殊按键区域 — Fn/Media/Mouse + 层按键, Macros/Tap
+              Dance/Combo + 多功能, and Lighting/键盘配置/其他, side by side in
+              one row that scrolls horizontally on narrow screens (滚轮竖滚也被
+              转成横向平移,见 hook). pl-[3px]:滚动区左缘与内容盒对齐,首列画到
+              自身 border box 之外的东西(描边 / 阴影 / hover 位移)会被
+              overflow-x 裁掉,且没有可滚动的余量把它露出来。左内边距属于起始侧
+              的可滚动区域,scrollLeft 为 0 时正好留出这 3px。 */}
+          <section>
+            <h4 className="mb-2 text-sm font-semibold opacity-70">{t("sectionSpecialKeys")}</h4>
+            <div
+              ref={basicRowRef}
+              className="scrollbar-hide quick-config-fullbleed flex flex-row flex-nowrap items-start gap-6 overflow-x-auto pl-[3px]"
+            >
+              {/* Fn/Media/Mouse cards + 层按键. */}
+              <div className={`shrink-0${dim}`}>
+                <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryFnMediaMouse")}</h4>
+                <FnMediaMouseCards
+                  groups={[
+                    ...FN_MEDIA_MOUSE_GROUPS.map((g) => ({
+                      titleKey: g.titleKey!,
+                      helpKey: g.helpKey,
+                      entries: g.entries,
+                      grid: g.grid,
+                      mouse: g.titleKey === "groupMouse",
+                      // The Mouse card jumps to the QMK Settings "鼠标按键" section.
+                      expandedAction:
+                        g.titleKey === "groupMouse"
+                          ? detailSettingsAction("mouseKeySettingsTitle")
+                          : undefined,
+                      icon:
+                        g.titleKey === "groupFnKeys"
+                          ? "mdi:alpha-f-box-outline"
+                          : g.titleKey === "groupMedia"
+                            ? "mdi:apple-safari"
+                            : undefined,
+                    })),
+                    // 层按键: below Media, a two-step type → layer-number picker.
+                    {
+                      titleKey: "groupLayerKeys" as MessageKey,
+                      entries: [],
+                      icon: "mdi:layers-outline",
+                      watermark: "LAYER",
+                      // 层键不是基础键码,不能作为双功能键的轻触半区。
+                      disabled: dualRoleTap,
+                      placeholder: (
+                        <LayerKeyPicker
+                          layerEntries={entriesOf("Layers")}
+                          layerCount={keyboard.layers}
+                          onPick={pick}
+                        />
+                      ),
+                    },
+                  ]}
+                  onPick={pick}
+                  anyExpanded={anyCardExpanded}
+                  onExpandedChange={onCardExpandedChange}
+                />
+              </div>
+              {/* Far-right: the former Combo Keys tab, folded in as two columns —
+                  Macros / Tap Dance / Combo on the left, Quantum on the right.
+                  Always side-by-side; this row scrolls horizontally instead of
+                  wrapping on narrow viewports. */}
+              <div className={`flex shrink-0 flex-nowrap gap-6${dim}`}>
+                <div className="shrink-0">
+                  <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryMacrosTapDance")}</h4>
+                  <MacroTapDanceCards
+                    groups={[
+                      ...comboKeyGroups.map((g) => ({
+                        titleKey: g.titleKey!,
+                        entries: g.entries,
+                        ...comboMeta(keyboard, g.titleKey!, onNavigate),
+                        disabled: dualRoleTap,
+                      })),
+                      // Combo is a third, non-expandable info card — combos apply on
+                      // creation with no key binding, so it has no keycodes to
+                      // assign. Shown only when the device exposes combo slots.
+                      ...(keyboard.comboCount > 0
+                        ? [
+                            {
+                              titleKey: "groupCombo" as MessageKey,
+                              entries: [],
+                              used: keyboard.comboEntries.filter(
+                                (e) => e.output !== "KC_NO" || e.keys.some((k) => k !== "KC_NO"),
+                              ).length,
+                              total: keyboard.comboCount,
+                              onEdit: () => onNavigate("combo"),
+                              info: true,
+                              disabled: dualRoleTap,
+                            },
+                          ]
+                        : []),
+                      // 多功能: a custom-body card that expands to arbitrary content
+                      // rather than a keycode slot grid.
+                      {
+                        titleKey: "groupMultiFunction" as MessageKey,
+                        entries: [],
+                        disabled: dualRoleTap,
+                        // Jumps to the QMK Settings "轻触与长按 (Tap-Hold)" section.
+                        expandedAction: detailSettingsAction("tapHoldSettingsTitle"),
+                        custom: (
+                          <div className="flex flex-col gap-3">
+                            <p className="text-xs leading-snug opacity-70">
+                              {t("multiFuncIntro")}
+                            </p>
+                            <div className="flex gap-3">
+                              {(
+                                [
+                                  {
+                                    mode: "modified",
+                                    desc: t("multiFuncModified"),
+                                    // 修饰键:单个 ⌘ 图标。
+                                    iconNode: (
+                                      <Icon
+                                        icon="mdi:apple-keyboard-command"
+                                        className="size-10 shrink-0"
+                                        aria-hidden="true"
+                                      />
+                                    ),
+                                  },
+                                  {
+                                    mode: "taphold",
+                                    desc: t("multiFuncTapHold"),
+                                    // 长按激活层/修饰键:⌘ 叠加 层图标,左上角 ⌘、右下角
+                                    // 层,表达"轻触出键、长按切层/修饰"的双重角色。
+                                    iconNode: (
+                                      <span className="relative block size-10 shrink-0" aria-hidden="true">
+                                        <Icon
+                                          icon="mdi:apple-keyboard-command"
+                                          className="absolute top-0 left-0 size-6"
+                                        />
+                                        <Icon
+                                          icon="mdi:layers-outline"
+                                          className="absolute right-0 bottom-0 size-6"
+                                        />
+                                        {/* 分隔两枚图标的白色斜线(左下 → 右上)。 */}
+                                        <span
+                                          className="pointer-events-none absolute inset-0"
+                                          style={{
+                                            background:
+                                              "linear-gradient(to bottom right, transparent calc(50% - 0.75px), #ffffff calc(50% - 0.75px), #ffffff calc(50% + 0.75px), transparent calc(50% + 0.75px))",
+                                          }}
+                                        />
+                                      </span>
+                                    ),
+                                  },
+                                ] as const
+                              ).map(({ mode, desc, iconNode }) => (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  // Clicking a category is the whole interaction: the
+                                  // framework keycode is written to the selected key at
+                                  // once. Editing its halves happens later on the
+                                  // keyboard itself (out of scope here).
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // 选中键当前是基础键码就叠加进新框架的 tap 半区,
+                                    // 否则(非基础键码 / 未选中)清空,用空 KC_NO 基础。
+                                    const base =
+                                      currentQmkId && isBasicQmkId(currentQmkId)
+                                        ? currentQmkId
+                                        : "KC_NO";
+                                    onPick(withTap(MULTI_FUNC_FRAMEWORK[mode], base));
+                                  }}
+                                  className="flex flex-1 flex-col items-center gap-3 rounded-lg bg-white/10 p-3 text-center transition-colors hover:bg-white/20"
+                                >
+                                  {iconNode}
+                                  <span className="text-xs leading-snug">{desc}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ),
+                      },
+                    ]}
+                    onPick={pick}
+                    anyExpanded={anyCardExpanded}
+                    onExpandedChange={onCardExpandedChange}
+                  />
+                </div>
+                {/* 其他 (Other): the Lighting (灯光) and Keyboard Config (键盘配置,
+                    the device's Custom keycodes) cards, rendered as the same
+                    expandable colored cards the Fn/Media/Mouse column uses. */}
+                <div className="shrink-0">
+                  <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryOther")}</h4>
+                  <KeyboardFunctionCards
+                    groups={keyboardFnCardGroups}
+                    onPick={pick}
+                    anyExpanded={anyCardExpanded}
+                    onExpandedChange={onCardExpandedChange}
+                  />
+                </div>
+              </div>
+              {/* 末尾留白:横向滚动到底时补一段半屏宽的空白,让最右侧的卡片能被
+                  滚动到窗口中央,而不是卡在视口右缘。 */}
+              <div aria-hidden="true" className="w-[15vw] shrink-0" />
             </div>
-          </div>
-          {/* 末尾留白:横向滚动到底时补一段半屏宽的空白,让最右侧的卡片能被
-              滚动到窗口中央,而不是卡在视口右缘。 */}
-          <div aria-hidden="true" className="w-[15vw] shrink-0" />
+          </section>
         </div>
       )}
       {activeCat.groups

@@ -61,10 +61,11 @@ interface Props {
    */
   styleOverride?: PreviewStyle;
   /**
-   * Single color forcing case/plate/font (and, in wireframe, the per-cap outline
-   * color that otherwise comes from a fixed CSS default) regardless of the
-   * user's 键盘配色 settings — same rationale as `styleOverride`, for decorative
-   * boards like NewHomePage's hero strip. Absent reads colors from context.
+   * Single color forcing case/plate/font (and, in wireframe, the per-cap/encoder
+   * outline color that otherwise comes from the context's `wireframeLineColor`)
+   * regardless of the user's 键盘配色 settings — same rationale as `styleOverride`,
+   * for decorative boards like NewHomePage's hero strip. Absent reads colors from
+   * context.
    */
   colorOverride?: string;
 }
@@ -94,6 +95,7 @@ export function KeyboardLayoutEditor({
     caseThickness,
     caseColor,
     plateColor,
+    wireframeLineColor,
     keycapBorder,
     style: contextStyle,
     fontSize,
@@ -230,7 +232,7 @@ export function KeyboardLayoutEditor({
           color: fontColorFinal,
           "--key-font-scale": FONT_SCALES[fontSize],
           "--key-radius": `${KEYCAP_RADIUS_PX[keycapRadius]}px`,
-          ...(colorOverride ? { "--wireframe-line-color": colorOverride } : {}),
+          "--wireframe-line-color": colorOverride ?? wireframeLineColor,
         } as CSSProperties}
       >
         {placed.keys

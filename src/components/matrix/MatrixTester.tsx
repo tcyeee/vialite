@@ -313,17 +313,13 @@ export function MatrixTester({ keyboard }: Props) {
 
   return (
     <div className="matrix-tester">
-      {pollError ? (
+      {pollError && (
         <div role="alert" className="alert alert-warning alert-soft mb-3 text-sm">
           <span className="loading loading-spinner loading-sm" />
           <span>{t("matrixRetrying", { error: pollError })}</span>
         </div>
-      ) : (
-        <div role="alert" className="alert alert-info alert-soft mb-3 text-sm">
-          <span>{t("matrixInstructions")}</span>
-        </div>
       )}
-      <div ref={measureRef} className="w-full">
+      <div ref={measureRef} className="w-full flex flex-col items-center">
         <div
           data-lenis-prevent
           className="w-fit max-w-full overflow-auto rounded-lg bg-base-100 p-4"

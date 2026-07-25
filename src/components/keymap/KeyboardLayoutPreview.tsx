@@ -126,6 +126,8 @@ export const DEFAULT_KEYCAP_RADIUS: KeycapRadiusLevel = "m";
 export const DEFAULT_CASE_THICKNESS = 15;
 export const DEFAULT_CASE_COLOR = "#b0b0b0";
 export const DEFAULT_PLATE_COLOR = "#8a8a8a";
+/** Default outline color for wireframe (线稿) style — caps/encoders/dual-role hold band. Overridable per-board via `colorOverride` (KeyboardLayoutEditor) or the `wireframeLineColor` prop (KeyboardLayoutPreview). */
+export const DEFAULT_WIREFRAME_LINE_COLOR = "#c4c4c4";
 
 export interface PreviewAppearance {
   /** Key spacing level (按键间距); sets the pitch, so it scales the whole board. */
@@ -142,6 +144,8 @@ export interface PreviewAppearance {
   caseColor?: string;
   /** Plate (定位板) fill color the keys sit on. */
   plateColor?: string;
+  /** Wireframe (线稿) style outline color — see {@link DEFAULT_WIREFRAME_LINE_COLOR}. */
+  wireframeLineColor?: string;
   /** Whether each keycap draws a thin outline (键帽边框). Default off. */
   keycapBorder?: boolean;
   /** Board rendering style (立体感/风格) — see {@link PreviewStyle}. */
@@ -339,6 +343,7 @@ export function KeyboardLayoutPreview({
     caseThickness,
     caseColor,
     plateColor,
+    wireframeLineColor,
     keycapBorder,
     style,
     fontSize,
@@ -442,6 +447,7 @@ export function KeyboardLayoutPreview({
           color: fontColor,
           "--key-font-scale": FONT_SCALES[fontSize],
           "--key-radius": `${KEYCAP_RADIUS_PX[keycapRadius]}px`,
+          "--wireframe-line-color": wireframeLineColor,
         } as CSSProperties}
       >
         {placed.keys

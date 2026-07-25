@@ -21,7 +21,7 @@ import {
   ALWAYS_ENABLED_ATTR,
   QuickConfigPanel,
 } from "./components/keymap/quickConfig/QuickConfigPanel.tsx";
-import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
+import { LayerTabBar } from "./components/keymap/LayerTabs.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { NewHomePage } from "./components/shell/NewHomePage.tsx";
@@ -807,31 +807,36 @@ function App() {
             <main className="min-w-0 p-6 md:p-8">
               <div key={mode} className="page-transition">
               {mode !== "keymap" && (
-              <div className="mb-6 flex items-center gap-2">
-                <h1 className="text-3xl font-bold text-brand-on-surface">
-                  {mode === "matrix"
-                    ? t("navMatrixTest")
-                    : mode === "macro"
-                      ? t("navMacro")
-                      : mode === "tapdance"
-                        ? t("navTapDance")
-                        : mode === "combo"
-                          ? t("navCombo")
-                          : mode === "rgb"
-                            ? t("navRgb")
-                          : mode === "color"
-                            ? t("navKeyboardColor")
-                            : mode === "advanced"
-                              ? t("navAdvanced")
-                              : mode === "preview3d"
-                                ? t("navPreview3d")
-                                : t("navNewHome")}
-                </h1>
-                {mode === "preview3d" && <HelpIcon text={t("preview3dHint")} />}
-                {mode === "macro" && <HelpIcon text={t("macroHint")} />}
-                {mode === "tapdance" && <HelpIcon text={t("tapDanceHint")} />}
-                {mode === "combo" && <HelpIcon text={t("comboHint")} />}
-                {mode === "rgb" && <HelpIcon text={t("rgbHint")} />}
+              <div className="mb-6">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-3xl font-bold text-brand-on-surface">
+                    {mode === "matrix"
+                      ? t("navMatrixTest")
+                      : mode === "macro"
+                        ? t("navMacro")
+                        : mode === "tapdance"
+                          ? t("navTapDance")
+                          : mode === "combo"
+                            ? t("navCombo")
+                            : mode === "rgb"
+                              ? t("navRgb")
+                            : mode === "color"
+                              ? t("navKeyboardColor")
+                              : mode === "advanced"
+                                ? t("navAdvanced")
+                                : mode === "preview3d"
+                                  ? t("navPreview3d")
+                                  : t("navNewHome")}
+                  </h1>
+                  {mode === "preview3d" && <HelpIcon text={t("preview3dHint")} />}
+                  {mode === "macro" && <HelpIcon text={t("macroHint")} />}
+                  {mode === "tapdance" && <HelpIcon text={t("tapDanceHint")} />}
+                  {mode === "combo" && <HelpIcon text={t("comboHint")} />}
+                  {mode === "rgb" && <HelpIcon text={t("rgbHint")} />}
+                </div>
+                {mode === "matrix" && (
+                  <p className="mt-1 text-brand-on-surface-variant">{t("matrixInstructions")}</p>
+                )}
               </div>
               )}
               {keyboard && mode === "keymap" && (
@@ -844,26 +849,39 @@ function App() {
                       {t("keyboardLayoutSubtitle")}
                     </p>
                   </div>
-                  <LayerTabs
+                  {/* Layer tabs stay in normal flow (scroll away); only the
+                      board below is pinned — same split as the 键盘配色 page
+                      (see KeyboardColorPanel). Both are direct siblings of the
+                      quick-config section below (not wrapped in their own
+                      short div) so the sticky board's containing block spans
+                      the whole scrollable page, giving it room to stay pinned
+                      while the (now much taller, three-section) quick-config
+                      area scrolls underneath — a containing block no taller
+                      than the tabs+board themselves would give sticky zero
+                      room to travel and it would never visibly stick. */}
+                  <LayerTabBar
                     layers={keyboard.layers}
                     active={layer}
                     onSelect={setLayer}
                     isConfigured={(l) => keyboard.isLayerConfigured(l)}
+                  />
+                  {/* 吸顶:px/py 给外壳的立体投影(.keyboard-case-shaded 向下与
+                      左右的 box-shadow)留出空间:overflow-x-auto 会让
+                      overflow-y 计算为 auto,容器边缘会裁掉溢出的阴影,padding
+                      区域不被裁剪。等量负外边距(-mx/-mb/-mt)抵消这圈 padding,
+                      使键盘的视觉位置与周围内容保持原有对齐,不因留白而偏移。
+                      `top-0` 贴齐视口顶部(此处上方已无 Navbar);与页面一致的
+                      背景色遮住从下方滚上来的内容。 */}
+                  <div
+                    // Marks the keyboard preview so an expanded quick-config
+                    // card below stays open when a key here is clicked — the
+                    // click still re-selects the cap, it just doesn't collapse
+                    // the card (see ExpandableCardColumn's outside-click close).
+                    data-keyboard-preview
+                    ref={boardViewportRef}
+                    className="sticky top-0 z-20 -mx-4 -mb-6 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background"
                   >
-                    {/* px/py 给外壳的立体投影(.keyboard-case-shaded 向下与左右
-                        的 box-shadow)留出空间:overflow-x-auto 会让 overflow-y
-                        计算为 auto,容器边缘会裁掉溢出的阴影,padding 区域不被裁剪。
-                        等量负外边距(-mx/-mb/-mt)抵消这圈 padding,使键盘的视觉
-                        位置与周围内容保持原有对齐,不因留白而偏移。 */}
-                    <div
-                      // Marks the keyboard preview so an expanded quick-config
-                      // card below stays open when a key here is clicked — the
-                      // click still re-selects the cap, it just doesn't collapse
-                      // the card (see ExpandableCardColumn's outside-click close).
-                      data-keyboard-preview
-                      ref={boardViewportRef}
-                      className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2"
-                    >
+                    <div key={layer} className="tab-panel-appear w-full">
                       <KeyboardLayoutEditor
                         keyboard={keyboard}
                         layer={layer}
@@ -893,7 +911,7 @@ function App() {
                         onContextAssign={handleContextAssign}
                       />
                     </div>
-                  </LayerTabs>
+                  </div>
                   {/* 按键配置区:与上面的预览一样标记出来,点击这里不会清空选中态
                       (清空逻辑见文件顶部的 pointerdown 监听)。 */}
                   <div data-key-config>

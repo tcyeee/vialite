@@ -74,6 +74,15 @@
   color-scheme: light dark;
 }
 
+/* Wireframe (线稿) style default outline color — fallback for `--wireframe-line-color`
+   when a board doesn't inline-set it (see the wireframe rules further down). Single
+   source of truth shared with DEFAULT_WIREFRAME_LINE_COLOR in KeyboardLayoutPreview.tsx,
+   which is what both KeyboardLayoutEditor and KeyboardLayoutPreview actually set inline —
+   this fallback is purely defensive. */
+:root {
+  --wireframe-line-color-default: #1b1515;
+}
+
 html,
 body,
 #root {
@@ -1240,27 +1249,34 @@ textarea,
 
 /* 线稿(wireframe) 风格：键帽/旋钮只描边、不填充 —— 4 态立体感枚举(PreviewStyle)
    之一。外壳/底板的描边在 KeyboardLayoutPreview.tsx/KeyboardLayout.tsx 里内联
-   设置（颜色是用户可配的 caseColor/plateColor），这里只补键帽/旋钮的默认色
-   背景（它们的填充色不可配置）。必须排在 `.keyboard-layout .key`/`.encoder`
-   的默认背景规则之后，靠顺序覆盖同特异度的规则。旋钮本就是虚线描边
-   （无填充色可配），去掉背景即可；键帽默认无边框，需要补一条实线。描边颜色走
-   `--wireframe-line-color` 变量，默认回退到原来的固定灰；KeyboardLayout 的
-   `colorOverride`（如 NewHomePage 黑底米白线稿的 hero 区）会内联设置这个变量,
-   覆盖此处的默认值. */
+   设置（颜色是用户可配的 caseColor/plateColor），这里只补键帽/旋钮/dual-role
+   hold band 的默认色背景（它们的填充色不可配置）。必须排在
+   `.keyboard-layout .key`/`.encoder`/`.key-dual-hold` 的默认背景/描边规则之后，
+   靠顺序覆盖同特异度的规则。旋钮本就是虚线描边（无填充色可配），去掉背景即可；
+   键帽默认无边框，需要补一条实线；hold band 默认描边是固定的黑白半透明
+   （在非线稿风格下作为浮雕小药丸的边框），线稿下换成和键帽/旋钮一致的线条颜色，
+   否则 hold band 的边框会和键盘其它线条不一致。三者描边颜色都走
+   `--wireframe-line-color` 变量（KeyboardLayoutEditor/Preview 内联设置，读取
+   previewAppearance context 的 wireframeLineColor，默认浅灰；KeyboardLayoutEditor
+   的 `colorOverride`——如 NewHomePage 黑底米白线稿的 hero 区——会覆盖为同一个
+   颜色）。CSS 里的 fallback 只是防御性的，两个调用点目前总会内联设置该变量。 */
 .keyboard-layout-wireframe .key {
   background: transparent;
-  border: 1px solid var(--wireframe-line-color, light-dark(#8a8a8a, #888));
+  border: 1px solid var(--wireframe-line-color, var(--wireframe-line-color-default));
 }
 
 .keyboard-layout-wireframe .encoder {
   background: transparent;
-  border-color: var(--wireframe-line-color, light-dark(#888, #999));
+  border-color: var(--wireframe-line-color, var(--wireframe-line-color-default));
 }
 
 /* 线稿模式下双角色键（Mod-Tap/Layer-Tap）的下半区 hold band 也去掉填充，
-   只留 .key-dual-hold 本身的描边，和上面键帽/旋钮的处理保持一致。 */
+   描边颜色改用 --wireframe-line-color（覆盖默认的黑白半透明描边），和上面
+   键帽/旋钮的处理保持一致；dashed 的 masked-modifier 变体保留虚线样式，只是
+   颜色一起换。 */
 .keyboard-layout-wireframe .key-dual-hold {
   background: transparent;
+  border-color: var(--wireframe-line-color, var(--wireframe-line-color-default));
 }
 
 .keyboard-layout-wireframe .key:hover,

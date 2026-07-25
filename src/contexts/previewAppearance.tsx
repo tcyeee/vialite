@@ -24,6 +24,7 @@ import {
   DEFAULT_KEYCAP_WIDTH,
   DEFAULT_PLATE_COLOR,
   DEFAULT_PREVIEW_STYLE,
+  DEFAULT_WIREFRAME_LINE_COLOR,
   FONT_POSITIONS,
   FONT_SIZES,
   KEYCAP_RADIUS_LEVELS,
@@ -46,6 +47,7 @@ const KEYCAP_RADIUS_KEY = "vialite-color-keycap-radius";
 const CASE_THICKNESS_KEY = "vialite-color-case-thickness";
 const CASE_COLOR_KEY = "vialite-color-case-color";
 const PLATE_COLOR_KEY = "vialite-color-plate-color";
+const WIREFRAME_LINE_COLOR_KEY = "vialite-color-wireframe-line-color";
 const KEYCAP_BORDER_KEY = "vialite-color-keycap-border";
 const STYLE_KEY = "vialite-color-style";
 const FONT_SIZE_KEY = "vialite-color-font-size";
@@ -182,6 +184,8 @@ interface PreviewAppearanceValue {
   caseThickness: number;
   caseColor: string;
   plateColor: string;
+  /** Wireframe (线稿) style outline color — see {@link DEFAULT_WIREFRAME_LINE_COLOR}. Code-level config only, no settings-panel UI yet (wireframe style itself isn't reachable there). */
+  wireframeLineColor: string;
   keycapBorder: boolean;
   /** Board rendering style (立体感/风格) — see {@link PreviewStyle}. */
   style: PreviewStyle;
@@ -197,6 +201,7 @@ interface PreviewAppearanceValue {
   setCaseThickness: (value: number) => void;
   setCaseColor: (value: string) => void;
   setPlateColor: (value: string) => void;
+  setWireframeLineColor: (value: string) => void;
   setKeycapBorder: (value: boolean) => void;
   setStyle: (value: PreviewStyle) => void;
   setFontSize: (value: FontSize) => void;
@@ -228,6 +233,9 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
   );
   const [plateColor, setPlateColorState] = useState(() =>
     readStoredString(PLATE_COLOR_KEY, DEFAULT_PLATE_COLOR),
+  );
+  const [wireframeLineColor, setWireframeLineColorState] = useState(() =>
+    readStoredString(WIREFRAME_LINE_COLOR_KEY, DEFAULT_WIREFRAME_LINE_COLOR),
   );
   // Keycap border is no longer user-configurable — always off. Any stale
   // localStorage value is ignored.
@@ -276,6 +284,10 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
     setPlateColorState(value);
     store(PLATE_COLOR_KEY, value);
   }, []);
+  const setWireframeLineColor = useCallback((value: string) => {
+    setWireframeLineColorState(value);
+    store(WIREFRAME_LINE_COLOR_KEY, value);
+  }, []);
   const setKeycapBorder = useCallback((value: boolean) => {
     setKeycapBorderState(value);
     store(KEYCAP_BORDER_KEY, String(value));
@@ -308,6 +320,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       caseThickness,
       caseColor,
       plateColor,
+      wireframeLineColor,
       keycapBorder,
       style,
       fontSize,
@@ -322,6 +335,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setCaseThickness,
       setCaseColor,
       setPlateColor,
+      setWireframeLineColor,
       setKeycapBorder,
       setStyle,
       setFontSize,
@@ -338,6 +352,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       caseThickness,
       caseColor,
       plateColor,
+      wireframeLineColor,
       keycapBorder,
       style,
       fontSize,
@@ -352,6 +367,7 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setCaseThickness,
       setCaseColor,
       setPlateColor,
+      setWireframeLineColor,
       setKeycapBorder,
       setStyle,
       setFontSize,

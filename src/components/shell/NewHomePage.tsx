@@ -41,7 +41,7 @@ interface Props {
 const MENU_ITEMS = NAV_ITEMS.filter(({ kind }) => kind !== "keyboardColor");
 
 /** 米白色线稿颜色,强制盖过用户的键盘配色,在线稿(默认)状态下保持统一的品牌观感。 */
-const HERO_LINE_COLOR = "#f2ead8";
+const HERO_LINE_COLOR = "#1b1515";
 
 /** 3D 跟随倾斜的感应半径(px)——鼠标离卡片中心超过这个距离就恢复水平。 */
 const TILT_RADIUS_PX = 260;
@@ -204,8 +204,8 @@ export function NewHomePage({
         </div>
       </nav>
 
-      <main className="relative flex-1">
-        <div className="mt-[10px] flex items-start gap-[6rem]">
+      <main className=" ">
+        <div className="flex gap-[6rem] w-full items-center justify-center">
           {/* -translate-y-20 moved here (off the box itself) so it shifts the
               box together with the name/disconnect row and the personalize
               button below it, keeping them visually attached to the box
