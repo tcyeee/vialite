@@ -768,8 +768,8 @@ function App() {
           {...(inTransition ? { "data-lenis-prevent": "" } : {})}
           className={
             inTransition
-              ? `fixed inset-0 ${disconnecting ? "z-30" : "z-50"} overflow-y-auto bg-white dark:bg-black/30 dark:backdrop-blur-md`
-              : "min-h-screen bg-white dark:bg-brand-background"
+              ? `fixed inset-0 ${disconnecting ? "z-30" : "z-50"} overflow-y-auto bg-[#E9E6E6] dark:bg-black/30 dark:backdrop-blur-md`
+              : "min-h-screen bg-[#E9E6E6] dark:bg-brand-background"
           }
           style={
             inTransition
@@ -879,7 +879,7 @@ function App() {
                     // the card (see ExpandableCardColumn's outside-click close).
                     data-keyboard-preview
                     ref={boardViewportRef}
-                    className="sticky top-0 z-20 -mx-4 -mb-6 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background"
+                    className="sticky top-0 z-20 -mx-4 -mb-6 -mt-2 overflow-x-auto bg-[#E9E6E6] px-4 pb-6 pt-2 dark:bg-brand-background"
                   >
                     <div key={layer} className="tab-panel-appear w-full">
                       <KeyboardLayoutEditor

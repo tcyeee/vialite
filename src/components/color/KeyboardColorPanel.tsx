@@ -674,7 +674,7 @@ export function KeyboardColorPanel({
             shadow room without clipping it in `overflow-x-auto`. */}
         <div
           ref={previewViewportRef}
-          className="sticky top-0 z-20 -mx-4 -mb-4 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background"
+          className="sticky top-0 z-20 -mx-4 -mb-4 -mt-2 overflow-x-auto bg-[#E9E6E6] px-4 pb-6 pt-2 dark:bg-brand-background"
         >
           {/* Keyed on the active layer so switching tabs re-fires the appear
               animation, mirroring LayerTabs' own content box. */}

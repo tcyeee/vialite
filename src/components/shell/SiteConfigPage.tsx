@@ -17,7 +17,7 @@ export function SiteConfigPage({ onExit }: Props) {
   const { t } = useI18n();
 
   return (
-    <div className="min-h-screen bg-white text-black dark:bg-black dark:text-white">
+    <div className="min-h-screen bg-[#E9E6E6] text-black dark:bg-black dark:text-white">
       <div className="mx-auto max-w-2xl px-6 py-16 md:px-10">
         <div className="flex flex-col gap-6">
           {/* Banner: logo card, the thanks caption, and the participant marquee
