@@ -205,7 +205,7 @@ export interface AppearanceMetrics {
 
 /**
  * Resolves the appearance knobs into the concrete px metrics both
- * {@link KeyboardLayoutPreview} and the interactive KeyboardLayout render from,
+ * {@link KeyboardLayoutPreview} and the interactive KeyboardLayoutEditor render from,
  * so the two boards stay pixel-identical in geometry. Keycap width sets the cap
  * size, key spacing sets the (constant) gap, and the pitch is their sum — so each
  * knob is independent.
@@ -366,7 +366,7 @@ export function KeyboardLayoutPreview({
 
   // Right-click assign: the cascade selector anchored at the click point. It
   // dismisses itself (outside click / Escape / after a pick), so there's no
-  // separate close listener here. Mirrors KeyboardLayout's menu.
+  // separate close listener here. Mirrors KeyboardLayoutEditor's menu.
   //
   // The open menu doubles as the selection state, driving the same
   // `.selected` / `keyboard-layout-has-selection` styling the interactive board

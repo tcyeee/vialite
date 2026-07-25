@@ -364,27 +364,6 @@ textarea,
   }
 }
 
-@keyframes sidebar-appear {
-  from {
-    opacity: 0;
-    transform: translateX(-32px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.sidebar-appear {
-  animation: sidebar-appear 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-appear {
-    animation: none;
-  }
-}
-
 @keyframes page-transition {
   from {
     opacity: 0;
@@ -469,28 +448,6 @@ textarea,
 @media (prefers-reduced-motion: reduce) {
   .settings-row-collapse {
     transition: none;
-  }
-}
-
-@keyframes nav-label-appear {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.nav-label-appear {
-  animation: nav-label-appear 0.35s ease-out both;
-  animation-delay: var(--nav-delay, 0ms);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nav-label-appear {
-    animation: none;
   }
 }
 
@@ -1298,6 +1255,12 @@ textarea,
 .keyboard-layout-wireframe .encoder {
   background: transparent;
   border-color: var(--wireframe-line-color, light-dark(#888, #999));
+}
+
+/* 线稿模式下双角色键（Mod-Tap/Layer-Tap）的下半区 hold band 也去掉填充，
+   只留 .key-dual-hold 本身的描边，和上面键帽/旋钮的处理保持一致。 */
+.keyboard-layout-wireframe .key-dual-hold {
+  background: transparent;
 }
 
 .keyboard-layout-wireframe .key:hover,

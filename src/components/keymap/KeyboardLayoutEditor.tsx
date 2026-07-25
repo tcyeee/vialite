@@ -69,7 +69,7 @@ interface Props {
   colorOverride?: string;
 }
 
-export function KeyboardLayout({
+export function KeyboardLayoutEditor({
   keyboard,
   layer,
   selected,

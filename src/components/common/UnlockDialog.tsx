@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 
-const UNIT = 27; // half of KeyboardLayout's UNIT: a small reference rendering
+const UNIT = 27; // half of KeyboardLayoutEditor's UNIT: a small reference rendering
 
 interface Props {
   keyboard: Keyboard;

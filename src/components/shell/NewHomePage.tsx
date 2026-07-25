@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
-import { KeyboardLayout } from "../keymap/KeyboardLayout.tsx";
+import { KeyboardLayoutEditor } from "../keymap/KeyboardLayoutEditor.tsx";
 import { PREVIEW_ZOOM } from "../keymap/KeyboardLayoutPreview.tsx";
 import { boardNaturalHeight, boardNaturalWidth } from "../keymap/autoFitSize.ts";
 import { KEYBOARD_HERO_NAME } from "../common/viewTransition.ts";
@@ -72,10 +72,10 @@ export function NewHomePage({
   const [windowNode, setWindowNode] = useState<HTMLDivElement | null>(null);
   const [heroZoom, setHeroZoom] = useState(PREVIEW_ZOOM.l);
   // 悬浮键盘预览:线稿(默认) <-> 浮雕(hover),直接复用 PreviewStyle 枚举,
-  // 交给 KeyboardLayout 自己处理外观切换,这里只负责触发。
+  // 交给 KeyboardLayoutEditor 自己处理外观切换,这里只负责触发。
   const [heroHovered, setHeroHovered] = useState(false);
   // 卡片跟随鼠标做 3D 倾斜,走 ref 直接改 style,避免 mousemove 高频触发 React
-  // 重渲染(卡片下面挂着整块可交互的 KeyboardLayout,重渲染成本不低)。
+  // 重渲染(卡片下面挂着整块可交互的 KeyboardLayoutEditor,重渲染成本不低)。
   const cardRef = useRef<HTMLDivElement | null>(null);
   // Mirrors `windowNode` as a ref (imperative reads inside the mousemove
   // handler shouldn't depend on React state) — the *window*'s box, not the
@@ -226,7 +226,7 @@ export function NewHomePage({
               {/* Always named (not just while morphing into 个性化) so the browser
                   pulls this subtree out of the root snapshot on *every* view
                   transition, including the theme-reveal ripple — snapshotting the
-                  full interactive KeyboardLayout as part of the whole-page capture
+                  full interactive KeyboardLayoutEditor as part of the whole-page capture
                   was what made the ripple stutter partway through. Harmless when no
                   transition is running, since view-transition-name only matters at
                   capture time. See the `::view-transition-old/new(keyboard-hero)`
@@ -243,7 +243,7 @@ export function NewHomePage({
                 onMouseLeave={() => setHeroHovered(false)}
               >
                 <div className="pointer-events-none">
-                  <KeyboardLayout
+                  <KeyboardLayoutEditor
                     keyboard={keyboard}
                     layer={layer}
                     onKeySelect={() => {}}

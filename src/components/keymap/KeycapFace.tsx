@@ -130,7 +130,7 @@ function HoldFace({ qmkId, fallback }: { qmkId: string; fallback: string }) {
  * ({@link keycapIcons.ts}); modifier glyphs follow the 系统修饰键 (keyDisplay) OS
  * style, read from context here so call sites don't have to thread it through.
  *
- * Shared by every keycap surface — the interactive {@link KeyboardLayout}, the
+ * Shared by every keycap surface — the interactive {@link KeyboardLayoutEditor}, the
  * 键盘配色 {@link KeyboardLayoutPreview}, and the tap-dance / combo / quick-config
  * slots — so a keycode added to the table lights up in all of them at once.
  * `className` styles the text span (default `key-label`); glyphs render via

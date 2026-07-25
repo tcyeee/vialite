@@ -14,7 +14,7 @@ import { track } from "../../analytics.ts";
 import { hasSecondRect, placeLayout } from "../keymap/layoutGeometry.ts";
 import { shapeStyle } from "../keymap/KeyboardLayoutPreview.tsx";
 
-const UNIT = 54; // same scale as KeyboardLayout
+const UNIT = 54; // same scale as KeyboardLayoutEditor
 // Gap between adjacent caps (the old code baked this in as `width * UNIT - 4`).
 const INSET = 4;
 

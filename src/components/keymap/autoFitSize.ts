@@ -46,7 +46,7 @@ export function fitZoom(naturalWidth: number, availableWidth: number): number {
 
 /**
  * The board's natural (1×, pre-zoom) outer width in px — the same quantity
- * {@link KeyboardLayout} lays out at before {@link KeyboardZoom} scales it:
+ * {@link KeyboardLayoutEditor} lays out at before {@link KeyboardZoom} scales it:
  * plate width (bounding box + one inter-key gap) plus the case bezel on both
  * sides. Rotated keys are already accounted for: `placeLayout` derives
  * `placed.width` from rotated corner points, so an angled board reports its true

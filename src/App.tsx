@@ -4,7 +4,7 @@ import { useLenis } from "lenis/react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
 import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
-import { KeyboardLayout, type KeyPart } from "./components/keymap/KeyboardLayout.tsx";
+import { KeyboardLayoutEditor, type KeyPart } from "./components/keymap/KeyboardLayoutEditor.tsx";
 import { KeyboardLayout3D } from "./components/connect/KeyboardLayout3D.tsx";
 import { Preview3DDebugPanel } from "./components/connect/Preview3DDebugPanel.tsx";
 import {
@@ -196,7 +196,7 @@ function App() {
   const [qmkPendingCount, setQmkPendingCount] = useState(0);
   const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
   // Keyboard mutates its internal keymap in place; bumping this forces a
-  // re-render so KeyboardLayout picks up the new label after a remap.
+  // re-render so KeyboardLayoutEditor picks up the new label after a remap.
   const [, forceUpdate] = useState(0);
   const [importing, setImporting] = useState(false);
   // Connect/disconnect page transition. Connect plays "zoom" (the waiting
@@ -797,42 +797,17 @@ function App() {
             <SiteConfigPage onExit={() => navigate("newHome")} />
           ) : (
             <>
-          {/* Legacy shell (Navbar + Sidebar/SidebarDrawer) — kept alive only as the
-              fallback NewHomePage's exit button lands on. Slated for removal; do not
-              route any new page/flow through this branch. */}
+          {/* Shared page shell for every mode besides 首页/网站配置: a black top
+              Navbar plus a CornerCloseButton back to NewHomePage. No left sidebar —
+              NewHomePage's own menu (and the deep links off individual panels, e.g.
+              QuickConfigPanel's "详细设置") are the only way into these pages. */}
           <CornerCloseButton onClick={() => navigate("newHome")} label={t("navBackToNewHome")} active />
-          <Navbar onMenuClick={() => setDrawerOpen((v) => !v)} />
-          <SidebarDrawer
-            productName={productName}
-            onDisconnect={handleDisconnect}
-            mode={mode}
-            matrixTesterSupported={!!keyboard?.supportsMatrixTester}
-            macroSupported={!!keyboard && keyboard.macroCount > 0}
-            tapDanceSupported={!!keyboard && keyboard.tapDanceCount > 0}
-            comboSupported={!!keyboard && keyboard.comboCount > 0}
-            qmkSections={qmkSections}
-            onNavigate={navigate}
-            open={drawerOpen}
-            onClose={() => setDrawerOpen(false)}
-          />
+          {mode !== "matrix" && <Navbar />}
       <div className="p-4 pt-0 md:p-6 md:pt-0">
         <div className="mx-auto max-w-[1600px]">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6 lg:gap-8 xl:gap-10 2xl:gap-12">
-            <Sidebar
-              productName={productName}
-              onDisconnect={handleDisconnect}
-              mode={mode}
-              matrixTesterSupported={!!keyboard?.supportsMatrixTester}
-              macroSupported={!!keyboard && keyboard.macroCount > 0}
-              tapDanceSupported={!!keyboard && keyboard.tapDanceCount > 0}
-              comboSupported={!!keyboard && keyboard.comboCount > 0}
-                qmkSections={qmkSections}
-              onNavigate={navigate}
-              appear={!inTransition}
-            />
-            <main className="min-w-0 flex-1 p-6 md:p-8">
+            <main className="min-w-0 p-6 md:p-8">
               <div key={mode} className="page-transition">
-              {mode !== "site" && mode !== "keymap" && (
+              {mode !== "keymap" && (
               <div className="mb-6 flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-brand-on-surface">
                   {mode === "matrix"
@@ -890,7 +865,7 @@ function App() {
                       ref={boardViewportRef}
                       className="-mx-4 -mb-6 -mt-2 overflow-x-auto px-4 pb-6 pt-2"
                     >
-                      <KeyboardLayout
+                      <KeyboardLayoutEditor
                         keyboard={keyboard}
                         layer={layer}
                         zoomOverride={autoFitZoom}
@@ -1032,10 +1007,8 @@ function App() {
                   onBackToHome={handleBackToHome}
                 />
               )}
-              {mode === "site" && <SiteSettingsPanel />}
               </div>
             </main>
-          </div>
         </div>
       </div>
           {importing && <div className="io-busy-overlay" />}

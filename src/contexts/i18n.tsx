@@ -441,7 +441,7 @@ const MESSAGES = {
   exportLayoutDesc: { en: "Save the current keymap to a .vil file", zh: "将当前配置保存为 .vil 文件" },
   importLayoutDesc: { en: "Load a keymap from a .vil file", zh: "从 .vil 文件加载配置" },
 
-  // Sidebar
+  // Nav
   navHome: { en: "Keyboard Config", zh: "键盘配置" },
   navMatrixTest: { en: "Keyboard Test", zh: "键盘测试" },
   navMacro: { en: "Macros", zh: "宏配置" },
@@ -466,17 +466,11 @@ const MESSAGES = {
   preview3dReset: { en: "Reset", zh: "恢复默认" },
   preview3dCopy: { en: "Copy as code", zh: "复制为代码" },
   preview3dCopied: { en: "Copied", zh: "已复制" },
-  navSiteSettings: { en: "Website Info", zh: "网站信息" },
   navNewHome: { en: "New Home", zh: "新版首页" },
   navExitNewHome: { en: "Exit New Home", zh: "退出新版首页" },
   navBackToNewHome: { en: "Back to New Home", zh: "返回新版首页" },
   navExitSiteConfig: { en: "Exit Website Settings", zh: "退出网站配置" },
   comingSoon: { en: "Coming soon", zh: "即将推出" },
-  resizeSidebar: { en: "Resize sidebar", zh: "拖动调整侧边栏宽度" },
-  collapseSidebar: { en: "Collapse sidebar", zh: "收起侧边栏" },
-  expandSidebar: { en: "Expand sidebar", zh: "展开侧边栏" },
-  openMenu: { en: "Open menu", zh: "打开菜单" },
-  closeMenu: { en: "Close menu", zh: "关闭菜单" },
 
   // Shared
   save: { en: "Save", zh: "保存" },
