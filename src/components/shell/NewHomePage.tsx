@@ -57,6 +57,9 @@ const HERO_PADDING_PX = 32;
 /** 可视窗口宽度下限(px)——窄屏下至少露出这么多,即便算出来的卡片本身更窄。 */
 const HERO_WINDOW_MIN_PX = 400;
 
+/** 左侧键盘预览整体放大系数,叠加在按窗口高度算出的 heroZoom 之上。 */
+const HERO_ZOOM_BOOST = 1.1;
+
 export function NewHomePage({
   keyboard,
   layer,
@@ -97,7 +100,7 @@ export function NewHomePage({
     const measure = () => {
       const available = windowNode.clientHeight - HERO_PADDING_PX * 2;
       if (available <= 0 || !(naturalHeight > 0)) return;
-      setHeroZoom(Math.min(available / naturalHeight, PREVIEW_ZOOM.l));
+      setHeroZoom(Math.min(available / naturalHeight, PREVIEW_ZOOM.l) * HERO_ZOOM_BOOST);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -155,8 +158,8 @@ export function NewHomePage({
   const windowMinWidth = Math.min(HERO_WINDOW_MIN_PX, cardWidth);
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-white text-black dark:bg-black dark:text-white">
-      <nav className="flex items-center justify-between px-10 py-8 md:px-14">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-[#EAE6E6] text-black dark:bg-black dark:text-white">
+      <nav className="flex items-center justify-between px-10 py-4 md:px-14">
         <span className="text-[1.95rem] font-extrabold tracking-tight">Vialite</span>
         <div className="flex items-center gap-3 text-[15px] font-medium text-black/90 dark:text-white/90">
           <button
@@ -165,7 +168,7 @@ export function NewHomePage({
             style={{ width: 78 }}
             onClick={() => onNavigate("siteConfig")}
           >
-            网站配置
+            网站信息
           </button>
           <button
             type="button"
@@ -202,7 +205,7 @@ export function NewHomePage({
       </nav>
 
       <main className="relative flex-1">
-        <div className="mt-[20px] flex items-start gap-[10rem]">
+        <div className="mt-[10px] flex items-start gap-[6rem]">
           {/* -translate-y-20 moved here (off the box itself) so it shifts the
               box together with the name/disconnect row and the personalize
               button below it, keeping them visually attached to the box
@@ -241,16 +244,38 @@ export function NewHomePage({
                 onMouseEnter={() => setHeroHovered(true)}
                 onMouseLeave={() => setHeroHovered(false)}
               >
-                <div className="pointer-events-none">
-                  <KeyboardLayoutEditor
-                    keyboard={keyboard}
-                    layer={layer}
-                    onKeySelect={() => {}}
-                    onEncoderSelect={() => {}}
-                    zoomOverride={heroZoom}
-                    styleOverride={heroHovered ? "relief" : "wireframe"}
-                    colorOverride={heroHovered ? undefined : HERO_LINE_COLOR}
-                  />
+                {/* 线稿 <-> 浮雕不是同一份 DOM 换一个 class(底色/边框/box-shadow
+                    的图层数量两边对不上,CSS 没法逐属性插值),索性叠两份互斥
+                    渲染的键盘各自淡入淡出,用透明度过渡冒充"渐变动画"——对齐
+                    靠两者共享同一个 zoomOverride/layer,几何完全一致。 */}
+                <div className="pointer-events-none relative">
+                  <div
+                    className="transition-opacity duration-300 ease-out"
+                    style={{ opacity: heroHovered ? 0 : 1 }}
+                  >
+                    <KeyboardLayoutEditor
+                      keyboard={keyboard}
+                      layer={layer}
+                      onKeySelect={() => {}}
+                      onEncoderSelect={() => {}}
+                      zoomOverride={heroZoom}
+                      styleOverride="wireframe"
+                      colorOverride={HERO_LINE_COLOR}
+                    />
+                  </div>
+                  <div
+                    className="absolute inset-0 transition-opacity duration-300 ease-out"
+                    style={{ opacity: heroHovered ? 1 : 0 }}
+                  >
+                    <KeyboardLayoutEditor
+                      keyboard={keyboard}
+                      layer={layer}
+                      onKeySelect={() => {}}
+                      onEncoderSelect={() => {}}
+                      zoomOverride={heroZoom}
+                      styleOverride="relief"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -258,7 +283,7 @@ export function NewHomePage({
             {/* Keyboard name + hover-reveal red disconnect button: breathing
                 status dot, slide-in-from-the-right red circle button on
                 group-hover. */}
-            <div className="group flex h-9 items-center gap-2 pl-2">
+            <div className="group flex h-9 items-center gap-2 pl-10">
               <span className="h-2 w-2 shrink-0 rounded-full bg-brand-secondary animate-status-breathe" />
               <span className="min-w-0 truncate text-sm font-medium uppercase text-black/70 dark:text-white/70">
                 {productName ?? t("disconnect")}
@@ -273,7 +298,7 @@ export function NewHomePage({
               </button>
             </div>
 
-            <div className="ml-2 mt-6 flex items-center gap-2">
+            <div className="mt-6 flex items-center gap-2 pl-10">
               {/* Personalize entry point — hands the browser View Transition its
                   "from" element via currentTarget, morphing this box into the
                   个性化 page's board (see App.tsx's handlePersonalize). */}
@@ -315,15 +340,15 @@ export function NewHomePage({
                   onClick={() => onNavigate(itemMode)}
                   title={supported ? undefined : t("comingSoon")}
                   className={
-                    "group flex items-center gap-2 whitespace-nowrap border-none bg-transparent text-4xl font-semibold transition-all duration-300 ease-out " +
+                    "group flex items-center gap-2 whitespace-nowrap border-none bg-transparent text-5xl font-bold transition-all duration-300 ease-out " +
                     (supported
-                      ? "text-black/50 hover:translate-x-2 hover:text-[#e2231b] dark:text-white/50"
+                      ? "text-black/50 hover:translate-x-8 hover:text-brand-secondary dark:text-white/50"
                       : "cursor-default text-black/25 dark:text-white/25")
                   }
                 >
                   {t(labelKey)}
                   {beta && (
-                    <span className="badge badge-xs badge-outline shrink-0 border-black/30 text-[0.625rem] font-semibold uppercase text-black/40 transition-colors duration-300 ease-out group-hover:border-[#e2231b]/50 group-hover:text-[#e2231b] dark:border-white/30 dark:text-white/40">
+                    <span className="badge badge-xs badge-outline shrink-0 border-black/30 text-[0.625rem] font-semibold uppercase text-black/40 transition-colors duration-300 ease-out group-hover:border-brand-secondary/50 group-hover:text-brand-secondary dark:border-white/30 dark:text-white/40">
                       Beta
                     </span>
                   )}
@@ -333,17 +358,6 @@ export function NewHomePage({
           </nav>
         </div>
       </main>
-
-      {/* Exits to the keymap-editing page (shared page shell in App.tsx: just
-          CornerCloseButton, no left sidebar). */}
-      <button
-        type="button"
-        onClick={() => onNavigate("keymap")}
-        aria-label={t("navExitNewHome")}
-        className="fixed bottom-6 left-6 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-black/10 text-brand-on-surface-variant backdrop-blur transition hover:bg-red-500/20 hover:text-red-500 dark:bg-white/10"
-      >
-        <Icon icon="mdi:close" className="h-6 w-6" />
-      </button>
     </div>
   );
 }
