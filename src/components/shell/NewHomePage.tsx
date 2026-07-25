@@ -16,9 +16,9 @@ interface Props {
 }
 
 /* 复刻旧版首页(重置前的原型,见 git ce62e25..f1ed67e)右侧竖排菜单的条目来源——
-   直接取 Sidebar 的 NAV_ITEMS,排除"新版首页"自身。暂未接入点击,仅做视觉展示,
+   直接取 Sidebar 的 NAV_ITEMS。暂未接入点击,仅做视觉展示,
    悬浮时变色并左移,为后续接入真实导航预留交互形态。 */
-const MENU_ITEMS = NAV_ITEMS.filter((item) => item.kind !== "newHome");
+const MENU_ITEMS = NAV_ITEMS;
 
 /** 米白色线稿颜色,强制盖过用户的键盘配色,让预览在红方块背景上保持可读对比度。 */
 const HERO_LINE_COLOR = "#f2ead8";
@@ -99,12 +99,9 @@ export function NewHomePage({ keyboard, layer, onNavigate }: Props) {
         </div>
       </nav>
 
-      <main className="relative flex-1 px-10 md:px-14">
-        <div className="mt-[max(20vh,100px)] flex items-center gap-[7.5rem]">
-          {/* 裁切窗口:固定露出 500px 宽,内部红方块(长宽比随键盘变化,通常比
-              500px 宽得多)靠右对齐,超出左边界的部分被这层 overflow-hidden 裁掉,
-              效果类似图片向左侧溢出屏幕、只在页面上留出右侧 500px。 */}
-          <div className="relative flex h-[clamp(188px,24.638vw,304px)] w-[500px] shrink-0 items-center justify-end overflow-hidden rounded-md">
+      <main className="relative flex-1">
+        <div className="mt-[20px] flex items-center gap-[10rem]">
+          <div className="relative flex h-[clamp(188px,40vw,300px)] w-[400px] shrink-0 -translate-y-20 items-center justify-end overflow-hidden rounded-r-3xl">
             <div
               ref={setBoxNode}
               className="relative flex h-full shrink-0 items-center justify-center bg-[#e2231b]"

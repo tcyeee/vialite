@@ -109,8 +109,7 @@ export type NavKind =
   | "keyboardColor"
   | "advanced"
   | "site"
-  | "preview3d"
-  | "newHome";
+  | "preview3d";
 
 export const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; icon: string; beta?: boolean }[] = [
   { kind: "home", mode: "keymap", labelKey: "navHome", icon: "mdi:home-outline" },
@@ -123,7 +122,6 @@ export const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; i
   { kind: "advanced", mode: "advanced", labelKey: "navAdvanced", icon: "mdi:tune-variant" },
   { kind: "preview3d", mode: "preview3d", labelKey: "navPreview3d", icon: "mdi:cube-outline", beta: true },
   { kind: "site", mode: "site", labelKey: "navSiteSettings", icon: "mdi:web" },
-  { kind: "newHome", mode: "newHome", labelKey: "navNewHome", icon: "mdi:view-dashboard-outline", beta: true },
 ];
 
 export function Sidebar({

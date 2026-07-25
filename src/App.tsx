@@ -161,7 +161,7 @@ function App() {
   // Seeded from localStorage so it survives a page reload.
   const [lastDeviceName, setLastDeviceName] = useState<string | null>(loadLastDeviceName);
   const [layer, setLayer] = useState(0);
-  const [mode, setMode] = useState<PageMode>("keymap");
+  const [mode, setMode] = useState<PageMode>("newHome");
   const [preview3dParams, setPreview3dParams] = useState<Preview3DParams>(loadPreview3DParams);
   const [selected, setSelected] = useState<Selected | null>(null);
   // 点击键盘预览与按键配置区(快捷配置 / 双功能编辑器)之外的任何地方都取消选中,
@@ -251,7 +251,7 @@ function App() {
       clearSkipAutoConnect();
       setLayer(0);
       setSelected(null);
-      setMode("keymap");
+      setMode("newHome");
       setDrawerOpen(false);
       setQmkPendingCount(0);
       setQmkLeaveRequested(false);
