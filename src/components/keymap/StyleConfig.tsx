@@ -27,35 +27,13 @@ import {
 import { createPortal, flushSync } from "react-dom";
 import { ReactLenis, type LenisRef } from "lenis/react";
 import type { VirtualScrollData } from "lenis";
-import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
-import { startViewTransition } from "../common/viewTransition.ts";
+import { CornerCloseButton } from "../common/CornerCloseButton.tsx";
+import { KEYBOARD_HERO_NAME, startViewTransition } from "../common/viewTransition.ts";
 import { KeyboardLayoutPreview } from "./KeyboardLayoutPreview.tsx";
 import { boardNaturalHeight, boardNaturalWidth, MAX_AUTO_FIT_ZOOM } from "./autoFitSize.ts";
-
-const HERO_NAME = "keyboard-hero";
-
-/** Scale applied to the close button while hovered — it grows from its corner-anchored resting size back into full view. */
-const CLOSE_HOVER_SCALE = 2;
-
-/** Matches the close button's own `h-20 w-20` Tailwind size (5rem) — used below to locate its resting center without reading back a `getBoundingClientRect` that the magnet effect's own translate would otherwise feed back into. */
-const CLOSE_BTN_SIZE = 80;
-/** Matches the close button's `-right-5 -top-5` Tailwind offset (-1.25rem) — how far outside the viewport corner it rests before any magnet pull is applied. */
-const CLOSE_BTN_REST_OFFSET = -20;
-/** Distance (px, from the close button's resting center) within which the cursor starts pulling it closer — see {@link CLOSE_MAGNET_MAX_SHIFT}. Falls off linearly to 0 at this radius so the pull eases in instead of snapping on. */
-const CLOSE_MAGNET_RADIUS = 220;
-/** Cap (px) on how far the cursor can pull the close button down/left from its corner — it only ever moves toward the page content, never further up/right off-screen. */
-const CLOSE_MAGNET_MAX_SHIFT = 50;
-
-/** The close button's resting center (before any magnet translate), derived from its own fixed Tailwind offset/size rather than measuring the live (possibly already-translated) DOM rect. */
-function closeButtonRestCenter() {
-  return {
-    x: window.innerWidth - CLOSE_BTN_REST_OFFSET - CLOSE_BTN_SIZE / 2,
-    y: CLOSE_BTN_REST_OFFSET + CLOSE_BTN_SIZE / 2,
-  };
-}
 
 /** Scroll distance (px) over which the board's parallax shift and shrink both ramp from 0 to their max — one shared progress value drives both. */
 const BOARD_PARALLAX_SCROLL_RANGE = 200;
@@ -145,9 +123,15 @@ export interface FullscreenPreviewHandle {
  * take the element that was clicked (the "全屏预览" button, or the overlay's own
  * close button) so the ripple can grow from that point, mirroring `setTheme`'s
  * `origin` parameter in theme.tsx.
+ *
+ * `initialFullscreen` lets a caller land straight on the fullscreen page
+ * without an origin-anchored ripple — used by `KeyboardColorPanel` when
+ * arriving via NewHomePage's hero "个性化" button, which already runs its own
+ * App-level View Transition (`heroArriving`) that this hook's own `animating`
+ * ripple would otherwise fight over the shared `KEYBOARD_HERO_NAME`.
  */
-export function useFullscreenPreview(): FullscreenPreviewHandle {
-  const [fullscreen, setFullscreen] = useState(false);
+export function useFullscreenPreview(initialFullscreen = false): FullscreenPreviewHandle {
+  const [fullscreen, setFullscreen] = useState(initialFullscreen);
   const [animating, setAnimating] = useState(false);
 
   const run = useCallback((origin: Element | null | undefined, next: boolean) => {
@@ -171,7 +155,7 @@ export function useFullscreenPreview(): FullscreenPreviewHandle {
 
   return {
     fullscreen,
-    heroName: animating ? HERO_NAME : undefined,
+    heroName: animating ? KEYBOARD_HERO_NAME : undefined,
     open: (origin) => run(origin, true),
     close: (origin) => run(origin, false),
   };
@@ -241,6 +225,8 @@ export function FullscreenPreviewOverlay({
   handle,
   settings,
   boardRef,
+  heroArriving,
+  onBack,
 }: {
   keyboard: Keyboard;
   layer: number;
@@ -256,6 +242,24 @@ export function FullscreenPreviewOverlay({
    * two ever holds the ref at a time.
    */
   boardRef?: Ref<HTMLDivElement>;
+  /**
+   * Mirrors `KeyboardColorPanel`'s own `heroArriving`: true for the brief
+   * window this overlay is the direct landing target of the App-level hero
+   * transition from NewHomePage (i.e. `handle`'s own `initialFullscreen` was
+   * true, so `handle.heroName` never fires — there was no in-page ripple to
+   * animate). Tags this board with the shared hero name instead so the
+   * NewHomePage box still morphs into *this* board rather than cross-fading.
+   */
+  heroArriving?: boolean;
+  /**
+   * Overrides what the top-right corner button (and Escape) do: called with
+   * that button's element instead of `handle.close`. Used by
+   * `KeyboardColorPanel` to route "back" all the way to `NewHomePage` (an
+   * App-level navigation, not just collapsing this overlay back to the
+   * compact 个性化 page) — see `App.tsx`'s `handleBackToHome`. Omit to keep
+   * the plain collapse-to-compact behavior.
+   */
+  onBack?: (origin: Element) => void;
 }) {
   const { t } = useI18n();
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -270,16 +274,12 @@ export function FullscreenPreviewOverlay({
     BOARD_BOTTOM_PADDING_MAX,
   );
   const boardParallaxMaxShift = boardTopPadding - BOARD_SCROLLED_TOP;
-  // Corner-tucked close button: it rests partly outside the viewport (see its
-  // `-top`/`-right` offsets below) and scales up from its top-right corner —
-  // `transformOrigin: "top right"` — so hovering grows it back into full view
-  // instead of growing further off-screen.
-  const [closeHover, setCloseHover] = useState(false);
-  // Magnetic pull: as the cursor nears the tucked-away close button, it
-  // slides down/left to meet it (see CLOSE_MAGNET_* above) instead of making
-  // the user hunt for a target that starts mostly off-screen. `x`/`y` are
-  // each 0..CLOSE_MAGNET_MAX_SHIFT, applied as translate(-x, y) below.
-  const [closeMagnet, setCloseMagnet] = useState({ x: 0, y: 0 });
+  const handleClose = useCallback(() => {
+    const origin = closeBtnRef.current;
+    if (!origin) return;
+    if (onBack) onBack(origin);
+    else handle.close(origin);
+  }, [onBack, handle]);
   // Scroll-linked parallax: nudges the sticky board further up than plain
   // `sticky top-0` pinning would, so it visibly slides as the settings below
   // scroll past it.
@@ -403,44 +403,13 @@ export function FullscreenPreviewOverlay({
 
   useEffect(() => {
     if (!handle.fullscreen) return;
-    setCloseMagnet({ x: 0, y: 0 });
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let raf: number | null = null;
-    const onMouseMove = (e: MouseEvent) => {
-      if (raf != null) return;
-      raf = requestAnimationFrame(() => {
-        raf = null;
-        const rest = closeButtonRestCenter();
-        const dx = rest.x - e.clientX; // positive: cursor is left of the resting corner
-        const dy = e.clientY - rest.y; // positive: cursor is below the resting corner
-        const distance = Math.hypot(dx, dy);
-        if (distance >= CLOSE_MAGNET_RADIUS) {
-          setCloseMagnet({ x: 0, y: 0 });
-          return;
-        }
-        const pull = 1 - distance / CLOSE_MAGNET_RADIUS;
-        setCloseMagnet({
-          x: Math.max(0, Math.min(dx, CLOSE_MAGNET_MAX_SHIFT)) * pull,
-          y: Math.max(0, Math.min(dy, CLOSE_MAGNET_MAX_SHIFT)) * pull,
-        });
-      });
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      if (raf != null) cancelAnimationFrame(raf);
-    };
-  }, [handle.fullscreen]);
-
-  useEffect(() => {
-    if (!handle.fullscreen) return;
     setScrollTop(0);
     exitingRef.current = false;
     pullRawRef.current = 0;
     setPullRaw(0);
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && closeBtnRef.current) {
-        handle.close(closeBtnRef.current);
+      if (e.key === "Escape") {
+        handleClose();
       }
     };
     document.addEventListener("keydown", onKeyDown);
@@ -477,21 +446,12 @@ export function FullscreenPreviewOverlay({
       options={{ smoothWheel: !reduceMotion, virtualScroll: handleVirtualScroll }}
       className="scrollbar-hide fixed inset-0 z-[999] overflow-y-auto bg-brand-background"
     >
-      <button
+      <CornerCloseButton
         ref={closeBtnRef}
-        type="button"
-        onClick={() => closeBtnRef.current && handle.close(closeBtnRef.current)}
-        onMouseEnter={() => setCloseHover(true)}
-        onMouseLeave={() => setCloseHover(false)}
-        aria-label={t("fullscreenPreviewExit")}
-        className="fixed -right-5 -top-5 z-20 flex h-20 w-20 items-center justify-center rounded-full bg-black/5 text-brand-on-surface-variant backdrop-blur transition-transform duration-200 ease-out hover:bg-red-500/15 hover:text-red-500 dark:bg-white/10 dark:hover:bg-red-500/20"
-        style={{
-          transformOrigin: "top right",
-          transform: `translate(${-closeMagnet.x}px, ${closeMagnet.y}px) scale(${closeHover ? CLOSE_HOVER_SCALE : 1})`,
-        }}
-      >
-        <Icon icon="mdi:close" className="h-10 w-10" />
-      </button>
+        onClick={handleClose}
+        label={t("fullscreenPreviewExit")}
+        active={handle.fullscreen}
+      />
       <div className="mx-auto flex min-h-full max-w-5xl flex-col items-center gap-[30px] px-4 pb-16 sm:px-8">
         {/* 吸顶: sticky (not `fixed`, which would pull it out of flow and stop
             the settings below from actually pushing/scrolling past it) so the
@@ -522,7 +482,7 @@ export function FullscreenPreviewOverlay({
             ref={boardRef}
             style={{
               width: "fit-content",
-              viewTransitionName: handle.heroName,
+              viewTransitionName: handle.heroName ?? (heroArriving ? KEYBOARD_HERO_NAME : undefined),
               transform: `scale(${boardScale})`,
               transformOrigin: "top",
             }}

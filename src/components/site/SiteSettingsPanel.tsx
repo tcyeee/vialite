@@ -4,7 +4,6 @@ import { useI18n } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
 import { DebugLogToggle } from "../common/DebugLogToggle.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
-import { ThanksMarquee } from "./ThanksMarquee.tsx";
 
 /**
  * Wipe every localStorage entry this app owns (all `vialite-` keys: keyboard
@@ -56,39 +55,6 @@ export function SiteSettingsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Banner: logo card, the thanks caption, and the participant marquee read
-          as one block, set apart from the settings lists by the extra bottom
-          margin (on top of the container's gap). */}
-      <div className="mb-20 flex flex-col gap-5">
-        <section className="flex w-full max-w-lg flex-col items-center justify-center gap-6 self-center rounded-box bg-brand-surface-variant/30 p-6 text-center">
-          <img src="/logo-full.svg" alt="Vialite" className="h-15 w-auto" />
-          <p className="text-sm leading-relaxed text-brand-on-surface-variant">
-            {t("siteAboutIntro")}
-          </p>
-          <div className="flex items-center gap-2">
-            <a
-              href="https://github.com/tcyeee/vialite"
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-ghost btn-circle"
-              aria-label={t("siteAboutGithub")}
-            >
-              <Icon icon="mdi:github" className="h-9 w-9" />
-            </a>
-            <a
-              href="https://discord.gg/J8GkuQG3aF"
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-ghost btn-circle"
-              aria-label={t("siteAboutDiscord")}
-            >
-              <Icon icon="mdi:discord" className="h-8 w-8" />
-            </a>
-          </div>
-        </section>
-        <ThanksMarquee />
-      </div>
-
       <section>
         <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">{t("siteGeneralTitle")}</h2>
         <ul className="list rounded-box border border-brand-outline/30">

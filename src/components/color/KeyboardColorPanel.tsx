@@ -6,6 +6,7 @@ import { composeLayers, downloadCanvas, frameBoard, nodeToCanvas } from "./layou
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
+import { KEYBOARD_HERO_NAME } from "../common/viewTransition.ts";
 import { ColorPicker } from "../common/ColorPicker.tsx";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { LayerTabBar } from "../keymap/LayerTabs.tsx";
@@ -66,15 +67,39 @@ function store(key: string, value: string) {
 export function KeyboardColorPanel({
   keyboard,
   onChange,
+  heroArriving,
+  onBackToHome,
 }: {
   keyboard: Keyboard;
   /** Called after a layout option was written to the device, so the parent re-renders. */
   onChange: () => void;
+  /**
+   * True for the brief window (driven by `App.tsx`'s `handlePersonalize`)
+   * while a page-level View Transition is morphing the hero keyboard from
+   * NewHomePage's preview box into this page's board. Tags the current-layer
+   * board wrapper with the same `KEYBOARD_HERO_NAME` the outgoing NewHomePage
+   * box carries, so the browser animates between the two instead of a hard
+   * cut — same mechanism `useFullscreenPreview` uses for the compact↔fullscreen
+   * toggle within this page, just spanning the App-level route swap instead.
+   */
+  heroArriving?: boolean;
+  /**
+   * The fullscreen 个性化 page's corner "back" button routes here instead of
+   * just collapsing to this component's own compact preview — see
+   * `App.tsx`'s `handleBackToHome`. Forwarded straight through to
+   * `FullscreenPreviewOverlay`'s `onBack`.
+   */
+  onBackToHome: (origin: Element) => void;
 }) {
   const { t } = useI18n();
   const { showToast } = useToast();
   const { keyDisplay, setKeyDisplay, mediaReset, setMediaReset } = useKeyDisplay();
-  const fsPreview = useFullscreenPreview();
+  // Arriving via NewHomePage's hero "个性化" button should land directly on
+  // this page's fullscreen 个性化 settings (StyleConfig.tsx), not the compact
+  // preview underneath it — see useFullscreenPreview's initialFullscreen doc.
+  // Reached via QuickConfigPanel's "配置预览样式" row instead, heroArriving is
+  // false and the compact page shows as before.
+  const fsPreview = useFullscreenPreview(heroArriving);
   // Appearance settings are shared with the main keymap board via context, so
   // tuning them here also restyles the interactive layout on the 键位 page.
   const {
@@ -661,7 +686,10 @@ export function KeyboardColorPanel({
                 with no extra margin). */}
             <div
               ref={currentBoardRef}
-              style={{ width: "fit-content", viewTransitionName: fsPreview.heroName }}
+              style={{
+                width: "fit-content",
+                viewTransitionName: fsPreview.heroName ?? (heroArriving ? KEYBOARD_HERO_NAME : undefined),
+              }}
             >
               <KeyboardLayoutPreview
                 keyboard={keyboard}
@@ -716,6 +744,8 @@ export function KeyboardColorPanel({
         layer={previewLayer}
         handle={fsPreview}
         boardRef={currentBoardRef}
+        heroArriving={heroArriving}
+        onBack={onBackToHome}
         settings={
           <>
             {sizeSection}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { flushSync } from "react-dom";
 import { useLenis } from "lenis/react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
@@ -13,7 +14,9 @@ import {
 } from "./components/connect/preview3dParams.ts";
 import { useAutoFitZoom } from "./components/keymap/autoFitSize.ts";
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
+import { CornerCloseButton } from "./components/common/CornerCloseButton.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
+import { startViewTransition } from "./components/common/viewTransition.ts";
 import {
   ALWAYS_ENABLED_ATTR,
   QuickConfigPanel,
@@ -23,11 +26,10 @@ import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { Navbar } from "./components/shell/Navbar.tsx";
 import { NewHomePage } from "./components/shell/NewHomePage.tsx";
+import { SiteConfigPage } from "./components/shell/SiteConfigPage.tsx";
 import { QmkSettingsPanel } from "./components/qmk/QmkSettingsPanel.tsx";
 import { RgbPanel } from "./components/rgb/RgbPanel.tsx";
-import { Sidebar, SidebarDrawer } from "./components/shell/Sidebar.tsx";
 import { KeyboardColorPanel } from "./components/color/KeyboardColorPanel.tsx";
-import { SiteSettingsPanel } from "./components/site/SiteSettingsPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
 import { useI18n, type MessageKey } from "./contexts/i18n.tsx";
@@ -46,7 +48,7 @@ import {
   shouldSkipAutoConnect,
 } from "./components/connect/lastDevice.ts";
 
-type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "rgb" | "color" | "advanced" | "site" | "preview3d" | "newHome";
+type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "rgb" | "color" | "advanced" | "preview3d" | "newHome" | "siteConfig";
 
 type Selected =
   | { kind: "key"; row: number; col: number; part?: KeyPart }
@@ -162,6 +164,11 @@ function App() {
   const [lastDeviceName, setLastDeviceName] = useState<string | null>(loadLastDeviceName);
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("newHome");
+  // True for the brief window a browser View Transition is morphing the hero
+  // keyboard from NewHomePage's preview box into the 个性化 page's board (see
+  // handlePersonalize below) — passed to both ends so each tags its board
+  // wrapper with the same KEYBOARD_HERO_NAME at the right moment.
+  const [heroNavAnimating, setHeroNavAnimating] = useState(false);
   const [preview3dParams, setPreview3dParams] = useState<Preview3DParams>(loadPreview3DParams);
   const [selected, setSelected] = useState<Selected | null>(null);
   // 点击键盘预览与按键配置区(快捷配置 / 双功能编辑器)之外的任何地方都取消选中,
@@ -192,9 +199,6 @@ function App() {
   // re-render so KeyboardLayout picks up the new label after a remap.
   const [, forceUpdate] = useState(0);
   const [importing, setImporting] = useState(false);
-  // Narrow/medium-viewport (`< lg`) sidebar drawer open state; ignored at lg+, where the floating
-  // Sidebar card is shown instead. Always starts closed.
-  const [drawerOpen, setDrawerOpen] = useState(false);
   // Connect/disconnect page transition. Connect plays "zoom" (the waiting
   // page's 3D model scales up to fill a blackened screen) then "rise" (the
   // config page slides up from below over that black). Disconnect is
@@ -252,7 +256,6 @@ function App() {
       setLayer(0);
       setSelected(null);
       setMode("newHome");
-      setDrawerOpen(false);
       setQmkPendingCount(0);
       setQmkLeaveRequested(false);
       qmkPendingNavigationRef.current = null;
@@ -426,6 +429,48 @@ function App() {
       setSelected(null);
     },
     [mode, qmkPendingCount],
+  );
+
+  // NewHomePage's "个性化" button: like useFullscreenPreview's open/close, runs
+  // the mode switch inside a browser View Transition so the hero keyboard box
+  // visibly morphs into the 个性化 page's board instead of hard-cutting between
+  // the two unrelated component trees. `origin` is the clicked button, used
+  // only as the reduced-motion guard's existence check here (unlike
+  // useFullscreenPreview's ripple, this transition has no radial-reveal
+  // geometry to anchor).
+  const handlePersonalize = useCallback(
+    (origin: Element | null) => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!origin || reduceMotion) {
+        navigate("color");
+        return;
+      }
+      flushSync(() => setHeroNavAnimating(true));
+      const transition = startViewTransition(() => flushSync(() => navigate("color")));
+      void transition.finished.finally(() => setHeroNavAnimating(false));
+    },
+    [navigate],
+  );
+
+  // The 个性化 fullscreen page's corner "back" button (see StyleConfig.tsx's
+  // `onBack`): reverses handlePersonalize's hero transition, landing back on
+  // NewHomePage instead of collapsing to KeyboardColorPanel's compact preview
+  // underneath. `heroNavAnimating` is direction-agnostic — whichever of
+  // {NewHomePage, KeyboardColorPanel} is mounted when it flips true gets
+  // tagged with KEYBOARD_HERO_NAME, so reusing it here for the reverse trip
+  // just works.
+  const handleBackToHome = useCallback(
+    (origin: Element | null) => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!origin || reduceMotion) {
+        navigate("newHome");
+        return;
+      }
+      flushSync(() => setHeroNavAnimating(true));
+      const transition = startViewTransition(() => flushSync(() => navigate("newHome")));
+      void transition.finished.finally(() => setHeroNavAnimating(false));
+    },
+    [navigate],
   );
 
   const handleQmkLeaveResolved = useCallback((shouldLeave: boolean) => {
@@ -740,9 +785,22 @@ function App() {
           }
         >
           {mode === "newHome" && keyboard ? (
-            <NewHomePage keyboard={keyboard} layer={layer} onNavigate={navigate} />
+            <NewHomePage
+              keyboard={keyboard}
+              layer={layer}
+              productName={productName}
+              onDisconnect={handleDisconnect}
+              onNavigate={navigate}
+              onPersonalize={handlePersonalize}
+            />
+          ) : mode === "siteConfig" ? (
+            <SiteConfigPage onExit={() => navigate("newHome")} />
           ) : (
             <>
+          {/* Legacy shell (Navbar + Sidebar/SidebarDrawer) — kept alive only as the
+              fallback NewHomePage's exit button lands on. Slated for removal; do not
+              route any new page/flow through this branch. */}
+          <CornerCloseButton onClick={() => navigate("newHome")} label={t("navBackToNewHome")} active />
           <Navbar onMenuClick={() => setDrawerOpen((v) => !v)} />
           <SidebarDrawer
             productName={productName}
@@ -970,6 +1028,8 @@ function App() {
                 <KeyboardColorPanel
                   keyboard={keyboard}
                   onChange={() => forceUpdate((r) => r + 1)}
+                  heroArriving={heroNavAnimating}
+                  onBackToHome={handleBackToHome}
                 />
               )}
               {mode === "site" && <SiteSettingsPanel />}

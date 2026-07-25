@@ -62,9 +62,9 @@ const THEMES = [
 ] as const;
 
 /**
- * The card heading icon per category, matching the sidebar nav glyphs (see
- * shell/Sidebar.tsx's NAV_ITEMS) so the Macros / Tap Dance / Combo cards read as
- * the same features as their left-menu entries.
+ * The card heading icon per category, matching the nav glyphs (see
+ * shell/navItems.ts's NAV_ITEMS) so the Macros / Tap Dance / Combo cards read as
+ * the same features as their NewHomePage menu entries.
  */
 const CARD_ICONS: Partial<Record<MessageKey, string>> = {
   groupMacros: "mdi:script-text-outline",

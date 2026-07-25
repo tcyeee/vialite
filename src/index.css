@@ -25,9 +25,9 @@
 @theme {
   --color-brand-primary: #000000;
   --color-brand-primary-container: #ffd1dc;
-  --color-brand-secondary: #2f6a3f;
-  --color-brand-secondary-container: #b2f2bb;
-  --color-brand-on-secondary-container: #357044;
+  --color-brand-secondary: #1e7b1e;
+  --color-brand-secondary-container: #c0f0c0;
+  --color-brand-on-secondary-container: #208320;
   --color-brand-tertiary: #665f36;
   --color-brand-tertiary-container: #e9ddab;
   --color-brand-background: #fbf9f1;
@@ -45,9 +45,9 @@
 :root[data-theme="dark"] {
   --color-brand-primary: #ffffff;
   --color-brand-primary-container: #4a2c34;
-  --color-brand-secondary: #8fd9a0;
-  --color-brand-secondary-container: #1f4a2a;
-  --color-brand-on-secondary-container: #9fe8ac;
+  --color-brand-secondary: #c0f0c0;
+  --color-brand-secondary-container: #124a12;
+  --color-brand-on-secondary-container: #98e698;
   --color-brand-tertiary: #d3c896;
   --color-brand-tertiary-container: #4a4526;
   --color-brand-background: #18191b;
@@ -122,6 +122,20 @@ html[data-theme-anim="reveal"]::view-transition-new(root) {
   to {
     clip-path: circle(var(--theme-reveal-r) at var(--theme-reveal-x) var(--theme-reveal-y));
   }
+}
+
+/* NewHomePage's hero keyboard preview carries `view-transition-name:
+   keyboard-hero` at all times (see NewHomePage.tsx) so it's pulled out of the
+   root capture above — snapshotting the live KeyboardLayout as part of the
+   whole-page ::view-transition-old/new(root) is what made the ripple stutter
+   partway through. Once excluded, its own group would otherwise still run the
+   browser's default cross-fade + `mix-blend-mode: plus-lighter`, i.e. a white
+   flash right where the ripple should be seamless — cancel that so it swaps
+   instantly instead. */
+html[data-theme-anim="reveal"]::view-transition-old(keyboard-hero),
+html[data-theme-anim="reveal"]::view-transition-new(keyboard-hero) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
 /* 全屏预览 (fullscreen keyboard preview) toggle: same circular-reveal technique

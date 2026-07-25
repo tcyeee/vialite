@@ -469,6 +469,8 @@ const MESSAGES = {
   navSiteSettings: { en: "Website Info", zh: "网站信息" },
   navNewHome: { en: "New Home", zh: "新版首页" },
   navExitNewHome: { en: "Exit New Home", zh: "退出新版首页" },
+  navBackToNewHome: { en: "Back to New Home", zh: "返回新版首页" },
+  navExitSiteConfig: { en: "Exit Website Settings", zh: "退出网站配置" },
   comingSoon: { en: "Coming soon", zh: "即将推出" },
   resizeSidebar: { en: "Resize sidebar", zh: "拖动调整侧边栏宽度" },
   collapseSidebar: { en: "Collapse sidebar", zh: "收起侧边栏" },
