@@ -34,11 +34,12 @@ interface Props {
 }
 
 /* 右侧竖排菜单的条目来源——直接取 navItems.ts 的 NAV_ITEMS,排除"个性化"
-   (keyboardColor),它已有自己的入口(左侧的个性化按钮),不需要在这里重复一份。
+   (keyboardColor),它已有自己的入口(左侧的个性化按钮),不需要在这里重复一份;
+   也排除"键盘测试"(matrixTest),测试入口已从右侧菜单里去掉。
    "网站信息"从 NAV_ITEMS 里直接去掉了,顶部导航栏的"网站配置"是它现在唯一的
    入口(见下方 SiteConfigPage)。点击条目跳转到共享页面壳层(只有右上角的
    CornerCloseButton,不再有 Navbar 或左侧边栏),用于返回本页,见 App.tsx。 */
-const MENU_ITEMS = NAV_ITEMS.filter(({ kind }) => kind !== "keyboardColor");
+const MENU_ITEMS = NAV_ITEMS.filter(({ kind }) => kind !== "keyboardColor" && kind !== "matrixTest");
 
 /** 米白色线稿颜色,强制盖过用户的键盘配色,在线稿(默认)状态下保持统一的品牌观感。 */
 const HERO_LINE_COLOR = "#1b1515";
@@ -205,12 +206,15 @@ export function NewHomePage({
       </nav>
 
       <main className=" ">
-        <div className="flex gap-[6rem] w-full items-center justify-center">
+        {/* 左侧键盘 : 右侧菜单 = 2:3 的宽度比,靠 grid-cols-[2fr_3fr] 分配轨道宽度,
+            两栏各自 justify-self 贴向中间的 gap,视觉上还是紧挨着的一对。宽度不够
+            (< lg)时退化成单列纵向堆叠,菜单顺着 DOM 顺序自然掉到键盘下方。 */}
+        <div className="grid w-full grid-cols-1 items-center justify-items-center gap-10 lg:grid-cols-[2fr_3fr] lg:gap-[6rem]">
           {/* -translate-y-20 moved here (off the box itself) so it shifts the
               box together with the name/disconnect row and the personalize
               button below it, keeping them visually attached to the box
               regardless of the transform. */}
-          <div className="flex -translate-y-2 flex-col items-start gap-3">
+          <div className="flex -translate-y-2 flex-col items-start gap-3 lg:justify-self-end">
             {/* 可视窗口:固定/响应式尺寸,只负责裁切 + 右对齐卡片,自身没有背景。
                 宽度用 clamp 随视口变宽,上限是 cardWidth,所以宽屏最多刚好露出
                 整张卡片,不会露出卡片之外的空白。 */}
@@ -326,35 +330,22 @@ export function NewHomePage({
             </div>
           </div>
 
-          <nav className="z-10 flex flex-col items-start gap-5">
-            {/* matrixTest mirrors the dedicated 键盘测试入口 button above: only
-                clickable when the connected board actually exposes it, instead
-                of navigating into a blank page. */}
-            {MENU_ITEMS.map(({ kind, mode: itemMode, labelKey, beta }) => {
-              const supported = kind !== "matrixTest" || keyboard.supportsMatrixTester;
-              return (
-                <button
-                  key={kind}
-                  type="button"
-                  disabled={!supported}
-                  onClick={() => onNavigate(itemMode)}
-                  title={supported ? undefined : t("comingSoon")}
-                  className={
-                    "group flex items-center gap-2 whitespace-nowrap border-none bg-transparent text-5xl font-bold transition-all duration-300 ease-out " +
-                    (supported
-                      ? "text-black/50 hover:translate-x-8 hover:text-brand-secondary dark:text-white/50"
-                      : "cursor-default text-black/25 dark:text-white/25")
-                  }
-                >
-                  {t(labelKey)}
-                  {beta && (
-                    <span className="badge badge-xs badge-outline shrink-0 border-black/30 text-[0.625rem] font-semibold uppercase text-black/40 transition-colors duration-300 ease-out group-hover:border-brand-secondary/50 group-hover:text-brand-secondary dark:border-white/30 dark:text-white/40">
-                      Beta
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          <nav className="z-10 flex flex-col items-start gap-5 lg:justify-self-start">
+            {MENU_ITEMS.map(({ kind, mode: itemMode, labelKey, beta }) => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => onNavigate(itemMode)}
+                className="group flex items-center gap-2 whitespace-nowrap border-none bg-transparent text-5xl font-bold text-black/50 transition-all duration-300 ease-out hover:translate-x-8 hover:text-brand-secondary dark:text-white/50"
+              >
+                {t(labelKey)}
+                {beta && (
+                  <span className="badge badge-xs badge-outline shrink-0 border-black/30 text-[0.625rem] font-semibold uppercase text-black/40 transition-colors duration-300 ease-out group-hover:border-brand-secondary/50 group-hover:text-brand-secondary dark:border-white/30 dark:text-white/40">
+                    Beta
+                  </span>
+                )}
+              </button>
+            ))}
           </nav>
         </div>
       </main>

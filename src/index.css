@@ -246,30 +246,6 @@ textarea,
   display: none; /* Chrome/Safari/Edge */
 }
 
-/* 快捷配置横向滚动区(Basic 行)右侧 full-bleed 到视口边缘。
-   所有断点生效——这一行始终是横向排布 + overflow-x-auto 的整体,窄屏靠横向滚动
-   看后面的卡片,而不是换行堆叠。
-
-   默认这行滚动区被关在 main 的内容盒里,右缘停在 main 右内边距处,右侧于是露出
-   一段背景("留白")并把卡片提前截断。这里只用一个负的 margin-right 把盒子的右缘
-   一路顶到视口右缘,左缘保持不动(首屏卡片位置不变)。
-
-   需要向右扩展的距离 = 从 main 内容盒右缘到视口右缘的距离:
-     main 右内边距(p-6 = 1.5rem,md:p-8 = 2rem)
-   + 页面右内边距(p-4 = 1rem,md:p-6 = 1.5rem)
-   + max-w-[1600px] 居中留白 = max(0, (视口 - 3rem - 1600px) / 2)
-                            = max(0, 50vw - 1.5rem - 800px)  (视口 ≤ ~1648px 时为 0)
-   扩展后右缘正好落在视口右缘,不产生整页横向滚动条。 */
-.quick-config-fullbleed {
-  margin-right: -2.5rem;
-}
-
-@media (min-width: 768px) {
-  .quick-config-fullbleed {
-    margin-right: calc(-3.5rem - max(0px, 50vw - 1.5rem - 800px));
-  }
-}
-
 /* Waiting-for-connection hero: gentle float + squash-bounce button press. */
 @keyframes kawaii-float {
   0%,

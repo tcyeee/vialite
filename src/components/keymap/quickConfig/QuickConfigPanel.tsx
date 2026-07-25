@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import {
   KEYCODE_CATEGORIES,
@@ -10,7 +10,6 @@ import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import type { Keyboard } from "../../../protocol/keyboard.ts";
 import { HelpIcon } from "../../common/HelpIcon.tsx";
 import { SettingsRow } from "../../qmk/QmkSettingsPanel.tsx";
-import { useHorizontalWheelScroll } from "../../common/useHorizontalWheelScroll.ts";
 import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
 import { BasicKeyboardGrid } from "./BasicKeyboardGrid.tsx";
 import {
@@ -175,52 +174,12 @@ const MULTI_FUNC_FRAMEWORK: Record<MultiFuncMode, string> = {
 };
 
 /**
- * localStorage flag marking that the first-run "swipe for more cards" demo has
- * already played. Set once the animation actually runs, so it never replays on a
- * returning visitor.
- */
-const DEMO_SEEN_KEY = "vialite-quickconfig-demo-seen";
-
-/**
  * Marks a subtree that stays interactive while the panel is disabled (no key
  * selected). App.tsx's activation-event trap skips anything inside it. Used by the
  * 配置设置 block: 自动选取下一个 / 预览样式 are panel-level settings, unrelated to
  * whether a key is currently selected.
  */
 export const ALWAYS_ENABLED_ATTR = "data-quickconfig-always-enabled";
-
-/**
- * One-shot onboarding hint: gently scroll a horizontally-overflowing container
- * right by `peek` px and back, so a first-time user notices there are more
- * cards off the right edge. easeInOutQuad out, a short hold, then ease back to 0.
- * Returns a cancel function; the caller cancels on unmount / re-run.
- */
-function playPeekDemo(el: HTMLElement, peek: number): () => void {
-  const OUT = 550;
-  const HOLD = 220;
-  const BACK = 650;
-  const total = OUT + HOLD + BACK;
-  const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
-  const start = performance.now();
-  let raf = 0;
-  const step = (now: number) => {
-    const elapsed = now - start;
-    if (elapsed >= total) {
-      el.scrollLeft = 0;
-      return;
-    }
-    if (elapsed < OUT) {
-      el.scrollLeft = peek * ease(elapsed / OUT);
-    } else if (elapsed < OUT + HOLD) {
-      el.scrollLeft = peek;
-    } else {
-      el.scrollLeft = peek * (1 - ease((elapsed - OUT - HOLD) / BACK));
-    }
-    raf = requestAnimationFrame(step);
-  };
-  raf = requestAnimationFrame(step);
-  return () => cancelAnimationFrame(raf);
-}
 
 interface Props {
   onPick: (qmkId: string) => void;
@@ -312,43 +271,6 @@ export function QuickConfigPanel({
   // collapsed card dims so the single expanded card stands out.
   const [anyCardExpanded, setAnyCardExpanded] = useState(false);
   const onCardExpandedChange = (key: string | null) => setAnyCardExpanded(key !== null);
-  // The Basic tab lays its keyboard grid + three card columns out in one wide
-  // row; on large screens that row scrolls horizontally, and a vertical mouse
-  // wheel over it is turned into a horizontal pan (see the hook).
-  const basicRowRef = useHorizontalWheelScroll<HTMLDivElement>();
-  // First-run onboarding: with nothing selected yet (the initial state of the
-  // keymap page) and the demo never shown before, briefly scroll the Basic row
-  // right and back to hint that more cards live off the right edge. Runs at most
-  // once ever (persisted in localStorage), and only when the row actually
-  // overflows horizontally (i.e. large viewports where the cards sit in a row).
-  const demoPlayedRef = useRef(false);
-  useEffect(() => {
-    // Gate on "hasn't selected a key to modify": only play while disabled.
-    if (!disabled || active !== "Basic" || demoPlayedRef.current) return;
-    if (typeof window === "undefined") return;
-    if (localStorage.getItem(DEMO_SEEN_KEY)) return;
-    // Respect reduced-motion: skip the animation entirely (and don't burn the
-    // flag — a silent no-op reads better than a jump).
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-
-    let cancel: (() => void) | undefined;
-    // Let layout settle after mount so scrollWidth is measured post-paint.
-    const timer = window.setTimeout(() => {
-      const el = basicRowRef.current;
-      if (!el) return;
-      const max = el.scrollWidth - el.clientWidth;
-      if (max <= 8) return; // nothing off-screen to reveal (narrow/stacked layout)
-      demoPlayedRef.current = true;
-      localStorage.setItem(DEMO_SEEN_KEY, "1");
-      cancel = playPeekDemo(el, Math.min(160, max));
-    }, 650);
-
-    return () => {
-      window.clearTimeout(timer);
-      cancel?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabled, active]);
 
   const pick = (entry: KeycodeDef) => {
     setHint(null);
@@ -538,13 +460,14 @@ export function QuickConfigPanel({
         </div>
       )}
       {isBasic && (
-        // 2026-07-25 起,基础按键改为纵向排布的三个 section(整页向下滚动),
-        // 不再是单条横向滚动的整体:1. 基础按键(89 键模拟键盘 + 特殊按键)
-        // 2. 配置设置 3. 特殊按键区域(功能 / 组合按键 / 其他,这部分内部仍横向滚动)。
-        <div className="mt-4 flex flex-col gap-8">
+        // 2026-07-25 起,基础按键改为纵向排布、整体居中的三个 section(整页向下
+        // 滚动,不再有任何横向滚动):1. 基础按键(89 键模拟键盘 + 特殊按键)
+        // 2. 配置设置 3. 特殊按键区域(功能 / 组合按键 / 其他,窄屏下换行而不是
+        // 横向滚动)。
+        <div className="mt-4 flex flex-col items-center gap-8">
           {/* Section 1: physical keyboard grid + special keys (both rendered
               inside BasicKeyboardGrid). */}
-          <section>
+          <section className="flex w-full flex-col items-center">
             <BasicKeyboardGrid
               onPick={(qmkId) => pick({ qmkId, label: qmkId })}
               disabled={disabled}
@@ -554,7 +477,7 @@ export function QuickConfigPanel({
           {/* Section 2: 配置设置不跟随 `dim`:它是面板级设置(自动选取下一个 /
               导入导出),未选中按键时同样可以调整,所以既不置灰也不被点击拦截器
               吞掉。「配置预览样式」行已移除——个性化改由 NewHomePage 的入口进入。 */}
-          <section {...{ [ALWAYS_ENABLED_ATTR]: "" }}>
+          <section className="flex w-full flex-col items-center" {...{ [ALWAYS_ENABLED_ATTR]: "" }}>
             <h4 className="mb-2 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
             {/* Same grouped-`list` look as the 个性化 / 网站设置 pages, so a
                 setting reads identically wherever it surfaces. */}
@@ -623,18 +546,12 @@ export function QuickConfigPanel({
           </section>
 
           {/* Section 3: 特殊按键区域 — Fn/Media/Mouse + 层按键, Macros/Tap
-              Dance/Combo + 多功能, and Lighting/键盘配置/其他, side by side in
-              one row that scrolls horizontally on narrow screens (滚轮竖滚也被
-              转成横向平移,见 hook). pl-[3px]:滚动区左缘与内容盒对齐,首列画到
-              自身 border box 之外的东西(描边 / 阴影 / hover 位移)会被
-              overflow-x 裁掉,且没有可滚动的余量把它露出来。左内边距属于起始侧
-              的可滚动区域,scrollLeft 为 0 时正好留出这 3px。 */}
-          <section>
+              Dance/Combo + 多功能, and Lighting/键盘配置/其他, laid out side by
+              side and wrapping (instead of horizontally scrolling) onto
+              multiple centered rows on narrow screens. */}
+          <section className="flex w-full flex-col items-center">
             <h4 className="mb-2 text-sm font-semibold opacity-70">{t("sectionSpecialKeys")}</h4>
-            <div
-              ref={basicRowRef}
-              className="scrollbar-hide quick-config-fullbleed flex flex-row flex-nowrap items-start gap-6 overflow-x-auto pl-[3px]"
-            >
+            <div className="flex w-full flex-row flex-wrap items-start justify-center gap-6">
               {/* Fn/Media/Mouse cards + 层按键. */}
               <div className={`shrink-0${dim}`}>
                 <h4 className="mb-1 text-sm font-semibold opacity-70">{t("categoryFnMediaMouse")}</h4>
@@ -815,9 +732,6 @@ export function QuickConfigPanel({
                   />
                 </div>
               </div>
-              {/* 末尾留白:横向滚动到底时补一段半屏宽的空白,让最右侧的卡片能被
-                  滚动到窗口中央,而不是卡在视口右缘。 */}
-              <div aria-hidden="true" className="w-[15vw] shrink-0" />
             </div>
           </section>
         </div>
