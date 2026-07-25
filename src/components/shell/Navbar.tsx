@@ -44,7 +44,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             type="checkbox"
             className="theme-controller"
             checked={theme === "dark"}
-            onChange={(e) => setTheme(e.target.checked ? "dark" : "light", e.currentTarget)}
+            onChange={(e) => setTheme(e.target.checked ? "dark" : "light", e.currentTarget.closest("label"))}
             aria-label={t("toggleTheme")}
           />
           <Icon icon="mdi:white-balance-sunny" className="swap-off h-4 w-4" />
