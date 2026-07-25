@@ -740,7 +740,7 @@ function App() {
           }
         >
           {mode === "newHome" && keyboard ? (
-            <NewHomePage keyboard={keyboard} layer={layer} onNavigate={navigate} onDisconnect={handleDisconnect} />
+            <NewHomePage onNavigate={navigate} />
           ) : (
             <>
           <Navbar onMenuClick={() => setDrawerOpen((v) => !v)} />
@@ -904,6 +904,15 @@ function App() {
                           // 选中双功能键的上半区(tap)时,只允许基础键码:除「功能」
                           // 列前三张卡片外的所有卡片置灰不可交互。
                           dualRoleTap={selected?.kind === "key" && selected.part === "tap"}
+                          // 按键叠加(多功能)据此判断:选中键当前是基础键码时把它
+                          // 叠进新框架的 tap 半区,否则(非基础键 / 未选中)清空重来。
+                          currentQmkId={
+                            selected?.kind === "key"
+                              ? keyboard.getKey(layer, selected.row, selected.col)
+                              : selected?.kind === "encoder"
+                                ? keyboard.getEncoder(layer, selected.index, selected.direction)
+                                : null
+                          }
                           importing={importing}
                           onExport={handleExport}
                           onImportFile={handleImportFile}

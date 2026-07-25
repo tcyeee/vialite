@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import {
   KEYCODE_CATEGORIES,
   isBasicQmkId,
+  withTap,
   type KeycodeDef,
 } from "../../../protocol/keycodes.ts";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
@@ -159,12 +160,15 @@ export type ComboEditTarget = "macro" | "tapdance" | "combo" | "color";
 export type MultiFuncMode = "modified" | "taphold";
 
 /**
- * The dual-role "framework" keycode written to the selected key the moment a
- * Multi-Function category is chosen — an empty skeleton the user later fills in by
- * editing the cap's top/bottom halves on the keyboard itself (a future step, out
- * of scope here):
- *  - modified: 左Ctrl+左Alt on an empty base (`LCA(KC_NO)`).
- *  - taphold: Layer-Tap holding layer 0 with an empty tap (`LT(0,KC_NO)`).
+ * The dual-role "framework" template written to the selected key the moment a
+ * Multi-Function category is chosen, base slot left as `KC_NO`. The actual write
+ * (see the 多功能 card's onClick below) fills that base with the selected cap's
+ * *current* keycode when it's a basic (8-bit) keycode — i.e. it overlays the
+ * modifier/layer role onto what's already there — and falls back to this empty
+ * `KC_NO` base (clear-then-overlay) whenever the current keycode isn't basic
+ * (already composite, or nothing selected):
+ *  - modified: 左Ctrl+左Alt on the base (`LCA(kc)`).
+ *  - taphold: Layer-Tap holding layer 0 with the base as tap (`LT(0,kc)`).
  */
 const MULTI_FUNC_FRAMEWORK: Record<MultiFuncMode, string> = {
   modified: "LCA(KC_NO)",
@@ -250,6 +254,11 @@ interface Props {
    * 全部置灰且不可交互。
    */
   dualRoleTap?: boolean;
+  /**
+   * 选中的键/编码器当前写着的 qmk_id(未选中时为 null)。「按键叠加」(多功能卡片)
+   * 据此决定 modified/taphold 框架的 tap 基础:是基础键码就叠加进去,否则清空。
+   */
+  currentQmkId?: string | null;
 }
 
 /**
@@ -268,6 +277,7 @@ export function QuickConfigPanel({
   onAutoAdvanceChange,
   disabled = false,
   dualRoleTap = false,
+  currentQmkId = null,
   importing,
   onExport,
   onImportFile,
@@ -773,7 +783,13 @@ export function QuickConfigPanel({
                               // keyboard itself (out of scope here).
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onPick(MULTI_FUNC_FRAMEWORK[mode]);
+                                // 选中键当前是基础键码就叠加进新框架的 tap 半区,
+                                // 否则(非基础键码 / 未选中)清空,用空 KC_NO 基础。
+                                const base =
+                                  currentQmkId && isBasicQmkId(currentQmkId)
+                                    ? currentQmkId
+                                    : "KC_NO";
+                                onPick(withTap(MULTI_FUNC_FRAMEWORK[mode], base));
                               }}
                               className="flex flex-1 flex-col items-center gap-3 rounded-lg bg-white/10 p-3 text-center transition-colors hover:bg-white/20"
                             >

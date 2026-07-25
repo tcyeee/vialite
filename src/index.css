@@ -458,62 +458,6 @@ textarea,
   }
 }
 
-/* 新版首页 nav-item exit: a quick "pop" (anticipation) followed by a retract up along the
-   item's own -30deg tilt into the hero keyboard strip above. `--exit-dx`/`--exit-delay` are set
-   per-item inline (see NewHomePage.tsx) for the "不规则" stagger/landing jitter; duration here
-   must match ITEM_EXIT_DURATION_MS in NewHomePage.tsx, which times the phase handoff. */
-@keyframes nav-item-exit {
-  0% {
-    transform: rotate(-30deg) translate(0, 0) scale(1);
-    opacity: 1;
-  }
-  18% {
-    transform: rotate(-30deg) translate(calc(var(--exit-dx, 0px) * -0.4), 10px) scale(1.08);
-    opacity: 1;
-  }
-  100% {
-    transform: rotate(-30deg) translate(var(--exit-dx, 0px), -70vh) scale(0.35);
-    opacity: 0;
-  }
-}
-
-.nav-item-exit {
-  animation: nav-item-exit 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: var(--exit-delay, 0ms);
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nav-item-exit {
-    animation: none;
-    opacity: 0;
-  }
-}
-
-/* 新版首页 hero strip exit, fired once every nav item has cleared. Duration must match
-   HERO_EXIT_DURATION_MS in NewHomePage.tsx. */
-@keyframes hero-exit {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-60px);
-  }
-}
-
-.hero-exit {
-  animation: hero-exit 520ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-exit {
-    animation: none;
-    opacity: 0;
-  }
-}
-
 @keyframes nav-label-appear {
   from {
     opacity: 0;
@@ -934,11 +878,13 @@ textarea,
   position: relative;
   font-weight: 600;
   padding: 3px;
-  /* On-cap text never wraps: it stays on one line and, when it can't fit the
-     cap width, is clipped with an ellipsis (…) rather than spilling or wrapping.
-     `nowrap` also collapses the labels' embedded newlines to spaces so multi-word
-     caps (e.g. "Caps Word") flow onto that single line. `min-width:0` lets it
-     shrink below its content size inside the flex cap so the ellipsis engages. */
+  /* By default on-cap text never wraps: it stays on one line and, when it can't
+     fit the cap width, is clipped with an ellipsis (…) rather than spilling or
+     wrapping. `nowrap` also collapses the labels' embedded newlines to spaces so
+     multi-word caps (e.g. "Caps Word") flow onto that single line. `min-width:0`
+     lets it shrink below its content size inside the flex cap so the ellipsis
+     engages. Overridden to wrap when 部分按键使用图标重置且取消换行 (mediaReset)
+     is off — see `.keyboard-layout-wrap-labels` below. */
   display: block;
   box-sizing: border-box;
   min-width: 0;
@@ -946,6 +892,15 @@ textarea,
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* 部分按键使用图标重置且取消换行 (mediaReset) toggle off: caps that would
+   otherwise show a compact icon+abbreviation fall back to their full text
+   label (see KeycapFace) — nowrap+ellipsis would just truncate that, so let
+   it wrap onto multiple lines instead. */
+.keyboard-layout-wrap-labels .key-label {
+  white-space: normal;
+  text-overflow: clip;
 }
 
 /* Material Design Icon on a keycap (letters, modifiers, nav/whitespace keys),

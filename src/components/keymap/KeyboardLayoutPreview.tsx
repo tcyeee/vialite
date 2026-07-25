@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
+import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import type { KeycodeDef } from "../../protocol/keycodes.ts";
 import { useSettledLive } from "../common/useSettledLive.ts";
@@ -347,6 +348,10 @@ export function KeyboardLayoutPreview({
   // `3d` has no distinct render yet — falls back to `default` (flat, no shading).
   const depth = style === "relief";
   const wireframe = style === "wireframe";
+  // 部分按键使用图标重置且取消换行 (mediaReset) off: caps fall back to full text
+  // labels (see KeycapFace), so nowrap+ellipsis would just truncate them —
+  // let them wrap instead, see `.keyboard-layout-wrap-labels` in index.css.
+  const { mediaReset } = useKeyDisplay();
   const {
     PITCH,
     inset,
@@ -420,7 +425,8 @@ export function KeyboardLayoutPreview({
           (caseShape ? " keyboard-layout-outlined" : "") +
           (keycapBorder ? " keyboard-layout-bordered" : "") +
           (wireframe ? " keyboard-layout-wireframe" : "") +
-          (menu ? " keyboard-layout-has-selection" : "")
+          (menu ? " keyboard-layout-has-selection" : "") +
+          (mediaReset ? "" : " keyboard-layout-wrap-labels")
         }
         style={{
           width: plateWidth,

@@ -10,6 +10,7 @@ import {
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { dualRole, type KeycodeDef } from "../../protocol/keycodes.ts";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
+import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
 import { KeyInfoCard } from "./KeyInfoCard.tsx";
@@ -102,6 +103,10 @@ export function KeyboardLayout({
   const style = styleOverride ?? contextStyle;
   // `3d` has no distinct render yet — falls back to `default` (flat, no shading).
   const depth = style === "relief";
+  // 部分按键使用图标重置且取消换行 (mediaReset) off: caps fall back to full text
+  // labels (see KeycapFace), so nowrap+ellipsis would just truncate them —
+  // let them wrap instead, see `.keyboard-layout-wrap-labels` in index.css.
+  const { mediaReset } = useKeyDisplay();
   const wireframe = style === "wireframe";
   const caseColorFinal = colorOverride ?? caseColor;
   const plateColorFinal = colorOverride ?? plateColor;
@@ -212,7 +217,8 @@ export function KeyboardLayout({
           (caseShape ? " keyboard-layout-outlined" : "") +
           (keycapBorder ? " keyboard-layout-bordered" : "") +
           (wireframe ? " keyboard-layout-wireframe" : "") +
-          (selected ? " keyboard-layout-has-selection" : "")
+          (selected ? " keyboard-layout-has-selection" : "") +
+          (mediaReset ? "" : " keyboard-layout-wrap-labels")
         }
         style={{
           width: plateWidth,
