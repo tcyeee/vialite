@@ -20,8 +20,7 @@ interface Props {
  * `relative` (z-index `auto`, so it establishes *no* stacking context) — the badge
  * itself therefore sits at the default layer and won't paint over neighbouring UI.
  * The tooltip's own `before:z-[99] after:z-[99]` then participates directly in the
- * nearest real stacking context, so it still floats above neighbouring cards and the
- * sticky Navbar (`z-30`) exactly as before.
+ * nearest real stacking context, so it still floats above neighbouring cards.
  * Note that a clipping ancestor (`overflow-hidden`) will still crop the tooltip
  * regardless of z-index, so hosts that clip must render it un-clipped.
  */

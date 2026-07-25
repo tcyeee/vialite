@@ -24,7 +24,6 @@ import {
 import { LayerTabs } from "./components/keymap/LayerTabs.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
-import { Navbar } from "./components/shell/Navbar.tsx";
 import { NewHomePage } from "./components/shell/NewHomePage.tsx";
 import { SiteConfigPage } from "./components/shell/SiteConfigPage.tsx";
 import { QmkSettingsPanel } from "./components/qmk/QmkSettingsPanel.tsx";
@@ -797,13 +796,13 @@ function App() {
             <SiteConfigPage onExit={() => navigate("newHome")} />
           ) : (
             <>
-          {/* Shared page shell for every mode besides 首页/网站配置: a black top
-              Navbar plus a CornerCloseButton back to NewHomePage. No left sidebar —
-              NewHomePage's own menu (and the deep links off individual panels, e.g.
-              QuickConfigPanel's "详细设置") are the only way into these pages. */}
+          {/* Shared page shell for every mode besides 首页/网站配置: just a
+              CornerCloseButton back to NewHomePage. No top Navbar, no left
+              sidebar — NewHomePage's own menu (and the deep links off
+              individual panels, e.g. QuickConfigPanel's "详细设置") are the
+              only way into these pages. */}
           <CornerCloseButton onClick={() => navigate("newHome")} label={t("navBackToNewHome")} active />
-          {mode !== "matrix" && <Navbar />}
-      <div className="p-4 pt-0 md:p-6 md:pt-0">
+      <div className="p-4 md:p-6">
         <div className="mx-auto max-w-[1600px]">
             <main className="min-w-0 p-6 md:p-8">
               <div key={mode} className="page-transition">

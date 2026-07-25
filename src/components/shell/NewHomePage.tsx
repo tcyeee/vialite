@@ -36,9 +36,8 @@ interface Props {
 /* 右侧竖排菜单的条目来源——直接取 navItems.ts 的 NAV_ITEMS,排除"个性化"
    (keyboardColor),它已有自己的入口(左侧的个性化按钮),不需要在这里重复一份。
    "网站信息"从 NAV_ITEMS 里直接去掉了,顶部导航栏的"网站配置"是它现在唯一的
-   入口(见下方 SiteConfigPage)。点击条目跳转到共享页面壳层(Navbar +
-   CornerCloseButton,不再有左侧边栏),该壳层右上角挂了 CornerCloseButton 用于
-   返回本页,见 App.tsx。 */
+   入口(见下方 SiteConfigPage)。点击条目跳转到共享页面壳层(只有右上角的
+   CornerCloseButton,不再有 Navbar 或左侧边栏),用于返回本页,见 App.tsx。 */
 const MENU_ITEMS = NAV_ITEMS.filter(({ kind }) => kind !== "keyboardColor");
 
 /** 米白色线稿颜色,强制盖过用户的键盘配色,在线稿(默认)状态下保持统一的品牌观感。 */
@@ -335,7 +334,7 @@ export function NewHomePage({
         </div>
       </main>
 
-      {/* Exits to the keymap-editing page (shared page shell in App.tsx: Navbar +
+      {/* Exits to the keymap-editing page (shared page shell in App.tsx: just
           CornerCloseButton, no left sidebar). */}
       <button
         type="button"

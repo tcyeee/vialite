@@ -667,14 +667,14 @@ export function KeyboardColorPanel({
           isConfigured={(l) => keyboard.isLayerConfigured(l)}
         />
         {/* Pin only the board to the top so it stays visible while the page
-            scrolls under it (see ColorPicker's fixed-popover note). `top-16`
-            clears the sticky Navbar (h-16); the page-matching background
-            occludes content scrolling beneath, and z-20 keeps it under the z-30
-            Navbar. The `-mx-4 … px-4` self-cancelling margins give the shaded
-            case shadow room without clipping it in `overflow-x-auto`. */}
+            scrolls under it (see ColorPicker's fixed-popover note). `top-0`
+            sticks it flush to the viewport top (no navbar above it anymore);
+            the page-matching background occludes content scrolling beneath.
+            The `-mx-4 … px-4` self-cancelling margins give the shaded case
+            shadow room without clipping it in `overflow-x-auto`. */}
         <div
           ref={previewViewportRef}
-          className="sticky top-16 z-20 -mx-4 -mb-4 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background"
+          className="sticky top-0 z-20 -mx-4 -mb-4 -mt-2 overflow-x-auto bg-white px-4 pb-6 pt-2 dark:bg-brand-background"
         >
           {/* Keyed on the active layer so switching tabs re-fires the appear
               animation, mirroring LayerTabs' own content box. */}

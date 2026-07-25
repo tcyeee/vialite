@@ -53,9 +53,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {/* top-20 = daisyUI navbar's 4rem min-height + the toast's own 1rem top offset,
-          so the stack starts just below the Navbar instead of overlapping it. */}
-      <div className="toast toast-top toast-end top-20 z-50">
+      <div className="toast toast-top toast-end top-4 z-50">
         {toasts.map((toast) => (
           <div key={toast.id} className={ALERT_CLASS[toast.kind]}>
             <span>{toast.message}</span>
