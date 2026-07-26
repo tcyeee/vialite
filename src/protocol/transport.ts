@@ -13,7 +13,7 @@ import { MSG_LEN, VIAL_USAGE, VIAL_USAGE_PAGE } from "./constants.ts";
  * user's language. `src/protocol/` is framework-agnostic and can't reach the
  * i18n dictionary itself, so the Error keeps an English `message` (technical
  * detail, for the console) and carries a code the UI maps to a translated
- * string — see `describeConnectError` in App.tsx.
+ * string — see `describeConnectError` in src/hooks/useConnectionTransition.ts.
  */
 export type ProtocolErrorCode =
   | "webhidUnsupported"

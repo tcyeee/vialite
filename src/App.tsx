@@ -1,8 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from "react";
-import { flushSync } from "react-dom";
-import { useLenis } from "lenis/react";
+import { useCallback, useEffect, useState, type SyntheticEvent } from "react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
-import { type ConnectionStatus } from "./components/connect/DeviceConnect.tsx";
 import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
 import { KeyboardLayoutEditor, type KeyPart } from "./components/keymap/KeyboardLayoutEditor.tsx";
 import { KeyboardLayout3D } from "./components/connect/KeyboardLayout3D.tsx";
@@ -16,7 +13,7 @@ import { useAutoFitZoom } from "./components/keymap/autoFitSize.ts";
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
 import { CornerCloseButton } from "./components/common/CornerCloseButton.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
-import { KEYBOARD_HERO_NAME, startViewTransition } from "./components/common/viewTransition.ts";
+import { KEYBOARD_HERO_NAME } from "./components/common/viewTransition.ts";
 import {
   ALWAYS_ENABLED_ATTR,
   QuickConfigPanel,
@@ -31,32 +28,18 @@ import { RgbPanel } from "./components/rgb/RgbPanel.tsx";
 import { KeyboardColorPanel } from "./components/color/KeyboardColorPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
-import { useI18n, type MessageKey } from "./contexts/i18n.tsx";
-import { useKeyboardRevision } from "./hooks/useKeyboardRevision.ts";
-import { Keyboard, probeVial } from "./protocol/keyboard.ts";
+import { useI18n } from "./contexts/i18n.tsx";
+import { useConnectionTransition } from "./hooks/useConnectionTransition.ts";
+import { usePageNavigation } from "./hooks/usePageNavigation.ts";
+import type { Keyboard } from "./protocol/keyboard.ts";
 import { dualRole, withTap } from "./protocol/keycodes.ts";
-import { HidTransport, ProtocolError, type ProtocolErrorCode } from "./protocol/transport.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./contexts/toast.tsx";
 import { track } from "./analytics.ts";
-import { debugWarn } from "./debug.ts";
-import {
-  clearSkipAutoConnect,
-  loadLastDeviceName,
-  markSkipAutoConnect,
-  saveLastDeviceName,
-  shouldSkipAutoConnect,
-} from "./components/connect/lastDevice.ts";
-
-type PageMode = "keymap" | "matrix" | "macro" | "tapdance" | "combo" | "rgb" | "color" | "advanced" | "preview3d" | "newHome" | "siteConfig";
 
 type Selected =
   | { kind: "key"; row: number; col: number; part?: KeyPart }
   | { kind: "encoder"; index: number; direction: 0 | 1 };
-
-// Module-level so StrictMode's double-invoked mount effect can't trigger two
-// parallel auto-connect attempts.
-let autoConnectStarted = false;
 
 /**
  * Next key after (row, col) in visual reading order — top-to-bottom, then
@@ -87,42 +70,6 @@ function nextKeyPosition(
   return { row: next.row, col: next.col };
 }
 
-/** i18n key for each failure `src/protocol/` can explain in the user's language. */
-const CONNECT_ERROR_KEY: Record<ProtocolErrorCode, MessageKey> = {
-  webhidUnsupported: "errWebhidUnsupported",
-  noDeviceSelected: "errNoDeviceSelected",
-  deviceDisconnected: "errDeviceDisconnected",
-  commFailed: "errCommFailed",
-  viaOnlyKeyboard: "errViaOnlyKeyboard",
-  unsupportedProtocol: "errUnsupportedProtocol",
-  malformedDefinition: "errMalformedDefinition",
-};
-
-/**
- * A connect failure captured as an i18n key + params rather than an
- * already-translated string, so the message re-renders in the current language
- * when the user flips the language toggle mid-error (a resolved string would
- * stay frozen in whatever language it was built in).
- */
-interface ConnectErrorInfo {
-  key: MessageKey;
-  params?: Record<string, string | number>;
-}
-
-/**
- * Turns a connect failure into a descriptor to show on the waiting page. Errors
- * the protocol layer tagged with a code get a fully translated explanation;
- * anything else (a DOM/WebHID exception, an xz or JSON failure on a corrupt
- * definition) keeps its English technical detail inside a translated frame —
- * still more useful than nothing, and the console has the full context.
- */
-function describeConnectError(err: unknown): ConnectErrorInfo {
-  if (err instanceof ProtocolError && err.code) {
-    return { key: CONNECT_ERROR_KEY[err.code], params: err.params };
-  }
-  return { key: "errConnectFailed", params: { error: err instanceof Error ? err.message : String(err) } };
-}
-
 /**
  * 未选中按键时挂在快捷配置外层的激活类事件拦截器,用来替代 pointer-events-none
  * (那会连滚轮一起吞掉,见调用处注释)。标了 {@link ALWAYS_ENABLED_ATTR} 的子树
@@ -139,49 +86,7 @@ function swallowEvent(e: SyntheticEvent) {
 function App() {
   const { t } = useI18n();
   const { showToast } = useToast();
-  // Starts "reconnecting" (not "idle") so the very first render — before the
-  // auto-connect effect below has had a chance to check for an
-  // already-authorized device — doesn't flash the full WaitingForConnection
-  // landing page on a refresh that's about to silently reconnect.
-  const [status, setStatus] = useState<ConnectionStatus>("reconnecting");
-  // True only once the user has picked a device in the WebHID chooser and the
-  // handshake is actually underway — distinct from "connecting", which also
-  // covers the (open-ended) time the picker sits open. The connect screen's
-  // "taking a while" hint keys off this so a slow picker choice doesn't count.
-  const [attaching, setAttaching] = useState(false);
-  const [errorInfo, setErrorInfo] = useState<ConnectErrorInfo | null>(null);
-  const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
-  // Subscribes App to every keyboard.set*/save*/restore* write so the fields read
-  // directly off `keyboard` below (getKey, layoutChoices, ...) stay fresh — see
-  // src/hooks/useKeyboardRevision.ts.
-  useKeyboardRevision(keyboard);
-  // `boardViewportRef` goes on the overflow-scrolling viewport around the
-  // interactive board; its width is independent of the board's, so auto-fit can
-  // measure it without feedback. `autoFitZoom` is non-null only while
-  // 预览区域自适应大小 is on, overriding the discrete 预览区域缩放 level so the
-  // board tracks the window width as it changes.
-  const { ref: boardViewportRef, zoom: autoFitZoom } = useAutoFitZoom(keyboard);
-  const [productName, setProductName] = useState<string | undefined>();
-  // Name of the last keyboard successfully connected in this browser, shown as
-  // a "重新连接 <name>" shortcut on the waiting screen once disconnected.
-  // Seeded from localStorage so it survives a page reload.
-  const [lastDeviceName, setLastDeviceName] = useState<string | null>(loadLastDeviceName);
   const [layer, setLayer] = useState(0);
-  const [mode, setMode] = useState<PageMode>("newHome");
-  // True for the brief window a browser View Transition is morphing the hero
-  // keyboard from NewHomePage's preview box into the 个性化 or 键盘配置 page's
-  // board (see handlePersonalize/handleGoToKeymap below) — passed to both ends
-  // so each tags its board wrapper with the same KEYBOARD_HERO_NAME at the
-  // right moment.
-  const [heroNavAnimating, setHeroNavAnimating] = useState(false);
-  // True for the duration of a "push" page transition (see navigateSlide)
-  // that doesn't involve the hero morph at all (网站信息 and every other menu
-  // page). NewHomePage's hero keyboard normally tags itself with
-  // KEYBOARD_HERO_NAME at all times so it survives the theme-reveal ripple —
-  // but during a push transition that would pull it into its own separately
-  // animated view-transition group instead of sliding along with the rest of
-  // the page, so it's suppressed for that window instead.
-  const [heroNameSuppressed, setHeroNameSuppressed] = useState(false);
   const [preview3dParams, setPreview3dParams] = useState<Preview3DParams>(loadPreview3DParams);
   const [selected, setSelected] = useState<Selected | null>(null);
   // 点击键盘预览与按键配置区(快捷配置 / 双功能编辑器)之外的任何地方都取消选中,
@@ -202,451 +107,34 @@ function App() {
   // When on, assigning a key advances the selection to the next key (reading
   // order) so a run of keys can be configured without re-clicking each cap.
   const [autoAdvance, setAutoAdvance] = useState(true);
-  const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
-  // Page-level smooth-scroller, shared with the sidebar TOC so a "详细设置" jump into
-  // the Advanced page lands with the same inertia easing.
-  const lenis = useLenis();
-  const [qmkPendingCount, setQmkPendingCount] = useState(0);
-  const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
   const [importing, setImporting] = useState(false);
-  // Connect/disconnect page transition. Connect plays "zoom" (the waiting
-  // page's 3D model scales up to fill a blackened screen) then "rise" (the
-  // config page slides up from below over that black). Disconnect is
-  // simpler: "darken" fades a black curtain in over the config page (which
-  // mounts the waiting page off-screen above it, primed and ready but not yet
-  // visible), then "reveal" slides that waiting page straight down from the
-  // top edge into place over the blackened screen. Driven below and cleared
-  // once complete.
-  const [transition, setTransition] = useState<"none" | "zoom" | "rise" | "darken" | "reveal">("none");
-  // Set at the start of a disconnect animation, consumed once "reveal"
-  // finishes to decide which cleanup/toast path to run. A ref (not state) so
-  // the possibly-stale closure captured by transport.onDisconnect (set once
-  // per attachTransport call) always reads the current value.
-  const pendingDisconnectRef = useRef<"manual" | "lost" | null>(null);
-  const transportRef = useRef<HidTransport | null>(null);
-  // Target mode of a navigation attempt that got intercepted by qmkLeaveRequested; applied once
-  // QmkSettingsPanel reports how the user resolved the "unsaved changes" dialog.
-  const qmkPendingNavigationRef = useRef<PageMode | null>(null);
-  // The shared shell's CornerCloseButton (see below): read as the View
-  // Transition's origin element when leaving the keymap page, same pattern as
-  // StyleConfig.tsx's own closeBtnRef.
-  const cornerCloseRef = useRef<HTMLButtonElement>(null);
-  // Guards handleConnect and the auto-connect effect against running
-  // concurrently — e.g. a manual click landing in the async gap between the
-  // auto-connect effect finding a device and it calling setStatus("connecting").
-  const connectInFlightRef = useRef(false);
 
-  const teardown = useCallback(async () => {
-    const old = transportRef.current;
-    transportRef.current = null;
-    setKeyboard(null);
-    setProductName(undefined);
-    setSelected(null);
-    if (old) {
-      await old.close().catch(() => {});
-    }
-  }, []);
-
-  const attachTransport = useCallback(
-    async (transport: HidTransport, withTransition = false) => {
-      await teardown();
-      transportRef.current = transport;
-      transport.onDisconnect = () => {
-        if (pendingDisconnectRef.current) {
-          return;
-        }
-        pendingDisconnectRef.current = "lost";
-        setTransition("darken");
-      };
-      const kb = new Keyboard(transport);
-      await kb.reload();
-      setKeyboard(kb);
-      setProductName(transport.productName);
-      setLastDeviceName(transport.productName);
-      saveLastDeviceName(transport.productName);
-      // A real connection just happened, manually or silently — trust
-      // auto-reconnect on the next reload again.
-      clearSkipAutoConnect();
+  // Page mode + every animated-navigation concern (hero morph, push/push-back slide, QMK
+  // unsaved-changes gate) — see src/hooks/usePageNavigation.ts. `onNavigated` clears the
+  // key/encoder selection whenever the page mode actually changes, mirroring what `navigate`
+  // and `handleQmkLeaveResolved` used to do inline before this state lived in its own hook.
+  const nav = usePageNavigation({ onNavigated: () => setSelected(null) });
+  // WebHID connect/disconnect lifecycle + its zoom-rise/darken-reveal transition — see
+  // src/hooks/useConnectionTransition.ts. `onAttached`/`onDetached` run the navigation-state
+  // resets that `attachTransport`/`finishDisconnect` used to do inline, at the same points.
+  const conn = useConnectionTransition({
+    onAttached: () => {
       setLayer(0);
       setSelected(null);
-      setMode("newHome");
-      setQmkPendingCount(0);
-      setQmkLeaveRequested(false);
-      qmkPendingNavigationRef.current = null;
-      setErrorInfo(null);
-      setStatus("connected");
-      track("connect/success", transport.productName ?? "Unknown keyboard");
-      // Only the manual connect flow (from the visible waiting page) plays the
-      // zoom-and-rise transition; silent auto-reconnect skips straight in.
-      if (withTransition) {
-        setTransition("zoom");
-      }
-      showToast(t("deviceConnected", { name: transport.productName }), "success");
+      nav.resetForConnect();
     },
-    [teardown, t, showToast],
-  );
-
-  const handleConnect = useCallback(async () => {
-    if (connectInFlightRef.current) {
-      return;
-    }
-    connectInFlightRef.current = true;
-    setStatus("connecting");
-    setAttaching(false);
-    setErrorInfo(null);
-    try {
-      // Blocks in the browser's device picker; the user may take a while here.
-      const transport = await HidTransport.requestDevice();
-      // Device chosen — now the actual handshake begins, so start the clock.
-      setAttaching(true);
-      await attachTransport(transport, true);
-    } catch (err) {
-      console.error("[vialite] manual connect failed:", err);
-      await teardown();
-      setErrorInfo(describeConnectError(err));
-      setStatus("error");
-    } finally {
-      connectInFlightRef.current = false;
-      setAttaching(false);
-    }
-  }, [attachTransport, teardown]);
-
-  // Tries every already-authorized Vial-capable device — navigator.hid.getDevices()
-  // lists prior WebHID grants without opening the chooser UI — and attaches the
-  // first one that actually answers a Vial handshake. Shared by the silent
-  // page-load auto-reconnect effect and the "重新连接" shortcut button, so both
-  // stay in sync. Returns whether a device was found and attached.
-  const tryAttachAuthorizedDevice = useCallback(
-    async (withTransition: boolean) => {
-      const devices = await navigator.hid.getDevices();
-      const candidates = devices.filter((d) => HidTransport.hasVialInterface(d));
-      // hasVialInterface only proves the board exposes the raw-HID interface
-      // VIA and Vial share, so handshake each candidate and take the first
-      // that actually speaks Vial — otherwise an authorized VIA-only board
-      // would shadow a real Vial keyboard plugged in alongside it.
-      for (const device of candidates) {
-        let transport: HidTransport;
-        try {
-          transport = await HidTransport.fromDevice(device);
-        } catch (err) {
-          // Claimed by another app, permission revoked, ... — a candidate we
-          // can't even open shouldn't stop us reaching a good one behind it.
-          debugWarn(`[vialite] cannot open ${device.productName}, skipping:`, err);
-          continue;
-        }
-        if (await probeVial(transport)) {
-          await attachTransport(transport, withTransition);
-          return true;
-        }
-        debugWarn(`[vialite] skipping non-Vial device: ${device.productName}`);
-        await transport.close();
-      }
-      return false;
-    },
-    [attachTransport],
-  );
-
-  // Manual counterpart to the silent auto-reconnect: the "重新连接 <name>"
-  // shortcut on the waiting screen. Same underlying lookup, just triggered by
-  // a click (e.g. after a physical unplug/replug mid-session, which the
-  // mount-only auto-reconnect effect never re-runs for) instead of page load.
-  const handleReconnectSaved = useCallback(async () => {
-    if (connectInFlightRef.current) {
-      return;
-    }
-    connectInFlightRef.current = true;
-    setStatus("connecting");
-    setAttaching(true);
-    setErrorInfo(null);
-    try {
-      const connected = await tryAttachAuthorizedDevice(true);
-      if (!connected) {
-        await teardown();
-        setErrorInfo({ key: "errReconnectNotFound" });
-        setStatus("error");
-      }
-    } catch (err) {
-      console.error("[vialite] reconnect-saved failed:", err);
-      await teardown();
-      setErrorInfo(describeConnectError(err));
-      setStatus("error");
-    } finally {
-      connectInFlightRef.current = false;
-      setAttaching(false);
-    }
-  }, [tryAttachAuthorizedDevice, teardown]);
-
-  // Runs once the disconnect darken+reveal choreography finishes: the actual
-  // teardown was deliberately deferred until now so the config page still had
-  // real keyboard data to render while it slid away. "manual" closes the
-  // transport properly (button-triggered); "lost" skips that — the device is
-  // already gone, so there's nothing left to close.
-  const finishDisconnect = useCallback(
-    async (reason: "manual" | "lost") => {
-      if (reason === "manual") {
-        await teardown();
-        setErrorInfo(null);
-      } else {
-        transportRef.current = null;
-        setKeyboard(null);
-        setProductName(undefined);
-        setSelected(null);
-        setErrorInfo({ key: "keyboardDisconnected" });
-      }
-      setStatus("idle");
-      setQmkSections([]);
-      setQmkPendingCount(0);
-      setQmkLeaveRequested(false);
-      qmkPendingNavigationRef.current = null;
-      setTransition("none");
-      showToast(t(reason === "lost" ? "keyboardDisconnected" : "deviceDisconnected"), "warning");
-    },
-    [teardown, t, showToast],
-  );
-
-  const handleDisconnect = useCallback(() => {
-    if (pendingDisconnectRef.current) {
-      return;
-    }
-    // Mark this as an explicit disconnect so the next page load won't
-    // silently auto-reconnect to the same board. Deliberately *not*
-    // transport.forget(): that revokes the WebHID grant outright, which also
-    // erases the device from navigator.hid.getDevices() — breaking the
-    // "重新连接 <name>" shortcut and forcing the picker dialog back next time.
-    // The flag gets the same "stay disconnected across reload" outcome
-    // without touching the grant; attachTransport clears it on the next real
-    // connect (manual or via the shortcut).
-    markSkipAutoConnect();
-    pendingDisconnectRef.current = "manual";
-    setTransition("darken");
-  }, []);
-
-  // Bails out (returns the same array reference) when the section list is unchanged, so this
-  // doesn't cause QmkSettingsPanel's per-render effect to re-trigger a parent re-render forever.
-  const handleQmkSectionsChange = useCallback((sections: MessageKey[]) => {
-    setQmkSections((prev) =>
-      prev.length === sections.length && prev.every((id, i) => id === sections[i]) ? prev : sections,
-    );
-  }, []);
-
-  // Tries to switch page mode, but detours through QmkSettingsPanel's "unsaved changes" dialog
-  // first when leaving Advanced Settings with edits still pending.
-  const navigate = useCallback(
-    (next: PageMode) => {
-      if (mode === "advanced" && next !== "advanced" && qmkPendingCount > 0) {
-        qmkPendingNavigationRef.current = next;
-        setQmkLeaveRequested(true);
-        return;
-      }
-      track(`view/${next}`);
-      setMode(next);
+    onDetached: () => {
       setSelected(null);
+      nav.resetForDisconnect();
     },
-    [mode, qmkPendingCount],
-  );
-
-  // NewHomePage's "个性化" button: like useFullscreenPreview's open/close, runs
-  // the mode switch inside a browser View Transition so the hero keyboard box
-  // visibly morphs into the 个性化 page's board instead of hard-cutting between
-  // the two unrelated component trees. `origin` is the clicked button, used
-  // only as the reduced-motion guard's existence check here (unlike
-  // useFullscreenPreview's ripple, this transition has no radial-reveal
-  // geometry to anchor).
-  const handlePersonalize = useCallback(
-    (origin: Element | null) => {
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (!origin || reduceMotion) {
-        navigate("color");
-        return;
-      }
-      flushSync(() => setHeroNavAnimating(true));
-      const transition = startViewTransition(() => flushSync(() => navigate("color")));
-      void transition.finished.finally(() => setHeroNavAnimating(false));
-    },
-    [navigate],
-  );
-
-  // NewHomePage's "键盘配置" menu entry: same hero-morph treatment as
-  // handlePersonalize, just landing on "keymap" instead of "color".
-  const handleGoToKeymap = useCallback(
-    (origin: Element | null) => {
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (!origin || reduceMotion) {
-        navigate("keymap");
-        return;
-      }
-      flushSync(() => setHeroNavAnimating(true));
-      const transition = startViewTransition(() => flushSync(() => navigate("keymap")));
-      void transition.finished.finally(() => setHeroNavAnimating(false));
-    },
-    [navigate],
-  );
-
-  // The 个性化/键盘配置 fullscreen page's corner "back" button (see
-  // StyleConfig.tsx's `onBack`, and the shared shell's CornerCloseButton
-  // below): reverses handlePersonalize's/handleGoToKeymap's hero transition,
-  // landing back on NewHomePage instead of collapsing in place.
-  // `heroNavAnimating` is direction-agnostic — whichever of {NewHomePage,
-  // KeyboardColorPanel, the keymap board} is mounted when it flips true gets
-  // tagged with KEYBOARD_HERO_NAME, so reusing it here for the reverse trip
-  // just works.
-  const handleBackToHome = useCallback(
-    (origin: Element | null) => {
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (!origin || reduceMotion) {
-        navigate("newHome");
-        return;
-      }
-      flushSync(() => setHeroNavAnimating(true));
-      const transition = startViewTransition(() => flushSync(() => navigate("newHome")));
-      void transition.finished.finally(() => setHeroNavAnimating(false));
-    },
-    [navigate],
-  );
-
-  // Every other page reachable from NewHomePage's menu (网站信息, matrix, macro,
-  // tapdance, combo, rgb, advanced, preview3d): no shared hero element to morph,
-  // so instead the whole page slides as one unit — see the `data-page-anim`
-  // rules in index.css. `direction` picks which way: "push" when navigating
-  // away from NewHomePage, "push-back" when returning to it (the exact mirror).
-  const navigateSlide = useCallback(
-    (next: PageMode, direction: "push" | "push-back") => {
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (reduceMotion) {
-        navigate(next);
-        return;
-      }
-      flushSync(() => setHeroNameSuppressed(true));
-      document.documentElement.dataset.pageAnim = direction;
-      const transition = startViewTransition(() => flushSync(() => navigate(next)));
-      void transition.finished.finally(() => {
-        delete document.documentElement.dataset.pageAnim;
-        setHeroNameSuppressed(false);
-      });
-    },
-    [navigate],
-  );
-
-  const handleQmkLeaveResolved = useCallback((shouldLeave: boolean) => {
-    setQmkLeaveRequested(false);
-    const next = qmkPendingNavigationRef.current;
-    qmkPendingNavigationRef.current = null;
-    if (shouldLeave && next !== null) {
-      track(`view/${next}`);
-      setMode(next);
-      setSelected(null);
-    }
-  }, []);
-
-  // A QMK Settings section a quick-config card asked to jump to ("详细设置"): remembered
-  // across the navigation to the Advanced page, then consumed by the effect below once
-  // that section has actually rendered (its `<section id={titleKey}>` exists in the DOM).
-  const pendingQmkScrollRef = useRef<MessageKey | null>(null);
-  const openQmkSection = useCallback(
-    (section: MessageKey) => {
-      pendingQmkScrollRef.current = section;
-      navigate("advanced");
-    },
-    [navigate],
-  );
-
-  // Scroll to the pending QMK section once the Advanced page has mounted and reported
-  // its sections (qmkSections). Mirrors the sidebar TOC's Lenis-or-native jump, but the
-  // page has *just* switched to Advanced, so its full height isn't laid out yet: Lenis
-  // still holds the previous (shorter) page's scroll range and would clamp the jump
-  // short. Wait two animation frames for layout to settle, force Lenis to re-measure
-  // (`resize`), then scroll — and keep the target pending (don't clear the ref) until
-  // that actually runs, so a re-render mid-wait retries instead of dropping the jump.
-  useEffect(() => {
-    const section = pendingQmkScrollRef.current;
-    if (mode !== "advanced" || section === null) return;
-    const target = document.getElementById(section);
-    if (!target) return;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let inner = 0;
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => {
-        pendingQmkScrollRef.current = null;
-        if (lenis) {
-          lenis.resize();
-          lenis.scrollTo(target, { offset: -80, force: true, immediate: reduceMotion });
-        } else {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
-    });
-    return () => {
-      cancelAnimationFrame(outer);
-      cancelAnimationFrame(inner);
-    };
-  }, [mode, qmkSections, lenis]);
-
-  // Reconnect to an already-authorized keyboard on page load, so returning
-  // users don't have to go through the device chooser every time. Status
-  // stays "reconnecting" (rendered as a bare loading screen, not the full
-  // WaitingForConnection page) for the whole attempt, only dropping to
-  // "idle" once it's clear there's nothing to silently reconnect to.
-  useEffect(() => {
-    if (autoConnectStarted) {
-      return;
-    }
-    autoConnectStarted = true;
-    void (async () => {
-      // The user explicitly disconnected last time — respect that across the
-      // reload instead of silently reattaching the same board. See
-      // handleDisconnect / components/connect/lastDevice.ts.
-      if (shouldSkipAutoConnect()) {
-        setStatus("idle");
-        return;
-      }
-      if (connectInFlightRef.current) {
-        setStatus("idle");
-        return;
-      }
-      connectInFlightRef.current = true;
-      try {
-        const connected = await tryAttachAuthorizedDevice(false);
-        if (!connected) {
-          setStatus("idle");
-        }
-      } catch (err) {
-        // Best effort — fall back to the manual Connect button.
-        console.error("[vialite] auto-reconnect failed:", err);
-        await teardown();
-        setStatus("idle");
-      } finally {
-        connectInFlightRef.current = false;
-      }
-    })();
-  }, [tryAttachAuthorizedDevice, teardown]);
-
-  // Drives both transition timelines. Connect: hold on the model zoom, then
-  // let the config page rise, then clear the overlay entirely. Disconnect:
-  // hold on the black curtain fading in (the waiting page mounts off-screen
-  // above during this same hold, so it's primed and ready), then slide it
-  // down into view, then finally run the deferred teardown.
-  useEffect(() => {
-    if (transition === "zoom") {
-      const id = setTimeout(() => setTransition("rise"), 380);
-      return () => clearTimeout(id);
-    }
-    if (transition === "rise") {
-      const id = setTimeout(() => setTransition("none"), 560);
-      return () => clearTimeout(id);
-    }
-    if (transition === "darken") {
-      const id = setTimeout(() => setTransition("reveal"), 350);
-      return () => clearTimeout(id);
-    }
-    if (transition === "reveal") {
-      const id = setTimeout(() => {
-        const reason = pendingDisconnectRef.current ?? "manual";
-        pendingDisconnectRef.current = null;
-        void finishDisconnect(reason);
-      }, 600);
-      return () => clearTimeout(id);
-    }
-  }, [transition, finishDisconnect]);
+  });
+  const { keyboard, productName, lastDeviceName } = conn;
+  // `boardViewportRef` goes on the overflow-scrolling viewport around the
+  // interactive board; its width is independent of the board's, so auto-fit can
+  // measure it without feedback. `autoFitZoom` is non-null only while
+  // 预览区域自适应大小 is on, overriding the discrete 预览区域缩放 level so the
+  // board tracks the window width as it changes.
+  const { ref: boardViewportRef, zoom: autoFitZoom } = useAutoFitZoom(keyboard);
 
   // Assigns a keycode to the currently-selected key/encoder. Unlike the old
   // popup flow, the selection is kept so the user can keep re-assigning the
@@ -786,7 +274,7 @@ function App() {
     [keyboard, t, showToast],
   );
 
-  if (status === "reconnecting") {
+  if (conn.status === "reconnecting") {
     return (
       <div className="flex h-screen items-center justify-center bg-brand-background">
         <SpinnerIcon className="h-10 w-10 animate-spin text-brand-primary" />
@@ -794,19 +282,15 @@ function App() {
     );
   }
 
-  // Resolve the stored error descriptor here (not when it's set) so switching
-  // language re-renders it in the newly chosen language.
-  const error = errorInfo ? t(errorInfo.key, errorInfo.params) : null;
-
-  const connected = status === "connected";
-  const inTransition = transition !== "none";
+  const connected = conn.status === "connected";
+  const inTransition = conn.transition !== "none";
   // Keep the waiting page mounted through the transition so its 3D model
   // (three.js scene) isn't torn down and re-created mid-animation.
   const showWaiting = !connected || inTransition;
   // Only connect uses the waiting page's 3D-model zoom/curtain; disconnect
   // has its own black curtain (below) and never touches it.
-  const waitingZoom = transition === "zoom" || transition === "rise";
-  const disconnecting = transition === "darken" || transition === "reveal";
+  const waitingZoom = conn.transition === "zoom" || conn.transition === "rise";
+  const disconnecting = conn.transition === "darken" || conn.transition === "reveal";
 
   return (
     <>
@@ -827,26 +311,26 @@ function App() {
               ? {
                   // Disconnect never moves the config page itself — it just sits still
                   // under the black curtain while the waiting page slides down over it.
-                  transform: transition === "zoom" ? "translateY(100%)" : "translateY(0)",
+                  transform: conn.transition === "zoom" ? "translateY(100%)" : "translateY(0)",
                   transition:
-                    transition === "rise" ? "transform 520ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
+                    conn.transition === "rise" ? "transform 520ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
                 }
               : undefined
           }
         >
-          {mode === "newHome" && keyboard ? (
+          {nav.mode === "newHome" && keyboard ? (
             <NewHomePage
               keyboard={keyboard}
               layer={layer}
               productName={productName}
-              onDisconnect={handleDisconnect}
-              onNavigatePush={(next) => navigateSlide(next, "push")}
-              onGoToKeymap={handleGoToKeymap}
-              onPersonalize={handlePersonalize}
-              suppressHeroName={heroNameSuppressed}
+              onDisconnect={conn.handleDisconnect}
+              onNavigatePush={(next) => nav.navigateSlide(next, "push")}
+              onGoToKeymap={nav.handleGoToKeymap}
+              onPersonalize={nav.handlePersonalize}
+              suppressHeroName={nav.heroNameSuppressed}
             />
-          ) : mode === "siteConfig" ? (
-            <SiteConfigPage onExit={() => navigateSlide("newHome", "push-back")} />
+          ) : nav.mode === "siteConfig" ? (
+            <SiteConfigPage onExit={() => nav.navigateSlide("newHome", "push-back")} />
           ) : (
             <>
           {/* Shared page shell for every mode besides 首页/网站配置: just a
@@ -858,14 +342,14 @@ function App() {
               plain fallback for its non-fullscreen view); every other mode
               gets the mirrored "push-back" slide. */}
           <CornerCloseButton
-            ref={cornerCloseRef}
+            ref={nav.cornerCloseRef}
             onClick={() => {
-              if (mode === "keymap") {
-                handleBackToHome(cornerCloseRef.current);
-              } else if (mode === "color") {
-                navigate("newHome");
+              if (nav.mode === "keymap") {
+                nav.handleBackToHome(nav.cornerCloseRef.current);
+              } else if (nav.mode === "color") {
+                nav.navigate("newHome");
               } else {
-                navigateSlide("newHome", "push-back");
+                nav.navigateSlide("newHome", "push-back");
               }
             }}
             label={t("navBackToNewHome")}
@@ -874,41 +358,41 @@ function App() {
       <div className="p-4 md:p-6">
         <div className="mx-auto max-w-[1600px]">
             <main className="min-w-0 p-6 md:p-8">
-              <div key={mode} className="page-transition">
-              {mode !== "keymap" && (
+              <div key={nav.mode} className="page-transition">
+              {nav.mode !== "keymap" && (
               <div className="mb-6">
                 <div className="flex items-center gap-2">
                   <h1 className="text-3xl font-bold text-brand-on-surface">
-                    {mode === "matrix"
+                    {nav.mode === "matrix"
                       ? t("navMatrixTest")
-                      : mode === "macro"
+                      : nav.mode === "macro"
                         ? t("navMacro")
-                        : mode === "tapdance"
+                        : nav.mode === "tapdance"
                           ? t("navTapDance")
-                          : mode === "combo"
+                          : nav.mode === "combo"
                             ? t("navCombo")
-                            : mode === "rgb"
+                            : nav.mode === "rgb"
                               ? t("navRgb")
-                            : mode === "color"
+                            : nav.mode === "color"
                               ? t("navKeyboardColor")
-                              : mode === "advanced"
+                              : nav.mode === "advanced"
                                 ? t("navAdvanced")
-                                : mode === "preview3d"
+                                : nav.mode === "preview3d"
                                   ? t("navPreview3d")
                                   : t("navNewHome")}
                   </h1>
-                  {mode === "preview3d" && <HelpIcon text={t("preview3dHint")} />}
-                  {mode === "macro" && <HelpIcon text={t("macroHint")} />}
-                  {mode === "tapdance" && <HelpIcon text={t("tapDanceHint")} />}
-                  {mode === "combo" && <HelpIcon text={t("comboHint")} />}
-                  {mode === "rgb" && <HelpIcon text={t("rgbHint")} />}
+                  {nav.mode === "preview3d" && <HelpIcon text={t("preview3dHint")} />}
+                  {nav.mode === "macro" && <HelpIcon text={t("macroHint")} />}
+                  {nav.mode === "tapdance" && <HelpIcon text={t("tapDanceHint")} />}
+                  {nav.mode === "combo" && <HelpIcon text={t("comboHint")} />}
+                  {nav.mode === "rgb" && <HelpIcon text={t("rgbHint")} />}
                 </div>
-                {mode === "matrix" && (
+                {nav.mode === "matrix" && (
                   <p className="mt-1 text-brand-on-surface-variant">{t("matrixInstructions")}</p>
                 )}
               </div>
               )}
-              {keyboard && mode === "keymap" && (
+              {keyboard && nav.mode === "keymap" && (
                 <>
                   <div className="mb-6">
                     <h1 className="text-3xl font-bold text-brand-on-surface">
@@ -963,7 +447,7 @@ function App() {
                           to/from NewHomePage's hero preview. */}
                       <div
                         style={{
-                          viewTransitionName: heroNavAnimating ? KEYBOARD_HERO_NAME : undefined,
+                          viewTransitionName: nav.heroNavAnimating ? KEYBOARD_HERO_NAME : undefined,
                         }}
                       >
                         <KeyboardLayoutEditor
@@ -1031,8 +515,8 @@ function App() {
                         <QuickConfigPanel
                           onPick={handleAssign}
                           keyboard={keyboard}
-                          onNavigate={navigate}
-                          onOpenQmkSection={openQmkSection}
+                          onNavigate={nav.navigate}
+                          onOpenQmkSection={nav.openQmkSection}
                           autoAdvance={autoAdvance}
                           onAutoAdvanceChange={setAutoAdvance}
                           disabled={!selected}
@@ -1060,7 +544,7 @@ function App() {
               )}
               {/* 纯展示页:只渲染当前图层的 3D 键盘,点击键帽不做任何事(选中态、
                   改键都留在首页的 2D 视图里)。 */}
-              {keyboard && mode === "preview3d" && (
+              {keyboard && nav.mode === "preview3d" && (
                 <>
                   <KeyboardLayout3D
                     keyboard={keyboard}
@@ -1078,29 +562,31 @@ function App() {
                   />
                 </>
               )}
-              {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
-              {keyboard && mode === "macro" && <MacroPanel keyboard={keyboard} />}
-              {keyboard && mode === "tapdance" && (
-                <TapDancePanel keyboard={keyboard} suppressCardNames={heroNameSuppressed} />
+              {keyboard && nav.mode === "matrix" && keyboard.supportsMatrixTester && (
+                <MatrixTester keyboard={keyboard} />
               )}
-              {keyboard && mode === "combo" && (
-                <ComboPanel keyboard={keyboard} suppressCardNames={heroNameSuppressed} />
+              {keyboard && nav.mode === "macro" && <MacroPanel keyboard={keyboard} />}
+              {keyboard && nav.mode === "tapdance" && (
+                <TapDancePanel keyboard={keyboard} suppressCardNames={nav.heroNameSuppressed} />
               )}
-              {keyboard && mode === "rgb" && <RgbPanel keyboard={keyboard} />}
-              {keyboard && mode === "advanced" && (
+              {keyboard && nav.mode === "combo" && (
+                <ComboPanel keyboard={keyboard} suppressCardNames={nav.heroNameSuppressed} />
+              )}
+              {keyboard && nav.mode === "rgb" && <RgbPanel keyboard={keyboard} />}
+              {keyboard && nav.mode === "advanced" && (
                 <QmkSettingsPanel
                   keyboard={keyboard}
-                  onSectionsChange={handleQmkSectionsChange}
-                  onPendingCountChange={setQmkPendingCount}
-                  leaveRequested={qmkLeaveRequested}
-                  onLeaveResolved={handleQmkLeaveResolved}
+                  onSectionsChange={nav.handleQmkSectionsChange}
+                  onPendingCountChange={nav.setQmkPendingCount}
+                  leaveRequested={nav.qmkLeaveRequested}
+                  onLeaveResolved={nav.handleQmkLeaveResolved}
                 />
               )}
-              {keyboard && mode === "color" && (
+              {keyboard && nav.mode === "color" && (
                 <KeyboardColorPanel
                   keyboard={keyboard}
-                  heroArriving={heroNavAnimating}
-                  onBackToHome={handleBackToHome}
+                  heroArriving={nav.heroNavAnimating}
+                  onBackToHome={nav.handleBackToHome}
                 />
               )}
               </div>
@@ -1130,20 +616,20 @@ function App() {
           // Primed off-screen above during "darken" (no transition, so mounting
           // here doesn't itself animate), then slid down into view during "reveal".
           style={
-            transition === "darken"
+            conn.transition === "darken"
               ? { transform: "translateY(-100%)", transition: "none" }
-              : transition === "reveal"
+              : conn.transition === "reveal"
                 ? { transform: "translateY(0)", transition: "transform 520ms cubic-bezier(0.4, 0, 0.2, 1)" }
                 : undefined
           }
         >
           <WaitingForConnection
-            status={status}
-            attaching={attaching}
-            error={error}
-            onConnect={handleConnect}
+            status={conn.status}
+            attaching={conn.attaching}
+            error={conn.error}
+            onConnect={conn.handleConnect}
             lastDeviceName={lastDeviceName}
-            onReconnectSaved={handleReconnectSaved}
+            onReconnectSaved={conn.handleReconnectSaved}
             zoom={waitingZoom}
           />
         </div>
