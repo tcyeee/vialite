@@ -165,10 +165,13 @@ export interface PreviewAppearance {
  * decoupled from position: spacing grows the pitch (board), keycap width shrinks
  * the cap within its cell — neither disturbs the other.
  *
- * `pad` offsets every shape by a fixed px amount (one `inset`) on both axes so
- * the plate shows an even spacing-wide margin on all four sides — without it the
- * top/left keys sit flush against the plate edge while only the bottom/right
- * keys leave their inter-key gap.
+ * `pad` offsets every shape by a fixed px amount on both axes so the plate
+ * shows an even margin on all four sides — without it the top/left keys sit
+ * flush against the plate edge while only the bottom/right keys leave their
+ * inter-key gap. Callers pass {@link AppearanceMetrics.plateMargin} here
+ * rather than `inset` itself, since the plate margin and the inter-key gap
+ * are independently configurable (see `PLATE_MARGIN_RATIO`); `plateWidth`/
+ * `plateHeight` must be sized to match — see the call sites.
  */
 export function shapeStyle(
   s: { x: number; y: number; width: number; height: number; rotationAngle: number; rotationX: number; rotationY: number },
@@ -191,12 +194,21 @@ export function shapeStyle(
   return style;
 }
 
+/**
+ * How much wider than the inter-key gap (`inset`) the plate's margin around
+ * the outermost caps is. Decoupled so the two can be tuned independently —
+ * see {@link AppearanceMetrics.plateMargin}.
+ */
+const PLATE_MARGIN_RATIO = 2;
+
 /** Derived px geometry for the appearance settings, at 1× (pre-zoom). */
 export interface AppearanceMetrics {
   /** Per-unit advance (one pitch cell), in px. */
   PITCH: number;
-  /** Gap between adjacent caps, in px (also the plate margin). */
+  /** Gap between adjacent caps, in px. */
   inset: number;
+  /** Margin between the plate's edge and the outermost caps, in px — independent of `inset`. */
+  plateMargin: number;
   /** Case outer corner radius, in px. */
   outerRadius: number;
   /** Plate inner corner radius, kept concentric with the case, in px. */
@@ -226,6 +238,7 @@ export function appearanceMetrics(
 ): AppearanceMetrics {
   const cap = BASE_UNIT * CAP_RATIOS[keycapWidth];
   const inset = BASE_UNIT * SPACING_RATIOS[spacing];
+  const plateMargin = inset * PLATE_MARGIN_RATIO;
   const PITCH = cap + inset;
   // Concentric corners: the plate's inner radius is the case's outer radius less
   // the bezel thickness, so the two arcs stay parallel. Clamp at 5 — once the
@@ -235,6 +248,7 @@ export function appearanceMetrics(
   return {
     PITCH,
     inset,
+    plateMargin,
     outerRadius,
     innerRadius,
     showCase: caseThickness > 0,
@@ -360,6 +374,7 @@ export function KeyboardLayoutPreview({
   const {
     PITCH,
     inset,
+    plateMargin,
     outerRadius,
     innerRadius,
     showCase,
@@ -394,11 +409,17 @@ export function KeyboardLayoutPreview({
     () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
     [keyboard, keyboard.layoutOptions],
   );
-  const plateWidth = placed.width * PITCH + inset;
-  const plateHeight = placed.height * PITCH + inset;
+  // The outermost cap's own edge already sits `plateMargin - inset` in from
+  // the pitch-cell boundary (shapeStyle's `pad` shifts it out by `plateMargin`,
+  // then its own `width`/`height` shrinks back in by `inset`) — so reaching
+  // `plateMargin` past that cap takes `2 * plateMargin - inset`, not
+  // `plateMargin` alone. Reduces to the familiar `+ inset` when
+  // `plateMargin === inset` (see `PLATE_MARGIN_RATIO`).
+  const plateWidth = placed.width * PITCH + 2 * plateMargin - inset;
+  const plateHeight = placed.height * PITCH + 2 * plateMargin - inset;
   // Split/rotated layouts get per-cluster SVG outlines instead of the rectangle
   // the divs below draw; `null` means the layout is plain and the divs are right.
-  const caseShape = useCaseShape({ placed, PITCH, inset, caseThickness, showCase });
+  const caseShape = useCaseShape({ placed, PITCH, inset: plateMargin, caseThickness, showCase });
 
   const board = (
     <div
@@ -470,7 +491,7 @@ export function KeyboardLayoutPreview({
                 key={`${key.row},${key.col}@${key.x},${key.y}`}
                 className={(isSelected ? "key selected" : "key") + posClass}
                 onContextMenu={(e) => openMenu(e, { kind: "key", row: key.row, col: key.col })}
-                style={shapeStyle(key, shiftX, shiftY, PITCH, inset, inset)}
+                style={shapeStyle(key, shiftX, shiftY, PITCH, inset, plateMargin)}
               >
                 {hasSecondRect(key) && (
                   <span
@@ -503,7 +524,7 @@ export function KeyboardLayoutPreview({
                   direction: encoder.direction,
                 })
               }
-              style={shapeStyle(encoder, shiftX, shiftY, PITCH, inset, inset)}
+              style={shapeStyle(encoder, shiftX, shiftY, PITCH, inset, plateMargin)}
             >
               <span className="encoder-dir">{encoder.direction === 1 ? "↻" : "↺"}</span>
             </div>

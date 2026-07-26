@@ -950,7 +950,7 @@ function App() {
                     // the card (see ExpandableCardColumn's outside-click close).
                     data-keyboard-preview
                     ref={boardViewportRef}
-                    className="sticky top-0 z-20 -mx-4 -mb-6 -mt-2 overflow-x-auto bg-[#E9E6E6] px-4 pb-6 pt-2 dark:bg-brand-background"
+                    className="sticky top-0 z-10 -mx-4 -mb-6 -mt-2 overflow-x-auto bg-[#E9E6E6] px-4 pb-6 pt-2 dark:bg-brand-background"
                   >
                     <div key={layer} className="tab-panel-appear w-full">
                       {/* Nested (not on the tab-panel-appear div itself) so this

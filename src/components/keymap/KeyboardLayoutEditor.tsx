@@ -116,6 +116,7 @@ export function KeyboardLayoutEditor({
   const {
     PITCH,
     inset,
+    plateMargin,
     outerRadius,
     innerRadius,
     showCase,
@@ -183,11 +184,14 @@ export function KeyboardLayoutEditor({
     // changes after the initial load.
     [keyboard, keyboard.layoutOptions],
   );
-  const plateWidth = placed.width * PITCH + inset;
-  const plateHeight = placed.height * PITCH + inset;
+  // See the matching comment in KeyboardLayoutPreview.tsx: reaching
+  // `plateMargin` past the outermost cap's own edge takes `2 * plateMargin -
+  // inset`, not `plateMargin` alone.
+  const plateWidth = placed.width * PITCH + 2 * plateMargin - inset;
+  const plateHeight = placed.height * PITCH + 2 * plateMargin - inset;
   // Split/rotated layouts get per-cluster SVG outlines instead of the rectangle
   // the divs below draw; `null` means the layout is plain and the divs are right.
-  const caseShape = useCaseShape({ placed, PITCH, inset, caseThickness, showCase });
+  const caseShape = useCaseShape({ placed, PITCH, inset: plateMargin, caseThickness, showCase });
 
   const board = (
     <div
@@ -249,7 +253,7 @@ export function KeyboardLayoutEditor({
             const isSelected =
               selected?.kind === "key" && selected.row === key.row && selected.col === key.col;
             const selectedPart = isSelected && selected.kind === "key" ? selected.part : undefined;
-            const style = shapeStyle(key, shiftX, shiftY, PITCH, inset, inset);
+            const style = shapeStyle(key, shiftX, shiftY, PITCH, inset, plateMargin);
             const secondRect = hasSecondRect(key) && (
               <span
                 className="key-part2"
@@ -328,7 +332,7 @@ export function KeyboardLayoutEditor({
               }
               onMouseEnter={(e) => beginHover(qmkId, e.currentTarget)}
               onMouseLeave={endHover}
-              style={shapeStyle(encoder, shiftX, shiftY, PITCH, inset, inset)}
+              style={shapeStyle(encoder, shiftX, shiftY, PITCH, inset, plateMargin)}
             >
               <span className="encoder-dir">{encoder.direction === 1 ? "↻" : "↺"}</span>
               <KeycapFace qmkId={qmkId} />

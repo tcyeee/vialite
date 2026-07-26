@@ -51,8 +51,8 @@ interface Params {
   placed: PlacedLayout;
   /** Per-unit advance in px. */
   PITCH: number;
-  /** Gap between caps in px — also the plate's margin around the outermost caps. */
-  inset: number;
+  /** Margin between the plate's edge and the outermost caps, in px (independent of the inter-key gap). */
+  plateMargin: number;
   /** Case bezel thickness in px. */
   caseThickness: number;
   /** Whether the bezel is drawn at all. */
@@ -64,14 +64,14 @@ interface Params {
  * single rectangle-shaped block and the CSS div rendering should be kept.
  *
  * Margins are chosen to reproduce the div rendering exactly on a regular board:
- * there the plate extends one `inset` past the outermost cap edges and the case
- * one `caseThickness` past the plate, so the outlines are the hull offset by
- * `inset` and `inset + caseThickness`. The corner radius is therefore the offset
- * distance rather than the 外壳圆角 setting — an offset outline's corners are
- * arcs of exactly the offset (it's a Minkowski sum with a disc), and the setting
- * has no meaning on a shape that isn't a rectangle.
+ * there the plate extends one `plateMargin` past the outermost cap edges and the
+ * case one `caseThickness` past the plate, so the outlines are the hull offset by
+ * `plateMargin` and `plateMargin + caseThickness`. The corner radius is therefore
+ * the offset distance rather than the 外壳圆角 setting — an offset outline's
+ * corners are arcs of exactly the offset (it's a Minkowski sum with a disc), and
+ * the setting has no meaning on a shape that isn't a rectangle.
  */
-export function useCaseShape({ placed, PITCH, inset, caseThickness, showCase }: Params): CaseShape | null {
+export function useCaseShape({ placed, PITCH, plateMargin, caseThickness, showCase }: Params): CaseShape | null {
   return useMemo(() => {
     const footprints: Pt[][] = [];
     for (const { key, shiftX, shiftY } of placed.keys) {
@@ -96,22 +96,22 @@ export function useCaseShape({ placed, PITCH, inset, caseThickness, showCase }: 
 
     // Hulls arrive in KLE units; the SVG is in px relative to the case box's
     // top-left, so scale by the pitch and shift past the plate margin and bezel.
-    const origin = inset + caseThickness;
+    const origin = plateMargin + caseThickness;
     const toPx = (hull: Pt[]): Pt[] =>
       hull.map(([x, y]) => [x * PITCH + origin, y * PITCH + origin] as Pt);
 
     return {
-      width: placed.width * PITCH + inset + caseThickness * 2,
-      height: placed.height * PITCH + inset + caseThickness * 2,
+      width: placed.width * PITCH + plateMargin + caseThickness * 2,
+      height: placed.height * PITCH + plateMargin + caseThickness * 2,
       clusters: hulls.map((hull) => {
         const px = toPx(hull);
         return {
           casePath: showCase ? outlinePath(offsetOutline(px, origin, ARC_SEGMENTS)) : "",
-          platePath: outlinePath(offsetOutline(px, inset, ARC_SEGMENTS)),
+          platePath: outlinePath(offsetOutline(px, plateMargin, ARC_SEGMENTS)),
         };
       }),
     };
-  }, [placed, PITCH, inset, caseThickness, showCase]);
+  }, [placed, PITCH, plateMargin, caseThickness, showCase]);
 }
 
 /**
