@@ -226,7 +226,14 @@ export function KeyboardLayoutEditor({
           width: plateWidth,
           height: plateHeight,
           background: caseShape || wireframe ? "transparent" : plateColorFinal,
-          border: !caseShape && wireframe ? `1.5px solid ${plateColorFinal}` : undefined,
+          // `box-shadow` instead of `border`: a real border sits inside the box
+          // model, so the absolutely-positioned `.key`/`.encoder` children below
+          // (which anchor to this container's *padding* box, not its border box)
+          // would shift inward by the border width — shrinking the right/bottom
+          // margin and growing the left/top one by that same amount, since the
+          // plate has `padding: 0`. An inset shadow paints identically without
+          // participating in the box model at all.
+          boxShadow: !caseShape && wireframe ? `inset 0 0 0 1.5px ${plateColorFinal}` : undefined,
           borderRadius: caseShape ? 0 : innerRadius,
           // Shared 字体颜色: cascades to `.key`/`.key-icon` (both `color: inherit`).
           color: fontColorFinal,

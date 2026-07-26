@@ -1295,8 +1295,18 @@ textarea,
    previewAppearance context 的 wireframeLineColor，默认浅灰；KeyboardLayoutEditor
    的 `colorOverride`——如 NewHomePage 黑底米白线稿的 hero 区——会覆盖为同一个
    颜色）。CSS 里的 fallback 只是防御性的，两个调用点目前总会内联设置该变量。 */
+/* `box-shadow`, not `border`: `.key-part2` (ISO Enter's secondary rect) is an
+   absolutely-positioned child anchored to this cap's padding box, and the cap
+   has `padding: 0` — a real `border` would sit inside the box model and shift
+   `.key-part2` inward by the border width. `.key-part2` has no descendants of
+   its own, so it keeps a plain `border` (set explicitly below, since it can no
+   longer inherit one from `.key`). */
 .keyboard-layout-wireframe .key {
   background: transparent;
+  box-shadow: inset 0 0 0 1px var(--wireframe-line-color, var(--wireframe-line-color-default));
+}
+
+.keyboard-layout-wireframe .key-part2 {
   border: 1px solid var(--wireframe-line-color, var(--wireframe-line-color-default));
 }
 

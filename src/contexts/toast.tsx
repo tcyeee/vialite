@@ -1,5 +1,5 @@
 // Global notification surface: any component can call useToast().showToast(...) to
-// pop a daisyUI alert into the top-right toast stack, instead of each panel
+// pop a daisyUI alert into the top-center toast stack, instead of each panel
 // rendering its own inline <p className="error">.
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
@@ -53,13 +53,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="toast toast-top toast-end top-4 z-50">
+      <div className="toast toast-top toast-center top-4 z-50">
         {toasts.map((toast) => (
-          <div key={toast.id} className={ALERT_CLASS[toast.kind]}>
-            <span>{toast.message}</span>
+          <div key={toast.id} className={`${ALERT_CLASS[toast.kind]} w-80`}>
+            <span className="min-w-0 break-words">{toast.message}</span>
             <button
               type="button"
-              className="btn btn-ghost btn-xs btn-circle"
+              className="btn btn-ghost btn-xs btn-circle justify-self-end"
               aria-label="dismiss"
               onClick={() => dismiss(toast.id)}
             >

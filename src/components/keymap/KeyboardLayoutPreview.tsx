@@ -437,7 +437,14 @@ export function KeyboardLayoutPreview({
           width: plateWidth,
           height: plateHeight,
           background: caseShape || wireframe ? "transparent" : plateColor,
-          border: !caseShape && wireframe ? `1.5px solid ${plateColor}` : undefined,
+          // `box-shadow` instead of `border` — see the identical comment in
+          // KeyboardLayoutEditor.tsx: a real border on this padding:0 container
+          // shifts every absolutely-positioned `.key`/`.encoder` child inward by
+          // the border width (they anchor to the padding box, not the border
+          // box), compressing the right/bottom margin and inflating the
+          // left/top one. An inset shadow paints the same outline without
+          // touching the box model.
+          boxShadow: !caseShape && wireframe ? `inset 0 0 0 1.5px ${plateColor}` : undefined,
           borderRadius: caseShape ? 0 : innerRadius,
           // Display-only by default; the caps only need to receive events when
           // there's a right-click menu to open.
