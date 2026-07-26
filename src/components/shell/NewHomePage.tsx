@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n, type Lang } from "../../contexts/i18n.tsx";
 
-// Cycled by the translate button below — fixed en → zh → ja → fr order.
-const LANGS: Lang[] = ["en", "zh", "ja", "fr"];
+// Cycled by the translate button below — only toggles between en and zh; ja/fr
+// are reachable elsewhere (e.g. 网站配置) but not from this quick-toggle button.
+const LANGS: Lang[] = ["en", "zh"];
 const LANG_NATIVE_NAME: Record<Lang, string> = { en: "English", zh: "中文", ja: "日本語", fr: "Français" };
 import { useTheme } from "../../contexts/theme.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
@@ -207,14 +208,7 @@ export function NewHomePage({
               type="checkbox"
               className="theme-controller"
               checked={theme === "dark"}
-              onChange={(e) =>
-                // The raw checkbox sits at the swap grid cell's top-left corner
-                // (daisyUI's .swap doesn't stretch it to match the visible
-                // pill), so its own rect is off-center from what the user
-                // actually sees as "the button" — use the enclosing <label>
-                // (the real pill) as the ripple's origin instead.
-                setTheme(e.target.checked ? "dark" : "light", e.currentTarget.closest("label"))
-              }
+              onChange={(e) => setTheme(e.target.checked ? "dark" : "light", e.currentTarget)}
               aria-label={t("toggleTheme")}
             />
             <span className="swap-off inline-flex items-center gap-2">

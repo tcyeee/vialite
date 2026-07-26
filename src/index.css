@@ -799,17 +799,25 @@ textarea,
   box-shadow: none;
 }
 
-/* 键盘配色预览：键帽在左上暖光下做出立体感 —— 左上角暖色高光、右下角偏冷
-   阴影，边缘留 1px 模糊软化硬棱（自然光下的圆角键帽不会有刀切般的锐边），
-   再加一层顺光方向落向右下的投影让键帽从底板上"浮起"。仅作用于只读预览
-   （keyboard-layout-shaded），不影响上方可交互的真实键位布局。ISO-Enter
-   的副矩形与旋钮同样附上，保持整体观感统一。 */
+/* 键盘配色预览：键帽做出立体感 —— 左上角高光、右下角阴影，边缘留 1px 模糊
+   软化硬棱（自然光下的圆角键帽不会有刀切般的锐边），再加一层顺光方向落向
+   右下的投影让键帽从底板上"浮起"。ISO-Enter 的副矩形与旋钮同样附上，保持
+   整体观感统一。
+   高光/阴影用 color-mix() 从键帽自身颜色（`--key-bg`，由 KeyboardLayoutPreview/
+   KeyboardLayoutEditor 内联设置为该键的 paintedHex）调深浅得到，而不是固定的
+   白/灰叠加层 —— 否则染色键帽（如绿色）会顶着一圈与自身色相无关的白边，观感
+   违和。未上色的键落回默认底色（与 `.keyboard-layout .key` 的 background 一致）
+   作为 mix 的基色，高光/阴影因此呈中性灰阶，不再是原来偏暖/偏冷的色调；投射
+   阴影（顺光方向落下的那层）保持中性深色不变，因为它落在底板上而非键帽本身，
+   不该跟随键帽颜色。 */
 .keyboard-layout-shaded .key,
 .keyboard-layout-shaded .key-part2,
 .keyboard-layout-shaded .encoder {
   box-shadow:
-    inset 1.5px 1.5px 1px light-dark(rgba(255, 250, 240, 0.85), rgba(255, 250, 240, 0.16)),
-    inset -1.5px -1.5px 1px light-dark(rgba(40, 45, 60, 0.16), rgba(0, 0, 0, 0.42)),
+    inset 1.5px 1.5px 1px
+      color-mix(in oklch, var(--key-bg, light-dark(#f2f2f2, #3a3a3a)) 65%, white),
+    inset -1.5px -1.5px 1px
+      color-mix(in oklch, var(--key-bg, light-dark(#f2f2f2, #3a3a3a)) 75%, black),
     1px 2px 3px light-dark(rgba(30, 35, 50, 0.2), rgba(0, 0, 0, 0.5));
 }
 
@@ -1343,6 +1351,13 @@ textarea,
 .keyboard-layout-wireframe .key-dual-hold {
   background: transparent;
   border-color: var(--wireframe-line-color, var(--wireframe-line-color-default));
+}
+
+/* 浮雕(relief) 风格下 dual-role hold band 去掉灰色背景，只保留描边——键帽本身
+   已经靠 .keyboard-layout-shaded .key 的内嵌高光/阴影表达立体感，hold band 再叠
+   一层灰底反而显得多余厚重。 */
+.keyboard-layout-shaded .key-dual-hold {
+  background: transparent;
 }
 
 .keyboard-layout-wireframe .key:hover,

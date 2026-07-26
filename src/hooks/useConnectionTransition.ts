@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n, type MessageKey } from "../contexts/i18n.tsx";
-import { useToast } from "../contexts/toast.tsx";
 import { track } from "../lib/analytics.ts";
 import { debugWarn } from "../lib/debug.ts";
 import { Keyboard, probeVial } from "../protocol/keyboard.ts";
@@ -74,7 +73,6 @@ interface UseConnectionTransitionOptions {
  */
 export function useConnectionTransition({ onAttached, onDetached }: UseConnectionTransitionOptions = {}) {
   const { t } = useI18n();
-  const { showToast } = useToast();
   // Starts "reconnecting" (not "idle") so the very first render — before the
   // auto-connect effect below has had a chance to check for an
   // already-authorized device — doesn't flash the full WaitingForConnection
@@ -161,9 +159,8 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
       if (withTransition) {
         setTransition("zoom");
       }
-      showToast(t("deviceConnected", { name: transport.productName }), "success");
     },
-    [teardown, onAttached, t, showToast],
+    [teardown, onAttached],
   );
 
   const handleConnect = useCallback(async () => {
@@ -300,9 +297,8 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
       setStatus("idle");
       onDetached?.();
       setTransition("none");
-      showToast(t(reason === "lost" ? "keyboardDisconnected" : "deviceDisconnected"), "warning");
     },
-    [teardown, onDetached, t, showToast],
+    [teardown, onDetached],
   );
 
   const handleDisconnect = useCallback(() => {
