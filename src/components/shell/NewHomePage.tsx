@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { useI18n } from "../../contexts/i18n.tsx";
+import { useI18n, type Lang } from "../../contexts/i18n.tsx";
+
+// Cycled by the translate button below — fixed en → zh → ja → fr order.
+const LANGS: Lang[] = ["en", "zh", "ja", "fr"];
+const LANG_NATIVE_NAME: Record<Lang, string> = { en: "English", zh: "中文", ja: "日本語", fr: "Français" };
 import { useTheme } from "../../contexts/theme.tsx";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import { KeyboardLayoutEditor } from "../keymap/layout/KeyboardLayoutEditor.tsx";
@@ -187,13 +191,12 @@ export function NewHomePage({
           </button>
           <button
             type="button"
-            className="btn btn-sm btn-outline rounded-full border-black/40 text-black hover:border-black hover:bg-black hover:text-white dark:border-white/40 dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
-            style={{ width: 116 }}
-            onClick={() => setLang(lang === "zh" ? "en" : "zh")}
+            className="btn btn-sm btn-outline min-w-[7.25rem] rounded-full border-black/40 text-black hover:border-black hover:bg-black hover:text-white dark:border-white/40 dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+            onClick={() => setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length])}
             title={t("toggleLanguage")}
           >
             <Icon icon="mdi:translate" className="h-4 w-4" />
-            {lang === "zh" ? "中文" : "English"}
+            {LANG_NATIVE_NAME[lang]}
           </button>
           <label
             className="btn btn-sm btn-outline swap swap-rotate rounded-full border-black/40 text-black hover:border-black hover:bg-black hover:text-white dark:border-white/40 dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
@@ -204,7 +207,14 @@ export function NewHomePage({
               type="checkbox"
               className="theme-controller"
               checked={theme === "dark"}
-              onChange={(e) => setTheme(e.target.checked ? "dark" : "light", e.currentTarget)}
+              onChange={(e) =>
+                // The raw checkbox sits at the swap grid cell's top-left corner
+                // (daisyUI's .swap doesn't stretch it to match the visible
+                // pill), so its own rect is off-center from what the user
+                // actually sees as "the button" — use the enclosing <label>
+                // (the real pill) as the ripple's origin instead.
+                setTheme(e.target.checked ? "dark" : "light", e.currentTarget.closest("label"))
+              }
               aria-label={t("toggleTheme")}
             />
             <span className="swap-off inline-flex items-center gap-2">

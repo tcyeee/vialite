@@ -74,8 +74,13 @@ export const RGB_EFFECTS_IGNORING_COLOR = new Set([
 
 const BY_ID = new Map(VIALRGB_EFFECTS.map((e) => [e.id, e]));
 
-/** Display name for an effect id, falling back to a bare id for unknown effects. */
-export function rgbEffectName(id: number, lang: "en" | "zh"): string {
+/**
+ * Display name for an effect id, falling back to a bare id for unknown effects.
+ * This table only carries en/zh names (see the file header); ja/fr fall back
+ * to the English name rather than gaining a translated row here.
+ */
+export function rgbEffectName(id: number, lang: "en" | "zh" | "ja" | "fr"): string {
   const effect = BY_ID.get(id);
-  return effect ? effect[lang] : `Effect ${id}`;
+  if (!effect) return `Effect ${id}`;
+  return lang === "zh" ? effect.zh : effect.en;
 }

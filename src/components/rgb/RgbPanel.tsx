@@ -185,7 +185,7 @@ export function RgbPanel({ keyboard }: Props) {
             >
               {effects.map((effect) => (
                 <option key={effect.id} value={effect.id}>
-                  {effect[lang]}
+                  {rgbEffectName(effect.id, lang)}
                 </option>
               ))}
             </select>

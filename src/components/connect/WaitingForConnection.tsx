@@ -1,10 +1,13 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@iconify/react";
-import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
+import { useI18n, type Lang, type MessageKey } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
 import { getSupportStatus, getBrowserInfo, type SupportStatus } from "../../lib/browserSupport.ts";
 import { DebugLogToggle } from "../common/DebugLogToggle.tsx";
 import type { ConnectionStatus } from "./DeviceConnect.tsx";
+
+// Cycled by the translate button below — fixed en → zh → ja → fr order.
+const LANGS: Lang[] = ["en", "zh", "ja", "fr"];
 
 // The banner shown for each way the browser can't do WebHID; `supported` never
 // renders one. Keyed so the text re-translates live on a language switch.
@@ -152,7 +155,7 @@ export function WaitingForConnection({
         <button
           type="button"
           className="flex h-12 w-12 items-center justify-center rounded-full border border-brand-outline/40 bg-white/60 text-brand-on-surface backdrop-blur-md transition hover:bg-white/80 dark:bg-black/40 dark:hover:bg-black/60"
-          onClick={() => setLang(lang === "zh" ? "en" : "zh")}
+          onClick={() => setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length])}
           aria-label={t("toggleLanguage")}
           title={t("toggleLanguage")}
         >

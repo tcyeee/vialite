@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import { useI18n } from "../../../contexts/i18n.tsx";
+import { useI18n, type Lang } from "../../../contexts/i18n.tsx";
 import { useTheme } from "../../../contexts/theme.tsx";
 import { DebugLogToggle } from "../../common/DebugLogToggle.tsx";
 import { SettingsRow } from "../../qmk/QmkSettingsPanel.tsx";
@@ -64,13 +64,15 @@ export function SiteSettingsPanel() {
             description={t("languageDesc")}
             control={
               <select
-                className="select select-sm w-32"
+                className="select select-sm w-36"
                 value={lang}
-                onChange={(e) => setLang(e.target.value as "en" | "zh")}
+                onChange={(e) => setLang(e.target.value as Lang)}
                 aria-label={t("languageTitle")}
               >
                 <option value="zh">中文</option>
                 <option value="en">English</option>
+                <option value="ja">日本語</option>
+                <option value="fr">Français</option>
               </select>
             }
           />

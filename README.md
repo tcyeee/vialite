@@ -33,11 +33,11 @@ Each item below is one page in the app's sidebar, in the order they appear:
 | **Keyboard Test** | Unlock-and-poll matrix diagnostics for checking every switch. *(Requires device support.)* |
 | **QMK Settings** | Grave-escape, magic, one-shot, tap-hold, mouse-keys and combo timing, with a table of contents in the sidebar that stays in sync with page scroll. |
 | **3D Preview** *(Beta)* | Renders your current layout on a 3D keyboard model. |
-| **Website Settings** | Language (中文 / English), light / dark theme, debug logging, and a cache reset. Preferences persist to `localStorage`. |
+| **Website Settings** | Language (中文 / English / 日本語 / Français), light / dark theme, debug logging, and a cache reset. Preferences persist to `localStorage`. |
 
 Pages that depend on device capabilities (Macros, Tap Dance, Combos, Keyboard Test) appear greyed out when the connected keyboard doesn't support them. RGB Lighting stays reachable on every board and explains in-page when the firmware has no VialRGB lighting.
 
-The UI is fully bilingual (hand-rolled zh/en dictionary, no i18n library); keycap legends stay in English to match `vial-gui`.
+The UI supports English, Simplified Chinese, Japanese, and French (hand-rolled dictionary, no i18n library); keycap legends stay in English to match `vial-gui`.
 
 ## Requirements
 

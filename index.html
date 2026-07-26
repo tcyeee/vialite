@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- SEO — default (English) set; i18n.tsx swaps title/description/og:locale
-         at runtime for zh. hreflang links advertise both language variants. -->
+         at runtime for zh/ja/fr. hreflang links advertise all language variants. -->
     <title>Vialite — Web Configurator for Vial Keyboards (WebHID, no install)</title>
     <meta
       name="description"
@@ -20,6 +20,8 @@
     <link rel="canonical" href="https://vialite.viii.me/" />
     <link rel="alternate" hreflang="en" href="https://vialite.viii.me/?lang=en" />
     <link rel="alternate" hreflang="zh-Hans" href="https://vialite.viii.me/?lang=zh" />
+    <link rel="alternate" hreflang="ja" href="https://vialite.viii.me/?lang=ja" />
+    <link rel="alternate" hreflang="fr" href="https://vialite.viii.me/?lang=fr" />
     <link rel="alternate" hreflang="x-default" href="https://vialite.viii.me/" />
 
     <!-- Open Graph -->
@@ -28,6 +30,8 @@
     <meta property="og:url" content="https://vialite.viii.me/" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="zh_CN" />
+    <meta property="og:locale:alternate" content="ja_JP" />
+    <meta property="og:locale:alternate" content="fr_FR" />
     <meta property="og:title" content="Vialite — Web Configurator for Vial Keyboards (WebHID, no install)" />
     <meta
       property="og:description"
@@ -61,7 +65,7 @@
         "operatingSystem": "Chrome, Edge (WebHID)",
         "browserRequirements": "Requires a WebHID-capable browser (Chrome or Edge)",
         "description": "A native web configurator for Vial-protocol keyboards, talking to the keyboard directly over WebHID — no Qt, no WebAssembly, no driver install.",
-        "inLanguage": ["en", "zh-Hans"],
+        "inLanguage": ["en", "zh-Hans", "ja", "fr"],
         "isAccessibleForFree": true,
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
         "license": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
@@ -80,7 +84,7 @@
           "Keyboard matrix tester for switch diagnostics",
           "3D preview of the current layout",
           "Keycap appearance customization and PNG export of any or all layers",
-          "Bilingual interface (English and Simplified Chinese)"
+          "Multilingual interface (English, Simplified Chinese, Japanese, French)"
         ]
       }
     </script>

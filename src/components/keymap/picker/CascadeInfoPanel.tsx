@@ -44,8 +44,7 @@ export function CascadeInfoPanel({
   catDesc,
   keyboard,
 }: Props) {
-  const { t, lang } = useI18n();
-  const zh = lang === "zh";
+  const { t } = useI18n();
   const macros = keyboard?.macros ?? [];
   const activeMacroIdx = macroIndex(infoEntry.qmkId);
   const activeTapDanceIdx = tapDanceIndex(infoEntry.qmkId);
@@ -87,13 +86,13 @@ export function CascadeInfoPanel({
       <div className="flex flex-col gap-3">
         {/* 1. Keycode encoding — always first. */}
         <div>
-          <div className="mb-1 text-xs opacity-50">{zh ? "按键编码" : "Keycode"}</div>
+          <div className="mb-1 text-xs opacity-50">{t("cascadeKeycodeLabel")}</div>
           <div className="font-mono text-sm break-all">{infoEntry.qmkId}</div>
         </div>
         {/* 2. Per-key description. */}
         {keyDesc && (
           <div>
-            <div className="mb-1 text-xs opacity-50">{zh ? "按键说明" : "Description"}</div>
+            <div className="mb-1 text-xs opacity-50">{t("cascadeDescriptionLabel")}</div>
             <div className="text-xs leading-relaxed opacity-80">{keyDesc}</div>
           </div>
         )}
@@ -146,7 +145,7 @@ export function CascadeInfoPanel({
         {/* 4. Other info: the category-level blurb. */}
         {catDesc && (
           <div>
-            <div className="mb-1 text-xs opacity-50">{zh ? "分类说明" : "Category"}</div>
+            <div className="mb-1 text-xs opacity-50">{t("cascadeCategoryLabel")}</div>
             <div className="text-xs leading-relaxed opacity-80">{catDesc}</div>
           </div>
         )}

@@ -119,7 +119,7 @@ export function KeycodeCascadeSelector({
   entryFilter,
 }: Props) {
   const menuMode = anchor !== null;
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [activeCat, setActiveCat] = useState<string | null>(null);
   // The keycode the info panel describes (hovered/seeded in the right column).
@@ -234,9 +234,8 @@ export function KeycodeCascadeSelector({
     };
   }, [open]);
 
-  const zh = lang === "zh";
-  const heading = zh ? "按键选择器（级联）" : "Keycode Selector (cascade)";
-  const placeholder = placeholderProp ?? (zh ? "选择按键" : "Pick a keycode");
+  const heading = t("cascadeSelectorHeading");
+  const placeholder = placeholderProp ?? t("cascadeSelectorPlaceholder");
 
   const catLabel = (name: string) => (CATEGORY_KEYS[name] ? t(CATEGORY_KEYS[name]) : name);
   // The two "clear" keycodes (KC_NO / KC_TRNS) get plain translated labels
@@ -436,9 +435,7 @@ export function KeycodeCascadeSelector({
   // Sub-column item label: a layer index for layer groups, else the key's label.
   const subItemLabel = (sub: { entry: KeycodeDef; arg?: string }): string =>
     sub.arg !== undefined
-      ? zh
-        ? `第 ${sub.arg} 层`
-        : `Layer ${sub.arg}`
+      ? t("cascadeSubLayerN", { n: sub.arg })
       : entryLabel(sub.entry).split("\n").join(" ");
 
   // The popover is always `fixed`, anchored at the click point (menu mode) or
