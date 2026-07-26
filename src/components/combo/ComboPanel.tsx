@@ -45,6 +45,11 @@ interface PreviewCardProps {
   onCloseEdit?: () => void;
   /** Discard edits (the "cancel" button) — restores the entry to its value from when editing began. */
   onCancel?: () => void;
+  /** True while a page-level View Transition (e.g. App.tsx's `navigateSlide` push) is in flight and
+   *  this card isn't the one it's meant to morph — drops `cbcard-${index}` for that window so the
+   *  card isn't pulled out of the page's own root snapshot into its own static cross-fade group.
+   *  Same workaround as NewHomePage's `suppressHeroName`. */
+  suppressCardName?: boolean;
 }
 
 /**
@@ -64,6 +69,7 @@ function ComboPreviewCard({
   onEdit,
   onCloseEdit,
   onCancel,
+  suppressCardName,
 }: PreviewCardProps) {
   const { t } = useI18n();
   const flipped = !!editing;
@@ -122,7 +128,10 @@ function ComboPreviewCard({
   return (
     <div
       className="group/card relative my-2 w-80"
-      style={{ perspective: "1200px", viewTransitionName: `cbcard-${index}` }}
+      style={{
+        perspective: "1200px",
+        viewTransitionName: suppressCardName ? undefined : `cbcard-${index}`,
+      }}
     >
       {editable && !flipped && (
         <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:-translate-y-2.5 group-hover/card:scale-[1.6] group-hover/card:opacity-100 dark:bg-neutral-700">
@@ -315,11 +324,13 @@ interface Props {
   keyboard: Keyboard;
   /** Called after an entry was written to the device, so the parent re-renders. */
   onChange: () => void;
+  /** Forwarded to every card — see `PreviewCardProps.suppressCardName`. */
+  suppressCardNames?: boolean;
 }
 
 const isUsed = (e: ComboEntry) => e.output !== "KC_NO" || e.keys.some((k) => k !== "KC_NO");
 
-export function ComboPanel({ keyboard, onChange }: Props) {
+export function ComboPanel({ keyboard, onChange, suppressCardNames }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
   /**
@@ -537,6 +548,7 @@ export function ComboPanel({ keyboard, onChange }: Props) {
               onEdit={() => handleEdit(i)}
               onCloseEdit={handleCloseEdit}
               onCancel={handleCancel}
+              suppressCardName={suppressCardNames}
             />
           ))
         )}

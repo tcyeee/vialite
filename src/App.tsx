@@ -16,7 +16,7 @@ import { useAutoFitZoom } from "./components/keymap/autoFitSize.ts";
 import { placeLayout } from "./components/keymap/layoutGeometry.ts";
 import { CornerCloseButton } from "./components/common/CornerCloseButton.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
-import { startViewTransition } from "./components/common/viewTransition.ts";
+import { KEYBOARD_HERO_NAME, startViewTransition } from "./components/common/viewTransition.ts";
 import {
   ALWAYS_ENABLED_ATTR,
   QuickConfigPanel,
@@ -164,10 +164,19 @@ function App() {
   const [layer, setLayer] = useState(0);
   const [mode, setMode] = useState<PageMode>("newHome");
   // True for the brief window a browser View Transition is morphing the hero
-  // keyboard from NewHomePage's preview box into the 个性化 page's board (see
-  // handlePersonalize below) — passed to both ends so each tags its board
-  // wrapper with the same KEYBOARD_HERO_NAME at the right moment.
+  // keyboard from NewHomePage's preview box into the 个性化 or 键盘配置 page's
+  // board (see handlePersonalize/handleGoToKeymap below) — passed to both ends
+  // so each tags its board wrapper with the same KEYBOARD_HERO_NAME at the
+  // right moment.
   const [heroNavAnimating, setHeroNavAnimating] = useState(false);
+  // True for the duration of a "push" page transition (see navigateSlide)
+  // that doesn't involve the hero morph at all (网站信息 and every other menu
+  // page). NewHomePage's hero keyboard normally tags itself with
+  // KEYBOARD_HERO_NAME at all times so it survives the theme-reveal ripple —
+  // but during a push transition that would pull it into its own separately
+  // animated view-transition group instead of sliding along with the rest of
+  // the page, so it's suppressed for that window instead.
+  const [heroNameSuppressed, setHeroNameSuppressed] = useState(false);
   const [preview3dParams, setPreview3dParams] = useState<Preview3DParams>(loadPreview3DParams);
   const [selected, setSelected] = useState<Selected | null>(null);
   // 点击键盘预览与按键配置区(快捷配置 / 双功能编辑器)之外的任何地方都取消选中,
@@ -216,6 +225,10 @@ function App() {
   // Target mode of a navigation attempt that got intercepted by qmkLeaveRequested; applied once
   // QmkSettingsPanel reports how the user resolved the "unsaved changes" dialog.
   const qmkPendingNavigationRef = useRef<PageMode | null>(null);
+  // The shared shell's CornerCloseButton (see below): read as the View
+  // Transition's origin element when leaving the keymap page, same pattern as
+  // StyleConfig.tsx's own closeBtnRef.
+  const cornerCloseRef = useRef<HTMLButtonElement>(null);
   // Guards handleConnect and the auto-connect effect against running
   // concurrently — e.g. a manual click landing in the async gap between the
   // auto-connect effect finding a device and it calling setStatus("connecting").
@@ -451,11 +464,28 @@ function App() {
     [navigate],
   );
 
-  // The 个性化 fullscreen page's corner "back" button (see StyleConfig.tsx's
-  // `onBack`): reverses handlePersonalize's hero transition, landing back on
-  // NewHomePage instead of collapsing to KeyboardColorPanel's compact preview
-  // underneath. `heroNavAnimating` is direction-agnostic — whichever of
-  // {NewHomePage, KeyboardColorPanel} is mounted when it flips true gets
+  // NewHomePage's "键盘配置" menu entry: same hero-morph treatment as
+  // handlePersonalize, just landing on "keymap" instead of "color".
+  const handleGoToKeymap = useCallback(
+    (origin: Element | null) => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!origin || reduceMotion) {
+        navigate("keymap");
+        return;
+      }
+      flushSync(() => setHeroNavAnimating(true));
+      const transition = startViewTransition(() => flushSync(() => navigate("keymap")));
+      void transition.finished.finally(() => setHeroNavAnimating(false));
+    },
+    [navigate],
+  );
+
+  // The 个性化/键盘配置 fullscreen page's corner "back" button (see
+  // StyleConfig.tsx's `onBack`, and the shared shell's CornerCloseButton
+  // below): reverses handlePersonalize's/handleGoToKeymap's hero transition,
+  // landing back on NewHomePage instead of collapsing in place.
+  // `heroNavAnimating` is direction-agnostic — whichever of {NewHomePage,
+  // KeyboardColorPanel, the keymap board} is mounted when it flips true gets
   // tagged with KEYBOARD_HERO_NAME, so reusing it here for the reverse trip
   // just works.
   const handleBackToHome = useCallback(
@@ -468,6 +498,29 @@ function App() {
       flushSync(() => setHeroNavAnimating(true));
       const transition = startViewTransition(() => flushSync(() => navigate("newHome")));
       void transition.finished.finally(() => setHeroNavAnimating(false));
+    },
+    [navigate],
+  );
+
+  // Every other page reachable from NewHomePage's menu (网站信息, matrix, macro,
+  // tapdance, combo, rgb, advanced, preview3d): no shared hero element to morph,
+  // so instead the whole page slides as one unit — see the `data-page-anim`
+  // rules in index.css. `direction` picks which way: "push" when navigating
+  // away from NewHomePage, "push-back" when returning to it (the exact mirror).
+  const navigateSlide = useCallback(
+    (next: PageMode, direction: "push" | "push-back") => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduceMotion) {
+        navigate(next);
+        return;
+      }
+      flushSync(() => setHeroNameSuppressed(true));
+      document.documentElement.dataset.pageAnim = direction;
+      const transition = startViewTransition(() => flushSync(() => navigate(next)));
+      void transition.finished.finally(() => {
+        delete document.documentElement.dataset.pageAnim;
+        setHeroNameSuppressed(false);
+      });
     },
     [navigate],
   );
@@ -789,19 +842,37 @@ function App() {
               layer={layer}
               productName={productName}
               onDisconnect={handleDisconnect}
-              onNavigate={navigate}
+              onNavigatePush={(next) => navigateSlide(next, "push")}
+              onGoToKeymap={handleGoToKeymap}
               onPersonalize={handlePersonalize}
+              suppressHeroName={heroNameSuppressed}
             />
           ) : mode === "siteConfig" ? (
-            <SiteConfigPage onExit={() => navigate("newHome")} />
+            <SiteConfigPage onExit={() => navigateSlide("newHome", "push-back")} />
           ) : (
             <>
           {/* Shared page shell for every mode besides 首页/网站配置: just a
               CornerCloseButton back to NewHomePage. No top Navbar, no left
               sidebar — NewHomePage's own menu (and the deep links off
               individual panels, e.g. QuickConfigPanel's "详细设置") are the
-              only way into these pages. */}
-          <CornerCloseButton onClick={() => navigate("newHome")} label={t("navBackToNewHome")} active />
+              only way into these pages. 键盘配置 reverses its hero-morph entry;
+              个性化 handles its own animated back internally (this button is a
+              plain fallback for its non-fullscreen view); every other mode
+              gets the mirrored "push-back" slide. */}
+          <CornerCloseButton
+            ref={cornerCloseRef}
+            onClick={() => {
+              if (mode === "keymap") {
+                handleBackToHome(cornerCloseRef.current);
+              } else if (mode === "color") {
+                navigate("newHome");
+              } else {
+                navigateSlide("newHome", "push-back");
+              }
+            }}
+            label={t("navBackToNewHome")}
+            active
+          />
       <div className="p-4 md:p-6">
         <div className="mx-auto max-w-[1600px]">
             <main className="min-w-0 p-6 md:p-8">
@@ -882,34 +953,46 @@ function App() {
                     className="sticky top-0 z-20 -mx-4 -mb-6 -mt-2 overflow-x-auto bg-[#E9E6E6] px-4 pb-6 pt-2 dark:bg-brand-background"
                   >
                     <div key={layer} className="tab-panel-appear w-full">
-                      <KeyboardLayoutEditor
-                        keyboard={keyboard}
-                        layer={layer}
-                        zoomOverride={autoFitZoom}
-                        selected={selected}
-                        onKeySelect={(row, col, part) => {
-                          // Clicking the hold band selects that sub-part, which
-                          // swaps the quick-config grid below for the dedicated
-                          // dual-role editor; the top / whole cap toggles selection
-                          // for the normal quick-config + picker flow.
-                          if (part === "hold") {
-                            setSelected({ kind: "key", row, col, part: "hold" });
-                            return;
-                          }
-                          setSelected((prev) =>
-                            prev?.kind === "key" &&
-                            prev.row === row &&
-                            prev.col === col &&
-                            prev.part === part
-                              ? null
-                              : { kind: "key", row, col, ...(part ? { part } : {}) },
-                          );
+                      {/* Nested (not on the tab-panel-appear div itself) so this
+                          element's own view-transition-group morph animation
+                          doesn't fight the mount keyframe above it — only tagged
+                          with KEYBOARD_HERO_NAME for the brief window
+                          handleGoToKeymap/handleBackToHome are morphing it
+                          to/from NewHomePage's hero preview. */}
+                      <div
+                        style={{
+                          viewTransitionName: heroNavAnimating ? KEYBOARD_HERO_NAME : undefined,
                         }}
-                        onEncoderSelect={(index, direction) =>
-                          setSelected({ kind: "encoder", index, direction })
-                        }
-                        onContextAssign={handleContextAssign}
-                      />
+                      >
+                        <KeyboardLayoutEditor
+                          keyboard={keyboard}
+                          layer={layer}
+                          zoomOverride={autoFitZoom}
+                          selected={selected}
+                          onKeySelect={(row, col, part) => {
+                            // Clicking the hold band selects that sub-part, which
+                            // swaps the quick-config grid below for the dedicated
+                            // dual-role editor; the top / whole cap toggles selection
+                            // for the normal quick-config + picker flow.
+                            if (part === "hold") {
+                              setSelected({ kind: "key", row, col, part: "hold" });
+                              return;
+                            }
+                            setSelected((prev) =>
+                              prev?.kind === "key" &&
+                              prev.row === row &&
+                              prev.col === col &&
+                              prev.part === part
+                                ? null
+                                : { kind: "key", row, col, ...(part ? { part } : {}) },
+                            );
+                          }}
+                          onEncoderSelect={(index, direction) =>
+                            setSelected({ kind: "encoder", index, direction })
+                          }
+                          onContextAssign={handleContextAssign}
+                        />
+                      </div>
                     </div>
                   </div>
                   {/* 按键配置区:与上面的预览一样标记出来,点击这里不会清空选中态
@@ -998,10 +1081,18 @@ function App() {
                 <MacroPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
               )}
               {keyboard && mode === "tapdance" && (
-                <TapDancePanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+                <TapDancePanel
+                  keyboard={keyboard}
+                  onChange={() => forceUpdate((r) => r + 1)}
+                  suppressCardNames={heroNameSuppressed}
+                />
               )}
               {keyboard && mode === "combo" && (
-                <ComboPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
+                <ComboPanel
+                  keyboard={keyboard}
+                  onChange={() => forceUpdate((r) => r + 1)}
+                  suppressCardNames={heroNameSuppressed}
+                />
               )}
               {keyboard && mode === "rgb" && (
                 <RgbPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />

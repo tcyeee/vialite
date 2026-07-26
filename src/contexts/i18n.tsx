@@ -470,6 +470,7 @@ const MESSAGES = {
   navExitNewHome: { en: "Exit New Home", zh: "退出新版首页" },
   navBackToNewHome: { en: "Back to New Home", zh: "返回新版首页" },
   navExitSiteConfig: { en: "Exit Website Settings", zh: "退出网站配置" },
+  navSiteInfo: { en: "About", zh: "网站信息" },
   comingSoon: { en: "Coming soon", zh: "即将推出" },
 
   // Shared

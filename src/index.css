@@ -210,6 +210,65 @@ html[data-fsp-anim="reveal"]::view-transition-new(root) {
   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* "Push" page transition — NewHomePage's 网站信息 button and every other page
+   reachable from its right-hand menu (matrix/macro/tapdance/combo/rgb/advanced/
+   preview3d): the whole outgoing page and the whole incoming page translate as
+   one vertical sweep instead of cross-fading, reading as one page physically
+   shoving the other off-screen. `data-page-anim="push"` is entering (home
+   slides up and out, the target page slides up into place from below);
+   "push-back" returning to NewHomePage is the exact mirror (target page slides
+   down and out, home slides back down into place from above). Set by
+   navigateSlide in App.tsx. The default cross-fade is cancelled
+   (mix-blend-mode: normal, our own animation-name replaces the built-in
+   opacity one) so old/new tile the viewport cleanly with no ghosting where
+   they meet — see the theme-reveal comment above for why that override is
+   necessary. NewHomePage's hero keyboard preview drops its own
+   `keyboard-hero` view-transition-name for the duration of this transition
+   (see App.tsx's `heroNameSuppressed`), so it isn't pulled into its own
+   separately-animated group and rides along with root instead. */
+html[data-page-anim="push"]::view-transition-old(root),
+html[data-page-anim="push"]::view-transition-new(root),
+html[data-page-anim="push-back"]::view-transition-old(root),
+html[data-page-anim="push-back"]::view-transition-new(root) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  mix-blend-mode: normal;
+}
+
+html[data-page-anim="push"]::view-transition-old(root) {
+  animation-name: page-push-out-up;
+}
+html[data-page-anim="push"]::view-transition-new(root) {
+  animation-name: page-push-in-up;
+}
+html[data-page-anim="push-back"]::view-transition-old(root) {
+  animation-name: page-push-out-down;
+}
+html[data-page-anim="push-back"]::view-transition-new(root) {
+  animation-name: page-push-in-down;
+}
+
+@keyframes page-push-out-up {
+  to {
+    transform: translateY(-100%);
+  }
+}
+@keyframes page-push-in-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes page-push-out-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes page-push-in-down {
+  from {
+    transform: translateY(-100%);
+  }
+}
+
 body {
   margin: 0;
   font-family:

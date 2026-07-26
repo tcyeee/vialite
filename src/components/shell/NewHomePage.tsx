@@ -10,27 +10,29 @@ import { KEYBOARD_HERO_NAME } from "../common/viewTransition.ts";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { NAV_ITEMS } from "./navItems.ts";
 
+type PushablePageMode =
+  | "matrix"
+  | "macro"
+  | "tapdance"
+  | "combo"
+  | "rgb"
+  | "advanced"
+  | "preview3d"
+  | "siteConfig";
+
 interface Props {
   keyboard: Keyboard;
   layer: number;
   productName?: string;
   onDisconnect: () => void;
-  onNavigate: (
-    mode:
-      | "keymap"
-      | "matrix"
-      | "macro"
-      | "tapdance"
-      | "combo"
-      | "rgb"
-      | "color"
-      | "advanced"
-      | "preview3d"
-      | "newHome"
-      | "siteConfig",
-  ) => void;
+  /** Navigates to a page with no shared hero element — the whole page slides up/out as one unit (see `data-page-anim` in index.css). Used by every menu entry except 键盘配置/个性化, which morph the hero keyboard instead. */
+  onNavigatePush: (mode: PushablePageMode) => void;
+  /** Opens the 键盘配置 page via a hero View Transition, same mechanism as `onPersonalize` below. */
+  onGoToKeymap: (origin: Element) => void;
   /** Opens the 个性化 page via a hero View Transition; takes the clicked button so the morph has a concrete "from" element (mirrors `useFullscreenPreview`'s `origin` param). */
   onPersonalize: (origin: Element) => void;
+  /** True for the brief window a "push" page transition (see `onNavigatePush`) is in flight — the hero card drops its `keyboard-hero` view-transition-name for that window so it isn't pulled into its own separately-animated group and instead slides along with the rest of the page. */
+  suppressHeroName?: boolean;
 }
 
 /* 右侧竖排菜单的条目来源——直接取 navItems.ts 的 NAV_ITEMS,排除"个性化"
@@ -66,8 +68,10 @@ export function NewHomePage({
   layer,
   productName,
   onDisconnect,
-  onNavigate,
+  onNavigatePush,
+  onGoToKeymap,
   onPersonalize,
+  suppressHeroName,
 }: Props) {
   const { lang, setLang, t } = useI18n();
   const { theme, setTheme } = useTheme();
@@ -93,9 +97,13 @@ export function NewHomePage({
   const naturalWidth = boardNaturalWidth(keyboard, spacing, keycapWidth, caseThickness);
   const naturalHeight = boardNaturalHeight(keyboard, spacing, keycapWidth, caseThickness);
 
-  // 只按可视窗口的高度收缩键盘,宽度故意不参与——卡片本来就设计成比窗口宽,
-  // 多出来的部分本该探到窗口外面去(左侧裁切出"半张卡片"的效果),不是需要
-  // 塞进窗口的溢出。窗口宽度反而是由下面的 cardWidth 反过来决定的。
+  // 只按可视窗口的高度收缩键盘,宽度故意不参与——键盘可能非常宽,右侧对齐到
+  // 固定位置就够了,左侧能露出多少不重要,但绝不能被硬裁切:超出窗口的部分
+  // 单纯地探出到视口外面(靠下面 `windowNode` 不设 overflow-hidden,只由页面
+  // 最外层容器 [162行] 的 overflow-hidden 在真实视口边缘兜底),而不是被这个
+  // 内部窗口在版心中间裁出一道假边界。这样浏览器窗口放大到超过键盘自然宽度
+  // 两倍时(windowNode 的 clamp 上限就是 cardWidth),键盘会完整落入窗口,一整
+  // 块都能看到,不会有任何裁切。
   useEffect(() => {
     if (!windowNode) return;
     const measure = () => {
@@ -154,7 +162,8 @@ export function NewHomePage({
   }, []);
 
   // 卡片的真实总宽度(键盘 + 四边 padding)。窗口宽度用它当上限,这样宽屏下
-  // 窗口最多长到刚好露出整张卡片,不会露出卡片右边的空白背景。
+  // 窗口最多长到刚好露出整张卡片(不多不少,不会露出卡片右边的空白背景),也
+  // 正是这个上限保证了"窗口够宽时键盘完整可见"。
   const cardWidth = naturalWidth * heroZoom + HERO_PADDING_PX * 2;
   const windowMinWidth = Math.min(HERO_WINDOW_MIN_PX, cardWidth);
 
@@ -167,9 +176,9 @@ export function NewHomePage({
             type="button"
             className="inline-block text-center transition-colors hover:text-[#e2231b]"
             style={{ width: 78 }}
-            onClick={() => onNavigate("siteConfig")}
+            onClick={() => onNavigatePush("siteConfig")}
           >
-            网站信息
+            {t("navSiteInfo")}
           </button>
           <button
             type="button"
@@ -215,35 +224,45 @@ export function NewHomePage({
               button below it, keeping them visually attached to the box
               regardless of the transform. */}
           <div className="flex -translate-y-2 flex-col items-start gap-3 lg:justify-self-end">
-            {/* 可视窗口:固定/响应式尺寸,只负责裁切 + 右对齐卡片,自身没有背景。
-                宽度用 clamp 随视口变宽,上限是 cardWidth,所以宽屏最多刚好露出
-                整张卡片,不会露出卡片之外的空白。 */}
+            {/* 可视窗口:固定/响应式尺寸,只负责右对齐卡片,自身没有背景、也不
+                裁切(没有 overflow-hidden)——卡片比窗口宽时单纯地向左探出窗口
+                之外,真正的裁切边界是页面最外层容器(162 行)的 overflow-hidden,
+                也就是浏览器视口的实际边缘,不是这里画出来的一道假边界。宽度用
+                clamp 随视口变宽,上限是 cardWidth,所以宽屏下窗口最多刚好长到
+                完整包住整张卡片——这也是"窗口够宽时键盘完整可见"的来源。 */}
             <div
               ref={(node) => {
                 setWindowNode(node);
                 windowElRef.current = node;
               }}
-              className="relative flex h-[clamp(188px,40vw,300px)] shrink-0 items-center justify-end overflow-hidden rounded-r-3xl"
+              className="relative flex h-[clamp(188px,40vw,300px)] shrink-0 items-center justify-end"
               style={{ width: `clamp(${windowMinWidth}px, 32vw, ${cardWidth}px)` }}
             >
               {/* 卡片:键盘 + 四边等距 padding + 背景,尺寸完全由内容撑开(不强
-                  制和窗口同长宽比),多出窗口的部分自然探出左边,被上面的
-                  overflow-hidden 裁掉。 */}
-              {/* Always named (not just while morphing into 个性化) so the browser
-                  pulls this subtree out of the root snapshot on *every* view
-                  transition, including the theme-reveal ripple — snapshotting the
-                  full interactive KeyboardLayoutEditor as part of the whole-page capture
-                  was what made the ripple stutter partway through. Harmless when no
-                  transition is running, since view-transition-name only matters at
-                  capture time. See the `::view-transition-old/new(keyboard-hero)`
-                  override in index.css that makes this box swap instantly under
-                  `data-theme-anim="reveal"` instead of doing the default fade. */}
+                  制和窗口同长宽比),多出窗口的部分自然探出左边,靠外层容器的
+                  overflow-hidden 在视口边缘兜底,而不是被这个窗口本身裁掉。 */}
+              {/* Named by default (not just while morphing into 个性化/键盘配置) so
+                  the browser pulls this subtree out of the root snapshot on
+                  *every* view transition, including the theme-reveal ripple —
+                  snapshotting the full interactive KeyboardLayoutEditor as part
+                  of the whole-page capture was what made the ripple stutter
+                  partway through. Harmless when no transition is running, since
+                  view-transition-name only matters at capture time. See the
+                  `::view-transition-old/new(keyboard-hero)` override in
+                  index.css that makes this box swap instantly under
+                  `data-theme-anim="reveal"` instead of doing the default fade.
+                  The one exception is `suppressHeroName`: while a "push" page
+                  transition (网站信息 and the rest of the menu) is in flight
+                  this card has no counterpart to morph into, so it drops the
+                  name and rides along with the rest of the page instead of
+                  getting extracted into its own separately-animated group —
+                  see App.tsx's `heroNameSuppressed`. */}
               <div
                 ref={cardRef}
                 className="flex shrink-0 items-center justify-center transition-transform duration-150 ease-out"
                 style={{
                   padding: HERO_PADDING_PX,
-                  viewTransitionName: KEYBOARD_HERO_NAME,
+                  viewTransitionName: suppressHeroName ? undefined : KEYBOARD_HERO_NAME,
                 }}
                 onMouseEnter={() => setHeroHovered(true)}
                 onMouseLeave={() => setHeroHovered(false)}
@@ -314,13 +333,13 @@ export function NewHomePage({
                 <Icon icon="mdi:palette-outline" className="h-4 w-4" />
                 {t("navKeyboardColor")}
               </button>
-              {/* 键盘测试入口 — plain mode switch (no hero transition, MatrixTester
-                  has no board of its own to morph from). Only shown when the
+              {/* 键盘测试入口 — push transition (no hero morph, MatrixTester has
+                  no board of its own to morph from). Only shown when the
                   connected board actually exposes the matrix tester. */}
               {keyboard.supportsMatrixTester && (
                 <button
                   type="button"
-                  onClick={() => onNavigate("matrix")}
+                  onClick={() => onNavigatePush("matrix")}
                   className="btn btn-sm btn-outline gap-2 rounded-full border-black/40 text-black hover:border-black hover:bg-black hover:text-white dark:border-white/40 dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
                 >
                   <Icon icon="mdi:view-grid-outline" className="h-4 w-4" />
@@ -335,7 +354,13 @@ export function NewHomePage({
               <button
                 key={kind}
                 type="button"
-                onClick={() => onNavigate(itemMode)}
+                onClick={(e) =>
+                  // "键盘配置" (kind "home") morphs the hero keyboard like
+                  // 个性化 does; every other entry gets the push-slide instead.
+                  kind === "home"
+                    ? onGoToKeymap(e.currentTarget)
+                    : onNavigatePush(itemMode as PushablePageMode)
+                }
                 className="group flex items-center gap-2 whitespace-nowrap border-none bg-transparent text-5xl font-bold text-black/50 transition-all duration-300 ease-out hover:translate-x-8 hover:text-brand-secondary dark:text-white/50"
               >
                 {t(labelKey)}
