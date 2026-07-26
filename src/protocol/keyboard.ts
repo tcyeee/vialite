@@ -341,6 +341,26 @@ export class Keyboard {
   /** `${layer},${index},${direction}` -> qmk_id string (direction: 0 = CCW, 1 = CW) */
   private encoderLayout = new Map<string, string>();
 
+  private listeners = new Set<() => void>();
+  /**
+   * Bumped by {@link notify} after every state-mutating write. The value itself is
+   * meaningless — it exists only as a `useSyncExternalStore` snapshot for the React
+   * binding in `src/hooks/useKeyboardRevision.ts`, since this class mutates its
+   * fields in place rather than replacing them.
+   */
+  revision = 0;
+
+  /** Registers a listener to be called after any write lands; returns an unsubscribe fn. */
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private notify(): void {
+    this.revision++;
+    for (const listener of this.listeners) listener();
+  }
+
   constructor(transport: HidTransport) {
     this.transport = transport;
   }
@@ -408,6 +428,7 @@ export class Keyboard {
       this.qmkSettingsBaseline = new Map(this.qmkSettings);
       this.settingsBaselineCaptured = true;
     }
+    this.notify();
     debugLog("[vialite] Keyboard.reload() done");
   }
 
@@ -470,6 +491,7 @@ export class Keyboard {
     view.setUint16(4, kcDeserialize(qmkId), false);
     await this.transport.send(cmd, 20);
     this.layout.set(key, qmkId);
+    this.notify();
   }
 
   async setEncoder(layer: number, index: number, direction: 0 | 1, qmkId: string): Promise<void> {
@@ -485,6 +507,7 @@ export class Keyboard {
     view.setUint16(5, kcDeserialize(qmkId), false);
     await this.transport.send(cmd, 20);
     this.encoderLayout.set(key, qmkId);
+    this.notify();
   }
 
   async setTapDance(idx: number, entry: TapDanceEntry): Promise<void> {
@@ -506,6 +529,7 @@ export class Keyboard {
     view.setUint16(12, entry.tappingTerm, true);
     await this.transport.send(cmd, 20);
     this.tapDanceEntries[idx] = entry;
+    this.notify();
   }
 
   async setCombo(idx: number, entry: ComboEntry): Promise<void> {
@@ -525,6 +549,7 @@ export class Keyboard {
     view.setUint16(12, kcDeserialize(entry.output), true);
     await this.transport.send(cmd, 20);
     this.comboEntries[idx] = entry;
+    this.notify();
   }
 
   /**
@@ -552,6 +577,7 @@ export class Keyboard {
       await this.transport.send(cmd, 20);
     }
     this.macroBuffer = data;
+    this.notify();
   }
 
   /** Per-label layout choices decoded from the device's packed options value. */
@@ -588,6 +614,7 @@ export class Keyboard {
     view.setUint32(2, options, false);
     await this.transport.send(cmd, 20);
     this.layoutOptions = options;
+    this.notify();
   }
 
   private async reloadViaProtocol(): Promise<void> {
@@ -1058,6 +1085,7 @@ export class Keyboard {
       return;
     }
     this.rgbMode = mode;
+    this.notify();
     await this.writeRgbMode();
   }
 
@@ -1067,6 +1095,7 @@ export class Keyboard {
       return;
     }
     this.rgbSpeed = next;
+    this.notify();
     await this.writeRgbMode();
   }
 
@@ -1077,6 +1106,7 @@ export class Keyboard {
       return;
     }
     this.rgbHsv = [this.rgbHsv[0], this.rgbHsv[1], next];
+    this.notify();
     await this.writeRgbMode();
   }
 
@@ -1088,6 +1118,7 @@ export class Keyboard {
       return;
     }
     this.rgbHsv = [h, s, this.rgbHsv[2]];
+    this.notify();
     await this.writeRgbMode();
   }
 
@@ -1160,6 +1191,7 @@ export class Keyboard {
       throw new ProtocolError(`failed to write QMK setting (qsid=${qsid})`);
     }
     this.qmkSettings.set(qsid, next >>> 0);
+    this.notify();
   }
 
   /** Highest encoder index + 1, matching vial-gui's encoder_count. */

@@ -5,8 +5,6 @@ import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after an option was written to the device, so the parent re-renders. */
-  onChange: () => void;
   /**
    * Extra rows appended after the device-defined options (e.g. the 全屏预览
    * trigger), which aren't tied to `vial.json` layout labels at all. Kept
@@ -20,7 +18,7 @@ interface Props {
  * Layout-option switches from vial.json `layouts.labels`: a bare string is a
  * boolean toggle, an array is a label followed by its choices.
  */
-export function LayoutOptions({ keyboard, onChange, children }: Props) {
+export function LayoutOptions({ keyboard, children }: Props) {
   const labels = keyboard.layoutLabels;
   const hasDeviceOptions = !!labels && labels.length > 0 && keyboard.layoutOptions >= 0;
   if (!hasDeviceOptions && !children) {
@@ -31,11 +29,7 @@ export function LayoutOptions({ keyboard, onChange, children }: Props) {
   const update = async (index: number, value: number) => {
     const next = [...choices];
     next[index] = value;
-    try {
-      await keyboard.setLayoutOptions(next);
-    } finally {
-      onChange();
-    }
+    await keyboard.setLayoutOptions(next);
   };
 
   return (

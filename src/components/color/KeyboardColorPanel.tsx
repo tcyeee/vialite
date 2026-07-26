@@ -66,13 +66,10 @@ function store(key: string, value: string) {
  */
 export function KeyboardColorPanel({
   keyboard,
-  onChange,
   heroArriving,
   onBackToHome,
 }: {
   keyboard: Keyboard;
-  /** Called after a layout option was written to the device, so the parent re-renders. */
-  onChange: () => void;
   /**
    * True for the brief window (driven by `App.tsx`'s `handlePersonalize`)
    * while a page-level View Transition is morphing the hero keyboard from
@@ -150,8 +147,7 @@ export function KeyboardColorPanel({
   );
 
   // Right-click assign from the preview board, writing to the layer the preview
-  // is currently showing. `onChange` re-renders the parent afterwards — Keyboard
-  // mutates its keymap in place, so nothing else would signal the new label.
+  // is currently showing.
   const handleContextAssign = async (target: PreviewContextTarget, qmkId: string) => {
     try {
       if (target.kind === "key") {
@@ -162,7 +158,6 @@ export function KeyboardColorPanel({
     } catch (err) {
       showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
     }
-    onChange();
   };
 
   const saveCurrentLayer = async () => {
@@ -649,7 +644,7 @@ export function KeyboardColorPanel({
       <h2 className="mb-2 text-sm font-semibold text-brand-on-surface-variant">
         {t("colorLayoutTitle")}
       </h2>
-      <LayoutOptions keyboard={keyboard} onChange={onChange} />
+      <LayoutOptions keyboard={keyboard} />
     </section>
   ) : null;
 

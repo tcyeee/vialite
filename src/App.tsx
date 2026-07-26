@@ -32,6 +32,7 @@ import { KeyboardColorPanel } from "./components/color/KeyboardColorPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
 import { useI18n, type MessageKey } from "./contexts/i18n.tsx";
+import { useKeyboardRevision } from "./hooks/useKeyboardRevision.ts";
 import { Keyboard, probeVial } from "./protocol/keyboard.ts";
 import { dualRole, withTap } from "./protocol/keycodes.ts";
 import { HidTransport, ProtocolError, type ProtocolErrorCode } from "./protocol/transport.ts";
@@ -150,6 +151,10 @@ function App() {
   const [attaching, setAttaching] = useState(false);
   const [errorInfo, setErrorInfo] = useState<ConnectErrorInfo | null>(null);
   const [keyboard, setKeyboard] = useState<Keyboard | null>(null);
+  // Subscribes App to every keyboard.set*/save*/restore* write so the fields read
+  // directly off `keyboard` below (getKey, layoutChoices, ...) stay fresh — see
+  // src/hooks/useKeyboardRevision.ts.
+  useKeyboardRevision(keyboard);
   // `boardViewportRef` goes on the overflow-scrolling viewport around the
   // interactive board; its width is independent of the board's, so auto-fit can
   // measure it without feedback. `autoFitZoom` is non-null only while
@@ -203,9 +208,6 @@ function App() {
   const lenis = useLenis();
   const [qmkPendingCount, setQmkPendingCount] = useState(0);
   const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
-  // Keyboard mutates its internal keymap in place; bumping this forces a
-  // re-render so KeyboardLayoutEditor picks up the new label after a remap.
-  const [, forceUpdate] = useState(0);
   const [importing, setImporting] = useState(false);
   // Connect/disconnect page transition. Connect plays "zoom" (the waiting
   // page's 3D model scales up to fill a blackened screen) then "rise" (the
@@ -678,7 +680,6 @@ function App() {
       } catch (err) {
         showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
       }
-      forceUpdate((r) => r + 1);
       // "自动选取下一个": once a whole cap is assigned, advance the selection to the
       // next key in reading order so the user can configure a run of keys without
       // clicking each one. Only whole-key picks advance — editing the tap half of a
@@ -711,7 +712,6 @@ function App() {
       if (!dualRole(qmkId)) {
         setSelected({ kind: "key", row, col });
       }
-      forceUpdate((r) => r + 1);
     },
     [keyboard, selected, layer, t, showToast],
   );
@@ -737,7 +737,6 @@ function App() {
       } catch (err) {
         showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
       }
-      forceUpdate((r) => r + 1);
     },
     [keyboard, layer, t, showToast],
   );
@@ -782,7 +781,6 @@ function App() {
         showToast(t("importFailed", { error: err instanceof Error ? err.message : String(err) }));
       } finally {
         setImporting(false);
-        forceUpdate((r) => r + 1);
       }
     },
     [keyboard, t, showToast],
@@ -1081,30 +1079,17 @@ function App() {
                 </>
               )}
               {keyboard && mode === "matrix" && keyboard.supportsMatrixTester && <MatrixTester keyboard={keyboard} />}
-              {keyboard && mode === "macro" && (
-                <MacroPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
-              )}
+              {keyboard && mode === "macro" && <MacroPanel keyboard={keyboard} />}
               {keyboard && mode === "tapdance" && (
-                <TapDancePanel
-                  keyboard={keyboard}
-                  onChange={() => forceUpdate((r) => r + 1)}
-                  suppressCardNames={heroNameSuppressed}
-                />
+                <TapDancePanel keyboard={keyboard} suppressCardNames={heroNameSuppressed} />
               )}
               {keyboard && mode === "combo" && (
-                <ComboPanel
-                  keyboard={keyboard}
-                  onChange={() => forceUpdate((r) => r + 1)}
-                  suppressCardNames={heroNameSuppressed}
-                />
+                <ComboPanel keyboard={keyboard} suppressCardNames={heroNameSuppressed} />
               )}
-              {keyboard && mode === "rgb" && (
-                <RgbPanel keyboard={keyboard} onChange={() => forceUpdate((r) => r + 1)} />
-              )}
+              {keyboard && mode === "rgb" && <RgbPanel keyboard={keyboard} />}
               {keyboard && mode === "advanced" && (
                 <QmkSettingsPanel
                   keyboard={keyboard}
-                  onChange={() => forceUpdate((r) => r + 1)}
                   onSectionsChange={handleQmkSectionsChange}
                   onPendingCountChange={setQmkPendingCount}
                   leaveRequested={qmkLeaveRequested}
@@ -1114,7 +1099,6 @@ function App() {
               {keyboard && mode === "color" && (
                 <KeyboardColorPanel
                   keyboard={keyboard}
-                  onChange={() => forceUpdate((r) => r + 1)}
                   heroArriving={heroNavAnimating}
                   onBackToHome={handleBackToHome}
                 />

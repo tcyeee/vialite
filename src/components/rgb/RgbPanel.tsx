@@ -65,8 +65,6 @@ function hexToHueSat(hex: string): [number, number] {
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after lighting state was written to the device, so the parent re-renders. */
-  onChange: () => void;
 }
 
 /**
@@ -81,7 +79,7 @@ interface Props {
  * board previews the change under the user's hand, and Save commits the result
  * to EEPROM — matching vial-gui, where an unsaved change is lost on replug.
  */
-export function RgbPanel({ keyboard, onChange }: Props) {
+export function RgbPanel({ keyboard }: Props) {
   const { t, lang } = useI18n();
   const { showToast } = useToast();
   // Mirrors of the device state, so a dragging slider tracks the pointer at
@@ -113,7 +111,6 @@ export function RgbPanel({ keyboard, onChange }: Props) {
         showToast(t("rgbWriteFailed", { error: err instanceof Error ? err.message : String(err) }));
       } finally {
         writing.current = false;
-        onChange();
         const next = queued.current;
         queued.current = null;
         if (next) {

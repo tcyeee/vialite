@@ -292,8 +292,6 @@ function TapDancePreviewCard({
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after an entry was written to the device, so the parent re-renders. */
-  onChange: () => void;
   /** Forwarded to every card — see `PreviewCardProps.suppressCardName`. */
   suppressCardNames?: boolean;
 }
@@ -301,7 +299,7 @@ interface Props {
 const isUsed = (e: TapDanceEntry) =>
   e.onTap !== "KC_NO" || e.onHold !== "KC_NO" || e.onDoubleTap !== "KC_NO" || e.onTapHold !== "KC_NO";
 
-export function TapDancePanel({ keyboard, onChange, suppressCardNames }: Props) {
+export function TapDancePanel({ keyboard, suppressCardNames }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
   /**
@@ -412,8 +410,6 @@ export function TapDancePanel({ keyboard, onChange, suppressCardNames }: Props) 
       await keyboard.setTapDance(idx, { ...keyboard.tapDanceEntries[idx], ...patch });
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err));
-    } finally {
-      onChange();
     }
   };
 
@@ -458,8 +454,6 @@ export function TapDancePanel({ keyboard, onChange, suppressCardNames }: Props) 
       setPendingOrder(heldOrder);
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err));
-    } finally {
-      onChange();
     }
   };
 

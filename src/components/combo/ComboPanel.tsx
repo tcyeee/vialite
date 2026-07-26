@@ -322,15 +322,13 @@ function ComboPreviewCard({
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after an entry was written to the device, so the parent re-renders. */
-  onChange: () => void;
   /** Forwarded to every card — see `PreviewCardProps.suppressCardName`. */
   suppressCardNames?: boolean;
 }
 
 const isUsed = (e: ComboEntry) => e.output !== "KC_NO" || e.keys.some((k) => k !== "KC_NO");
 
-export function ComboPanel({ keyboard, onChange, suppressCardNames }: Props) {
+export function ComboPanel({ keyboard, suppressCardNames }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
   /**
@@ -442,8 +440,6 @@ export function ComboPanel({ keyboard, onChange, suppressCardNames }: Props) {
       await keyboard.setCombo(idx, { ...keyboard.comboEntries[idx], ...patch });
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err));
-    } finally {
-      onChange();
     }
   };
 
@@ -480,8 +476,6 @@ export function ComboPanel({ keyboard, onChange, suppressCardNames }: Props) {
       setPendingOrder(heldOrder);
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err));
-    } finally {
-      onChange();
     }
   };
 

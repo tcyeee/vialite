@@ -14,8 +14,6 @@ import { MacroKeycap3D } from "./MacroKeycap3D.tsx";
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after macros were written to the device, so the parent re-renders. */
-  onChange: () => void;
 }
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
@@ -179,7 +177,7 @@ function MacroActionRow({
   );
 }
 
-export function MacroPanel({ keyboard, onChange }: Props) {
+export function MacroPanel({ keyboard }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
   const [active, setActive] = useState(0);
@@ -257,7 +255,6 @@ export function MacroPanel({ keyboard, onChange }: Props) {
       showToast(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
-      onChange();
     }
   };
 

@@ -12,8 +12,6 @@ import { TapHoldSettings } from "./TapHoldSettings.tsx";
 
 interface Props {
   keyboard: Keyboard;
-  /** Called after any QMK-setting write (including a reset), so the parent re-renders. */
-  onChange: () => void;
   /**
    * Reports the titleKeys of every section actually rendered (in DOM order), so a sidebar table
    * of contents can be built without duplicating each section's own visibility logic.
@@ -334,7 +332,6 @@ export function QmkSettingsSection({
 
 export function QmkSettingsPanel({
   keyboard,
-  onChange,
   onSectionsChange,
   onPendingCountChange,
   leaveRequested,
@@ -393,7 +390,6 @@ export function QmkSettingsPanel({
       keys.forEach((key) => next.delete(key));
       return next;
     });
-    onChange();
   };
 
   const resetAll = async () => {
@@ -405,7 +401,6 @@ export function QmkSettingsPanel({
       setResetApplying(false);
       setResetConfirmOpen(false);
       setPending(new Map());
-      onChange();
     }
   };
 

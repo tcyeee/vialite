@@ -25,6 +25,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { useKeyboardRevision } from "../../hooks/useKeyboardRevision.ts";
 import type { Keyboard, PhysicalEncoder, PhysicalKey } from "../../protocol/keyboard.ts";
 import { label as kcLabel } from "../../protocol/keycodes.ts";
 import { clusterHulls, offsetOutline, type Pt } from "../keymap/caseOutline.ts";
@@ -420,6 +421,10 @@ export function KeyboardLayout3D({
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<SceneState | null>(null);
+  // Subscribes to keyboard.set*/save*/restore* writes so the mesh-rebuild effect
+  // below knows precisely when a remap actually changed something, instead of the
+  // old "rerun on every render, whatever the reason" hack.
+  const revision = useKeyboardRevision(keyboard);
 
   const boardSize = useMemo(() => {
     const placed = placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices);
@@ -638,11 +643,11 @@ export function KeyboardLayout3D({
     shadowCam.updateProjectionMatrix();
   }, [boardSize.width, boardSize.height]);
 
-  // Rebuild key/encoder meshes on every render, mirroring KeyboardLayout's
-  // habit of re-reading keyboard.getKey/getEncoder fresh each pass (the
-  // Keyboard instance mutates in place; App bumps a forceUpdate counter to
-  // trigger this). Only Mesh wrappers are allocated here — geometries,
-  // materials and textures all come from the shared cache.
+  // Rebuild key/encoder meshes whenever the keymap actually changes (`revision`,
+  // bumped by Keyboard.notify — see useKeyboardRevision), or layer/params change.
+  // Keyboard.getKey/getEncoder are re-read fresh each pass since the Keyboard
+  // instance mutates its fields in place. Only Mesh wrappers are allocated here —
+  // geometries, materials and textures all come from the shared cache.
   useEffect(() => {
     const state = stateRef.current;
     if (!state) {
@@ -677,8 +682,7 @@ export function KeyboardLayout3D({
       state.group.add(mesh);
       state.pickables.push(pickable);
     }
-
-  });
+  }, [keyboard, layer, params, revision, onKeySelect, onEncoderSelect]);
 
   // The case depends only on the physical layout, so it is rebuilt on layout
   // changes rather than in the per-render cap pass above — hull + extrusion is
