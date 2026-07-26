@@ -351,12 +351,16 @@ export function NewHomePage({
 
           <nav className="z-10 flex flex-col items-start gap-5 lg:justify-self-start">
             {MENU_ITEMS.map(({ kind, mode: itemMode, labelKey, beta }) => (
-              // hover 效果用 pl-8(内侧 padding)而不是 translate-x-8:translate
-              // 会把整个 hit-box 一起搬到右边,鼠标一旦停在条目左边缘,box 移开后
-              // 立刻退出 hover、transform 复位、box 又移回来盖住鼠标——如此反复
-              // 抖动。padding-left 只是把文字往框内右推,框本身左边缘（flex
-              // items-start 锚定的起点)不动,只在右侧变宽,鼠标停在左边缘时框
-              // 永远不会从鼠标下面挪走。
+              // 悬浮"右移"效果不能靠改变 button 自身的 box(不管是 translate-x
+              // 还是 padding-left):只要触发 hover 的那个 box 在任何一条边上
+              // 发生位移或改变大小,鼠标停在那条边上就会撞见"进入→box 让开→
+              // 退出 hover→box 复位→又盖住鼠标→再次进入"的死循环,抖动闪烁——
+              // 之前只处理了左边缘(padding 只让右边变宽),但上下边缘一样会踩坑
+              // (line-height 留出的空白区域仍属于同一个 box)。这里把 button
+              // 本身的 box 固定成 hover 前后完全不变的大小(pl-8 是常量,不参与
+              // 过渡),真正做位移动画的是内层这个 span——transform 不影响父级
+              // 用来判定 hover 的 box 尺寸,所以不管鼠标停在这个固定 box 的哪条
+              // 边上,都不会再被自己的悬浮效果顶出去。
               <button
                 key={kind}
                 type="button"
@@ -367,14 +371,16 @@ export function NewHomePage({
                     ? onGoToKeymap(e.currentTarget)
                     : onNavigatePush(itemMode as PushablePageMode)
                 }
-                className="group flex items-center gap-2 whitespace-nowrap border-none bg-transparent pl-0 text-5xl font-bold text-black/50 transition-all duration-300 ease-out hover:pl-8 hover:text-brand-secondary dark:text-white/50"
+                className="group whitespace-nowrap border-none bg-transparent pl-8 text-5xl font-bold text-black/50 transition-colors duration-300 ease-out hover:text-brand-secondary dark:text-white/50"
               >
-                {t(labelKey)}
-                {beta && (
-                  <span className="badge badge-xs badge-outline shrink-0 border-black/30 text-[0.625rem] font-semibold uppercase text-black/40 transition-colors duration-300 ease-out group-hover:border-brand-secondary/50 group-hover:text-brand-secondary dark:border-white/30 dark:text-white/40">
-                    Beta
-                  </span>
-                )}
+                <span className="flex -translate-x-8 items-center gap-2 transition-transform duration-300 ease-out group-hover:translate-x-0">
+                  {t(labelKey)}
+                  {beta && (
+                    <span className="badge badge-xs badge-outline shrink-0 border-black/30 text-[0.625rem] font-semibold uppercase text-black/40 transition-colors duration-300 ease-out group-hover:border-brand-secondary/50 group-hover:text-brand-secondary dark:border-white/30 dark:text-white/40">
+                      Beta
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
           </nav>

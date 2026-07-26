@@ -7,6 +7,7 @@ import {
 } from "react";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
+import { useTheme } from "../../contexts/theme.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import type { KeycodeDef } from "../../protocol/keycodes.ts";
 import { useSettledLive } from "../common/useSettledLive.ts";
@@ -128,6 +129,16 @@ export const DEFAULT_CASE_COLOR = "#b0b0b0";
 export const DEFAULT_PLATE_COLOR = "#8a8a8a";
 /** Default outline color for wireframe (线稿) style — caps/encoders/dual-role hold band. Overridable per-board via `colorOverride` (KeyboardLayoutEditor) or the `wireframeLineColor` prop (KeyboardLayoutPreview). */
 export const DEFAULT_WIREFRAME_LINE_COLOR = "#c4c4c4";
+/**
+ * Forced 字体颜色/线稿颜色 for 线稿 (wireframe) style while the app is in dark
+ * mode: legibility on the dark app background trumps whatever `fontColor`/
+ * `wireframeLineColor` the user configured on 键盘配色 (a dark-on-dark pick would
+ * make the whole board disappear). Does not apply when `colorOverride` is set
+ * (KeyboardLayoutEditor) — that's a deliberate per-board design choice (e.g.
+ * NewHomePage's hero strip) independent of the app's theme toggle, not a "user
+ * config" this override is meant to defeat.
+ */
+export const WIREFRAME_DARK_COLOR = "#FEF8F7";
 
 export interface PreviewAppearance {
   /** Key spacing level (按键间距); sets the pitch, so it scales the whole board. */
@@ -371,6 +382,10 @@ export function KeyboardLayoutPreview({
   // labels (see KeycapFace), so nowrap+ellipsis would just truncate them —
   // let them wrap instead, see `.keyboard-layout-wrap-labels` in index.css.
   const { mediaReset } = useKeyDisplay();
+  const { theme } = useTheme();
+  const wireframeDark = wireframe && theme === "dark";
+  const fontColorFinal = wireframeDark ? WIREFRAME_DARK_COLOR : fontColor;
+  const wireframeLineColorFinal = wireframeDark ? WIREFRAME_DARK_COLOR : wireframeLineColor;
   const {
     PITCH,
     inset,
@@ -472,10 +487,10 @@ export function KeyboardLayoutPreview({
           pointerEvents: onContextAssign ? undefined : "none",
           // Cascades to `.key`/`.key-icon` (both `color: inherit`) so labels and
           // mdi icons pick up the chosen 字体颜色.
-          color: fontColor,
+          color: fontColorFinal,
           "--key-font-scale": FONT_SCALES[fontSize],
           "--key-radius": `${KEYCAP_RADIUS_PX[keycapRadius]}px`,
-          "--wireframe-line-color": wireframeLineColor,
+          "--wireframe-line-color": wireframeLineColorFinal,
         } as CSSProperties}
       >
         {placed.keys

@@ -939,10 +939,14 @@ function App() {
                   {/* 吸顶:px/py 给外壳的立体投影(.keyboard-case-shaded 向下与
                       左右的 box-shadow)留出空间:overflow-x-auto 会让
                       overflow-y 计算为 auto,容器边缘会裁掉溢出的阴影,padding
-                      区域不被裁剪。等量负外边距(-mx/-mb/-mt)抵消这圈 padding,
-                      使键盘的视觉位置与周围内容保持原有对齐,不因留白而偏移。
-                      `top-0` 贴齐视口顶部(此处上方已无 Navbar);与页面一致的
-                      背景色遮住从下方滚上来的内容。 */}
+                      区域不被裁剪。`mb-1.5`(而非等量抵消 pb-6 的 -mb-6)让底部
+                      净留白净得 +30px,与 个性化 页吸顶键盘区/设置区之间的
+                      gap-[30px] 对齐,统一两处页面置顶区与下方内容的间隔。
+                      `top-0` 贴齐视口顶部(此处上方已无 Navbar);背景改用
+                      .keyboard-preview-sticky 的渐变(见 index.css)——底部
+                      24px 由不透明渐变为透明,让下方快捷配置区内容随滚动柔和
+                      显现,而不是在容器边缘硬切,与 个性化 全屏页
+                      BOARD_FADE_ZONE_HEIGHT 同款。 */}
                   <div
                     // Marks the keyboard preview so an expanded quick-config
                     // card below stays open when a key here is clicked — the
@@ -950,7 +954,7 @@ function App() {
                     // the card (see ExpandableCardColumn's outside-click close).
                     data-keyboard-preview
                     ref={boardViewportRef}
-                    className="sticky top-0 z-10 -mx-4 -mb-6 -mt-2 overflow-x-auto bg-[#E9E6E6] px-4 pb-6 pt-2 dark:bg-brand-background"
+                    className="keyboard-preview-sticky sticky top-0 z-10 -mx-4 mb-1.5 -mt-2 overflow-x-auto px-4 pb-6 pt-2"
                   >
                     <div key={layer} className="tab-panel-appear w-full">
                       {/* Nested (not on the tab-panel-appear div itself) so this

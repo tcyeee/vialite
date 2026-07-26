@@ -694,6 +694,21 @@ textarea,
     4px 10px 20px light-dark(rgba(30, 35, 50, 0.16), rgba(0, 0, 0, 0.5));
 }
 
+/* 键盘配置页吸顶键盘区的底部渐隐，与 个性化 全屏页 BOARD_FADE_ZONE_HEIGHT
+   同款处理：容器自身背景（而非叠加子元素）在底部 24px（与阴影留白 pb-6 等宽）
+   由不透明渐变为全透明，使下方快捷配置区内容随滚动从吸顶容器边缘下方"显现"
+   出来，而不是被硬边裁切。用背景渐变而非绝对定位子元素，是因为容器本身还带
+   overflow-x-auto（供窄屏横向滚动键盘），任何越出容器色块的子元素都会被这条
+   属性连带裁掉——渐变画在容器自己的背景上则不受影响。 */
+.keyboard-preview-sticky {
+  background-image: linear-gradient(
+    to bottom,
+    light-dark(#e9e6e6, var(--color-brand-background)) 0%,
+    light-dark(#e9e6e6, var(--color-brand-background)) calc(100% - 24px),
+    transparent 100%
+  );
+}
+
 .keyboard-layout .key {
   position: absolute;
   display: flex;

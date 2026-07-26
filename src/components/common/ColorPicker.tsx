@@ -117,7 +117,11 @@ export function ColorPicker({ value, onChange, onCommit, label, disabled }: Prop
             ref={panelRef}
             data-lenis-prevent
             style={{ position: "fixed", top: pos.top, left: pos.left, width: 232 }}
-            className="vialite-color-picker z-50 flex flex-col gap-3 rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
+            // Above FullscreenPreviewOverlay's z-[999]: both this popover and that
+            // overlay are independent document.body portals, so with the two
+            // z-indexes equal (or this one lower) the overlay's opaque background
+            // would paint over the popover regardless of DOM/mount order.
+            className="vialite-color-picker z-[1000] flex flex-col gap-3 rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
           >
             <HexColorPicker color={value} onChange={onChange} />
             <div className="flex items-center gap-2">

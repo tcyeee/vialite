@@ -11,6 +11,7 @@ import type { Keyboard } from "../../protocol/keyboard.ts";
 import { dualRole, type KeycodeDef } from "../../protocol/keycodes.ts";
 import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
+import { useTheme } from "../../contexts/theme.tsx";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
 import { KeyInfoCard } from "./KeyInfoCard.tsx";
@@ -22,6 +23,7 @@ import {
   KeyboardZoom,
   KEYCAP_RADIUS_PX,
   shapeStyle,
+  WIREFRAME_DARK_COLOR,
   type PreviewStyle,
 } from "./KeyboardLayoutPreview.tsx";
 import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
@@ -109,10 +111,15 @@ export function KeyboardLayoutEditor({
   // labels (see KeycapFace), so nowrap+ellipsis would just truncate them —
   // let them wrap instead, see `.keyboard-layout-wrap-labels` in index.css.
   const { mediaReset } = useKeyDisplay();
+  const { theme } = useTheme();
   const wireframe = style === "wireframe";
+  // Dark mode forces a fixed light-gray font/line color for legibility, same
+  // as KeyboardLayoutPreview — but `colorOverride` (a deliberate per-board
+  // design like NewHomePage's hero strip) still wins, see WIREFRAME_DARK_COLOR.
+  const wireframeDark = wireframe && theme === "dark";
   const caseColorFinal = colorOverride ?? caseColor;
   const plateColorFinal = colorOverride ?? plateColor;
-  const fontColorFinal = colorOverride ?? fontColor;
+  const fontColorFinal = colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : fontColor);
   const {
     PITCH,
     inset,
@@ -243,7 +250,7 @@ export function KeyboardLayoutEditor({
           color: fontColorFinal,
           "--key-font-scale": FONT_SCALES[fontSize],
           "--key-radius": `${KEYCAP_RADIUS_PX[keycapRadius]}px`,
-          "--wireframe-line-color": colorOverride ?? wireframeLineColor,
+          "--wireframe-line-color": colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : wireframeLineColor),
         } as CSSProperties}
       >
         {placed.keys
