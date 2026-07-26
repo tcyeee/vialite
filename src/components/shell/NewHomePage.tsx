@@ -351,6 +351,12 @@ export function NewHomePage({
 
           <nav className="z-10 flex flex-col items-start gap-5 lg:justify-self-start">
             {MENU_ITEMS.map(({ kind, mode: itemMode, labelKey, beta }) => (
+              // hover 效果用 pl-8(内侧 padding)而不是 translate-x-8:translate
+              // 会把整个 hit-box 一起搬到右边,鼠标一旦停在条目左边缘,box 移开后
+              // 立刻退出 hover、transform 复位、box 又移回来盖住鼠标——如此反复
+              // 抖动。padding-left 只是把文字往框内右推,框本身左边缘（flex
+              // items-start 锚定的起点)不动,只在右侧变宽,鼠标停在左边缘时框
+              // 永远不会从鼠标下面挪走。
               <button
                 key={kind}
                 type="button"
@@ -361,7 +367,7 @@ export function NewHomePage({
                     ? onGoToKeymap(e.currentTarget)
                     : onNavigatePush(itemMode as PushablePageMode)
                 }
-                className="group flex items-center gap-2 whitespace-nowrap border-none bg-transparent text-5xl font-bold text-black/50 transition-all duration-300 ease-out hover:translate-x-8 hover:text-brand-secondary dark:text-white/50"
+                className="group flex items-center gap-2 whitespace-nowrap border-none bg-transparent pl-0 text-5xl font-bold text-black/50 transition-all duration-300 ease-out hover:pl-8 hover:text-brand-secondary dark:text-white/50"
               >
                 {t(labelKey)}
                 {beta && (

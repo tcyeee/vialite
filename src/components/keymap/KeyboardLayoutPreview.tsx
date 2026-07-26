@@ -199,7 +199,7 @@ export function shapeStyle(
  * the outermost caps is. Decoupled so the two can be tuned independently —
  * see {@link AppearanceMetrics.plateMargin}.
  */
-const PLATE_MARGIN_RATIO = 2;
+const PLATE_MARGIN_RATIO = 1.5;
 
 /** Derived px geometry for the appearance settings, at 1× (pre-zoom). */
 export interface AppearanceMetrics {
@@ -419,7 +419,7 @@ export function KeyboardLayoutPreview({
   const plateHeight = placed.height * PITCH + 2 * plateMargin - inset;
   // Split/rotated layouts get per-cluster SVG outlines instead of the rectangle
   // the divs below draw; `null` means the layout is plain and the divs are right.
-  const caseShape = useCaseShape({ placed, PITCH, inset: plateMargin, caseThickness, showCase });
+  const caseShape = useCaseShape({ placed, PITCH, plateMargin, caseThickness, showCase });
 
   const board = (
     <div

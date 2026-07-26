@@ -100,9 +100,12 @@ export function useCaseShape({ placed, PITCH, plateMargin, caseThickness, showCa
     const toPx = (hull: Pt[]): Pt[] =>
       hull.map(([x, y]) => [x * PITCH + origin, y * PITCH + origin] as Pt);
 
+    // The hull is translated by `origin` (line 101) and then offset outward by
+    // that same `origin` for the case path, so the drawn extent gains `origin`
+    // on *both* sides — `2 * origin`, not `origin` alone.
     return {
-      width: placed.width * PITCH + plateMargin + caseThickness * 2,
-      height: placed.height * PITCH + plateMargin + caseThickness * 2,
+      width: placed.width * PITCH + 2 * origin,
+      height: placed.height * PITCH + 2 * origin,
       clusters: hulls.map((hull) => {
         const px = toPx(hull);
         return {
