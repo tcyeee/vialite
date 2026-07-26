@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@iconify/react";
-import { useI18n } from "../../contexts/i18n.tsx";
-import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
+import { useI18n } from "../../../contexts/i18n.tsx";
+import { useKeyDisplay } from "../../../contexts/keyDisplay.tsx";
 import {
   buildLayerTap,
   buildModCombo,
@@ -10,9 +10,9 @@ import {
   holdInfo,
   keyBehavior,
   label as kcLabel,
-} from "../../protocol/keycodes.ts";
-import { CapGlyph } from "./KeycapFace.tsx";
-import { capIcon, sideBadgeIcon } from "./keycapIcons.ts";
+} from "../../../protocol/keycodes.ts";
+import { CapGlyph } from "../layout/KeycapFace.tsx";
+import { capIcon, sideBadgeIcon } from "../layout/keycapIcons.ts";
 
 const MOD_KEYS = ["ctrl", "shift", "alt", "gui"] as const;
 type ModName = (typeof MOD_KEYS)[number];

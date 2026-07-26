@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import participantFiles from "virtual:participants";
-import { useI18n } from "../../contexts/i18n.tsx";
+import { useI18n } from "../../../contexts/i18n.tsx";
 
 /**
  * One person who sent feedback: the avatar URL plus the nickname taken from the

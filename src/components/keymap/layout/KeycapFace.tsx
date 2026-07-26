@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import type { CSSProperties } from "react";
-import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
-import { dualRole, holdInfo, keyBehavior, label as kcLabel, layerSwitchInfo, mediaAbbrev } from "../../protocol/keycodes.ts";
+import { useKeyDisplay } from "../../../contexts/keyDisplay.tsx";
+import { dualRole, holdInfo, keyBehavior, label as kcLabel, layerSwitchInfo, mediaAbbrev } from "../../../protocol/keycodes.ts";
 import { type CapIcon, capIcon, LAYER_ICON, MACRO_ICON, MEDIA_RESET_ICON_IDS, MOUSE_ICON, mouseWordIcon, sideBadgeIcon, TAPDANCE_ICON } from "./keycapIcons.ts";
 
 /**

@@ -1,6 +1,6 @@
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { label, type KeycodeDef } from "../../protocol/keycodes.ts";
-import { KeycodeCascadeSelector } from "../keymap/KeycodeCascadeSelector.tsx";
+import { KeycodeCascadeSelector } from "../keymap/picker/KeycodeCascadeSelector.tsx";
 
 interface Props {
   qmkId: string;

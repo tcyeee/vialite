@@ -1,6 +1,6 @@
 import { type CSSProperties } from "react";
-import { useI18n } from "../../contexts/i18n.tsx";
-import { deserialize, keyBehavior, label as kcLabel } from "../../protocol/keycodes.ts";
+import { useI18n } from "../../../contexts/i18n.tsx";
+import { deserialize, keyBehavior, label as kcLabel } from "../../../protocol/keycodes.ts";
 
 /** Full (single-line) human label for a qmk_id — the on-cap labels embed `\n`. */
 function fullName(qmkId: string): string {

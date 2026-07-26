@@ -5,7 +5,7 @@
 // (qmk_backlight / qmk_rgblight) are intentionally left out for now.
 
 import pkg from "xz-decompress";
-import { debugLog, isDebugEnabled } from "../debug.ts";
+import { debugLog, isDebugEnabled } from "../lib/debug.ts";
 import * as C from "./constants.ts";
 import { deserialize as kleDeserialize, type KleData, type KleKeyboard } from "./kleSerial.ts";
 import {

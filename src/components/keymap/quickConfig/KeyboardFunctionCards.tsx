@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
-import { KEYCODE_HELP } from "../keycodeMeta.ts";
+import { KEYCODE_HELP } from "../picker/keycodeMeta.ts";
 import { cardHint, ExpandableCardColumn, type ExpandableCardDef } from "./ExpandableCardColumn.tsx";
 
 /**

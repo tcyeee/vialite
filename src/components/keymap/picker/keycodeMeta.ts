@@ -2,8 +2,8 @@ import {
   customKeycodeDefs,
   tapDanceKeycodeDefs,
   type KeycodeDef,
-} from "../../protocol/keycodes.ts";
-import type { MessageKey } from "../../contexts/i18n.tsx";
+} from "../../../protocol/keycodes.ts";
+import type { MessageKey } from "../../../contexts/i18n.tsx";
 
 /**
  * The single, framework-adjacent source of truth for keycode **UI metadata**:

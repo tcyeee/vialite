@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
-import { isDebugEnabled, setDebugEnabled } from "../../debug.ts";
+import { isDebugEnabled, setDebugEnabled } from "../../lib/debug.ts";
 
 /**
  * The debug-logging checkbox — the single source of truth for it lives in

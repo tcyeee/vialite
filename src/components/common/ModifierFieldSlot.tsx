@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
-import { KeycapFace } from "../keymap/KeycapFace.tsx";
+import { KeycapFace } from "../keymap/layout/KeycapFace.tsx";
 import { buildModCombo, dualRole, holdInfo, keyBehavior, type KeycodeDef } from "../../protocol/keycodes.ts";
-import { BASIC_MOD_IDS } from "../keymap/keycodeMeta.ts";
+import { BASIC_MOD_IDS } from "../keymap/picker/keycodeMeta.ts";
 import { KeySlot } from "./KeySlot.tsx";
 
 export type ModName = "ctrl" | "shift" | "alt" | "gui";

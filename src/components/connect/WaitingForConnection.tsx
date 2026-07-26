@@ -2,7 +2,7 @@ import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "
 import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
 import { useTheme } from "../../contexts/theme.tsx";
-import { getSupportStatus, getBrowserInfo, type SupportStatus } from "../../browserSupport.ts";
+import { getSupportStatus, getBrowserInfo, type SupportStatus } from "../../lib/browserSupport.ts";
 import { DebugLogToggle } from "../common/DebugLogToggle.tsx";
 import type { ConnectionStatus } from "./DeviceConnect.tsx";
 

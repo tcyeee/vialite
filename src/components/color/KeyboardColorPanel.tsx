@@ -10,8 +10,8 @@ import { KEYBOARD_HERO_NAME } from "../common/viewTransition.ts";
 import { ColorPicker } from "../common/ColorPicker.tsx";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { LayerTabBar } from "../keymap/LayerTabs.tsx";
-import { useAutoFitZoom } from "../keymap/autoFitSize.ts";
-import { FullscreenPreviewOverlay, useFullscreenPreview } from "../keymap/StyleConfig.tsx";
+import { useAutoFitZoom } from "../keymap/layout/autoFitSize.ts";
+import { FullscreenPreviewOverlay, useFullscreenPreview } from "../keymap/style/StyleConfig.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import {
   FONT_SIZES,
@@ -21,7 +21,7 @@ import {
   type FontPosition,
   type PreviewContextTarget,
   type PreviewSize,
-} from "../keymap/KeyboardLayoutPreview.tsx";
+} from "../keymap/layout/KeyboardLayoutPreview.tsx";
 
 const CASE_RECENT_KEY = "vialite-color-case-recent";
 const PLATE_RECENT_KEY = "vialite-color-plate-recent";

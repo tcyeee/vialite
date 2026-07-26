@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
-import { LAYER_GROUPS } from "../keycodeMeta.ts";
+import { LAYER_GROUPS } from "../picker/keycodeMeta.ts";
 
 interface Props {
   /** The full "Layers" keycode list (MO(0)…DF(15) plus FN_MO*), used to resolve

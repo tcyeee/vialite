@@ -13,8 +13,8 @@
 // turns auto-fit off.
 
 import { useEffect, useState } from "react";
-import type { Keyboard } from "../../protocol/keyboard.ts";
-import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
+import type { Keyboard } from "../../../protocol/keyboard.ts";
+import { usePreviewAppearance } from "../../../contexts/previewAppearance.tsx";
 import {
   appearanceMetrics,
   PREVIEW_ZOOM,

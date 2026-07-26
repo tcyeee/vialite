@@ -7,15 +7,15 @@ import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import type { Keyboard } from "../../protocol/keyboard.ts";
-import { dualRole, type KeycodeDef } from "../../protocol/keycodes.ts";
-import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
-import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
-import { useTheme } from "../../contexts/theme.tsx";
+import type { Keyboard } from "../../../protocol/keyboard.ts";
+import { dualRole, type KeycodeDef } from "../../../protocol/keycodes.ts";
+import { usePreviewAppearance } from "../../../contexts/previewAppearance.tsx";
+import { useKeyDisplay } from "../../../contexts/keyDisplay.tsx";
+import { useTheme } from "../../../contexts/theme.tsx";
 import { KeycapFace } from "./KeycapFace.tsx";
-import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
-import { KeyInfoCard } from "./KeyInfoCard.tsx";
-import { useSettledLive } from "../common/useSettledLive.ts";
+import { KeycodeCascadeSelector } from "../picker/KeycodeCascadeSelector.tsx";
+import { KeyInfoCard } from "../picker/KeyInfoCard.tsx";
+import { useSettledLive } from "../../common/useSettledLive.ts";
 import {
   appearanceMetrics,
   FONT_SCALES,

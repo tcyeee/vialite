@@ -28,8 +28,8 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import { useKeyboardRevision } from "../../hooks/useKeyboardRevision.ts";
 import type { Keyboard, PhysicalEncoder, PhysicalKey } from "../../protocol/keyboard.ts";
 import { label as kcLabel } from "../../protocol/keycodes.ts";
-import { clusterHulls, offsetOutline, type Pt } from "../keymap/caseOutline.ts";
-import { footprintsOf, hasSecondRect, placeLayout, rotatePoint } from "../keymap/layoutGeometry.ts";
+import { clusterHulls, offsetOutline, type Pt } from "../keymap/layout/caseOutline.ts";
+import { footprintsOf, hasSecondRect, placeLayout, rotatePoint } from "../keymap/layout/layoutGeometry.ts";
 import { DEFAULT_PREVIEW_3D_PARAMS, type Preview3DParams } from "./preview3dParams.ts";
 
 const UNIT = 1;

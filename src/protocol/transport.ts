@@ -5,7 +5,7 @@
 // and `device.sendReport(0, payload)` / `event.data` (32 bytes) carry the raw
 // VIA/Vial message with no extra report-ID byte inside the payload itself.
 
-import { debugLog } from "../debug.ts";
+import { debugLog } from "../lib/debug.ts";
 import { MSG_LEN, VIAL_USAGE, VIAL_USAGE_PAGE } from "./constants.ts";
 
 /**

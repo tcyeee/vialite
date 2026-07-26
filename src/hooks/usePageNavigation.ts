@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import { useLenis } from "lenis/react";
 import { startViewTransition } from "../components/common/viewTransition.ts";
 import type { MessageKey } from "../contexts/i18n.tsx";
-import { track } from "../analytics.ts";
+import { track } from "../lib/analytics.ts";
 
 export type PageMode =
   | "keymap"

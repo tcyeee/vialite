@@ -53,6 +53,11 @@ function participantsPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), participantsPlugin()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
   define: {
     // Build timestamp, surfaced in the connect-screen diagnostics panel so a
     // user reporting a problem can tell us which build they're on. ISO string,

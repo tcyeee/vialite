@@ -36,7 +36,7 @@ import {
   type PreviewSize,
   type PreviewStyle,
   type SpacingLevel,
-} from "../components/keymap/KeyboardLayoutPreview.tsx";
+} from "../components/keymap/layout/KeyboardLayoutPreview.tsx";
 
 const SIZE_KEY = "vialite-color-preview-size";
 const AUTO_FIT_KEY = "vialite-color-preview-autofit";

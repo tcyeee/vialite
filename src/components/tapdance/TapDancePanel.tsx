@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Icon } from "@iconify/react";
 import { type MessageKey, useI18n } from "../../contexts/i18n.tsx";
-import { KeycapFace } from "../keymap/KeycapFace.tsx";
+import { KeycapFace } from "../keymap/layout/KeycapFace.tsx";
 import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
 import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";

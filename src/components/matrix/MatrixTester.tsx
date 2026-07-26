@@ -9,10 +9,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import type { Keyboard, PhysicalKey } from "../../protocol/keyboard.ts";
 import { label } from "../../protocol/keycodes.ts";
-import { UnlockDialog } from "../common/UnlockDialog.tsx";
-import { track } from "../../analytics.ts";
-import { hasSecondRect, placeLayout } from "../keymap/layoutGeometry.ts";
-import { shapeStyle } from "../keymap/KeyboardLayoutPreview.tsx";
+import { UnlockDialog } from "./UnlockDialog.tsx";
+import { track } from "../../lib/analytics.ts";
+import { hasSecondRect, placeLayout } from "../keymap/layout/layoutGeometry.ts";
+import { shapeStyle } from "../keymap/layout/KeyboardLayoutPreview.tsx";
 
 const UNIT = 54; // same scale as KeyboardLayoutEditor
 // Gap between adjacent caps (the old code baked this in as `width * UNIT - 4`).

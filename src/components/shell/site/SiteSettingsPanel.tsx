@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import { useI18n } from "../../contexts/i18n.tsx";
-import { useTheme } from "../../contexts/theme.tsx";
-import { DebugLogToggle } from "../common/DebugLogToggle.tsx";
-import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
+import { useI18n } from "../../../contexts/i18n.tsx";
+import { useTheme } from "../../../contexts/theme.tsx";
+import { DebugLogToggle } from "../../common/DebugLogToggle.tsx";
+import { SettingsRow } from "../../qmk/QmkSettingsPanel.tsx";
 
 /**
  * Wipe every localStorage entry this app owns (all `vialite-` keys: keyboard

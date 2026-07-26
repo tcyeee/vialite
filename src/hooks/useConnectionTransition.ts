@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n, type MessageKey } from "../contexts/i18n.tsx";
 import { useToast } from "../contexts/toast.tsx";
-import { track } from "../analytics.ts";
-import { debugWarn } from "../debug.ts";
+import { track } from "../lib/analytics.ts";
+import { debugWarn } from "../lib/debug.ts";
 import { Keyboard, probeVial } from "../protocol/keyboard.ts";
 import { HidTransport, ProtocolError, type ProtocolErrorCode } from "../protocol/transport.ts";
 import {

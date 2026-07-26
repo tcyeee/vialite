@@ -1,8 +1,8 @@
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { CornerCloseButton } from "../common/CornerCloseButton.tsx";
-import { SiteSettingsPanel } from "../site/SiteSettingsPanel.tsx";
-import { ThanksMarquee } from "../site/ThanksMarquee.tsx";
+import { SiteSettingsPanel } from "./site/SiteSettingsPanel.tsx";
+import { ThanksMarquee } from "./site/ThanksMarquee.tsx";
 
 interface Props {
   onExit: () => void;

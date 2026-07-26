@@ -5,14 +5,14 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
-import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
-import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
-import { useTheme } from "../../contexts/theme.tsx";
-import type { Keyboard } from "../../protocol/keyboard.ts";
-import type { KeycodeDef } from "../../protocol/keycodes.ts";
-import { useSettledLive } from "../common/useSettledLive.ts";
+import { usePreviewAppearance } from "../../../contexts/previewAppearance.tsx";
+import { useKeyDisplay } from "../../../contexts/keyDisplay.tsx";
+import { useTheme } from "../../../contexts/theme.tsx";
+import type { Keyboard } from "../../../protocol/keyboard.ts";
+import type { KeycodeDef } from "../../../protocol/keycodes.ts";
+import { useSettledLive } from "../../common/useSettledLive.ts";
 import { KeycapFace } from "./KeycapFace.tsx";
-import { KeycodeCascadeSelector } from "./KeycodeCascadeSelector.tsx";
+import { KeycodeCascadeSelector } from "../picker/KeycodeCascadeSelector.tsx";
 import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
 import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
 

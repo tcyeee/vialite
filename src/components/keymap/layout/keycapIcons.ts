@@ -8,7 +8,7 @@
 // ../../mdiIcons.ts, so they render without a network request. After adding a name
 // below, re-run `node scripts/genIcons.mjs` to fold it into that subset.
 
-import type { KeyDisplay } from "../../contexts/keyDisplay.tsx";
+import type { KeyDisplay } from "../../../contexts/keyDisplay.tsx";
 
 /** One keycap-face glyph: its mdi name and its own size. */
 export interface CapIcon {

@@ -18,7 +18,7 @@ import {
   LAYER_GROUPS,
   QUANTUM_GROUPS,
   deviceCategories,
-} from "../keycodeMeta.ts";
+} from "../picker/keycodeMeta.ts";
 import { LayerKeyPicker } from "./LayerKeyPicker.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
 import {

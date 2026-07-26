@@ -7,7 +7,7 @@ import { KeyDisplayProvider } from "./contexts/keyDisplay.tsx";
 import { PreviewAppearanceProvider } from "./contexts/previewAppearance.tsx";
 import { ThemeProvider } from "./contexts/theme.tsx";
 import { ToastProvider } from "./contexts/toast.tsx";
-import "./mdiIcons.ts"; // registers the offline mdi subset before the first render
+import "./lib/mdiIcons.ts"; // registers the offline mdi subset before the first render
 import "lenis/dist/lenis.css";
 import "./index.css";
 

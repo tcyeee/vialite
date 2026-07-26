@@ -8,8 +8,8 @@ import { useToast } from "../../contexts/toast.tsx";
 import { usePersistedBoolean } from "../../hooks/usePersistedBoolean.ts";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
-import { KeycodeCascadeSelector } from "../keymap/KeycodeCascadeSelector.tsx";
-import { UnlockDialog } from "../common/UnlockDialog.tsx";
+import { KeycodeCascadeSelector } from "../keymap/picker/KeycodeCascadeSelector.tsx";
+import { UnlockDialog } from "../matrix/UnlockDialog.tsx";
 import { MacroKeycap3D } from "./MacroKeycap3D.tsx";
 
 interface Props {

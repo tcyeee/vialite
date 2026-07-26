@@ -12,10 +12,10 @@ import {
   KEYCODE_CATEGORIES,
   label as kcLabel,
   type KeycodeDef,
-} from "../../protocol/keycodes.ts";
-import { useI18n, type MessageKey } from "../../contexts/i18n.tsx";
-import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
-import type { MacroAction } from "../../protocol/macro.ts";
+} from "../../../protocol/keycodes.ts";
+import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
+import type { Keyboard, TapDanceEntry } from "../../../protocol/keyboard.ts";
+import type { MacroAction } from "../../../protocol/macro.ts";
 import {
   BASIC_GROUPS,
   CATEGORY_DESC,

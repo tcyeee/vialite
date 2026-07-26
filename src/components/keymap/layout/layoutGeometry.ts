@@ -7,7 +7,7 @@
 //      (rotated clusters can otherwise produce negative coordinates).
 // All coordinates are in KLE units.
 
-import type { PhysicalEncoder, PhysicalKey } from "../../protocol/keyboard.ts";
+import type { PhysicalEncoder, PhysicalKey } from "../../../protocol/keyboard.ts";
 
 export interface PlacedKey {
   key: PhysicalKey;

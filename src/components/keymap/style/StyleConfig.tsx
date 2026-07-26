@@ -27,13 +27,13 @@ import {
 import { createPortal, flushSync } from "react-dom";
 import { ReactLenis, type LenisRef } from "lenis/react";
 import type { VirtualScrollData } from "lenis";
-import { useI18n } from "../../contexts/i18n.tsx";
-import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
-import type { Keyboard } from "../../protocol/keyboard.ts";
-import { CornerCloseButton } from "../common/CornerCloseButton.tsx";
-import { KEYBOARD_HERO_NAME, startViewTransition } from "../common/viewTransition.ts";
-import { KeyboardLayoutPreview } from "./KeyboardLayoutPreview.tsx";
-import { boardNaturalHeight, boardNaturalWidth, MAX_AUTO_FIT_ZOOM } from "./autoFitSize.ts";
+import { useI18n } from "../../../contexts/i18n.tsx";
+import { usePreviewAppearance } from "../../../contexts/previewAppearance.tsx";
+import type { Keyboard } from "../../../protocol/keyboard.ts";
+import { CornerCloseButton } from "../../common/CornerCloseButton.tsx";
+import { KEYBOARD_HERO_NAME, startViewTransition } from "../../common/viewTransition.ts";
+import { KeyboardLayoutPreview } from "../layout/KeyboardLayoutPreview.tsx";
+import { boardNaturalHeight, boardNaturalWidth, MAX_AUTO_FIT_ZOOM } from "../layout/autoFitSize.ts";
 
 /** Scroll distance (px) over which the board's parallax shift and shrink both ramp from 0 to their max — one shared progress value drives both. */
 const BOARD_PARALLAX_SCROLL_RANGE = 200;

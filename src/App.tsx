@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState, type SyntheticEvent } from "react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
-import { DualRoleEditor } from "./components/keymap/DualRoleEditor.tsx";
-import { KeyboardLayoutEditor, type KeyPart } from "./components/keymap/KeyboardLayoutEditor.tsx";
+import { DualRoleEditor } from "./components/keymap/picker/DualRoleEditor.tsx";
+import {
+  KeyboardLayoutEditor,
+  type KeyPart,
+} from "./components/keymap/layout/KeyboardLayoutEditor.tsx";
 import { KeyboardLayout3D } from "./components/connect/KeyboardLayout3D.tsx";
 import { Preview3DDebugPanel } from "./components/connect/Preview3DDebugPanel.tsx";
 import {
@@ -9,8 +12,8 @@ import {
   savePreview3DParams,
   type Preview3DParams,
 } from "./components/connect/preview3dParams.ts";
-import { useAutoFitZoom } from "./components/keymap/autoFitSize.ts";
-import { placeLayout } from "./components/keymap/layoutGeometry.ts";
+import { useAutoFitZoom } from "./components/keymap/layout/autoFitSize.ts";
+import { placeLayout } from "./components/keymap/layout/layoutGeometry.ts";
 import { CornerCloseButton } from "./components/common/CornerCloseButton.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
 import { KEYBOARD_HERO_NAME } from "./components/common/viewTransition.ts";
@@ -35,7 +38,7 @@ import type { Keyboard } from "./protocol/keyboard.ts";
 import { dualRole, withTap } from "./protocol/keycodes.ts";
 import { parseVil, serializeVil } from "./protocol/vilFile.ts";
 import { useToast } from "./contexts/toast.tsx";
-import { track } from "./analytics.ts";
+import { track } from "./lib/analytics.ts";
 
 type Selected =
   | { kind: "key"; row: number; col: number; part?: KeyPart }
