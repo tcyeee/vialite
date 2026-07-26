@@ -4,7 +4,8 @@ import { useToast } from "../contexts/toast.tsx";
 import { track } from "../lib/analytics.ts";
 import { debugWarn } from "../lib/debug.ts";
 import { Keyboard, probeVial } from "../protocol/keyboard.ts";
-import { HidTransport, ProtocolError, type ProtocolErrorCode } from "../protocol/transport.ts";
+import { MockHidTransport } from "../protocol/demo/mockHidTransport.ts";
+import { HidTransport, ProtocolError, type ProtocolErrorCode, type Transport } from "../protocol/transport.ts";
 import {
   clearSkipAutoConnect,
   loadLastDeviceName,
@@ -109,7 +110,7 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
   // the possibly-stale closure captured by transport.onDisconnect (set once
   // per attachTransport call) always reads the current value.
   const pendingDisconnectRef = useRef<"manual" | "lost" | null>(null);
-  const transportRef = useRef<HidTransport | null>(null);
+  const transportRef = useRef<Transport | null>(null);
   // Guards handleConnect and the auto-connect effect against running
   // concurrently — e.g. a manual click landing in the async gap between the
   // auto-connect effect finding a device and it calling setStatus("connecting").
@@ -126,7 +127,7 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
   }, []);
 
   const attachTransport = useCallback(
-    async (transport: HidTransport, withTransition = false) => {
+    async (transport: Transport, withTransition = false, isDemo = false) => {
       await teardown();
       transportRef.current = transport;
       transport.onDisconnect = () => {
@@ -140,15 +141,21 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
       await kb.reload();
       setKeyboard(kb);
       setProductName(transport.productName);
-      setLastDeviceName(transport.productName);
-      saveLastDeviceName(transport.productName);
-      // A real connection just happened, manually or silently — trust
-      // auto-reconnect on the next reload again.
-      clearSkipAutoConnect();
+      // MockHidTransport isn't a real WebHID grant, so it must never feed the
+      // "重新连接 <name>" shortcut (below) or clear the skip-auto-connect flag —
+      // both are about *real* devices, and either one would make a later real
+      // reconnect attempt target the fake preview keyboard instead.
+      if (!isDemo) {
+        setLastDeviceName(transport.productName);
+        saveLastDeviceName(transport.productName);
+        // A real connection just happened, manually or silently — trust
+        // auto-reconnect on the next reload again.
+        clearSkipAutoConnect();
+      }
       onAttached?.();
       setErrorInfo(null);
       setStatus("connected");
-      track("connect/success", transport.productName ?? "Unknown keyboard");
+      track(isDemo ? "connect/demo" : "connect/success", transport.productName ?? "Unknown keyboard");
       // Only the manual connect flow (from the visible waiting page) plays the
       // zoom-and-rise transition; silent auto-reconnect skips straight in.
       if (withTransition) {
@@ -248,6 +255,31 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
       setAttaching(false);
     }
   }, [tryAttachAuthorizedDevice, teardown]);
+
+  // 功能预览 (feature preview): same attach path as a real device, just backed by
+  // MockHidTransport instead of a WebHID handshake — see src/protocol/demo/mockHidTransport.ts.
+  // Exiting is the ordinary disconnect button; MockHidTransport.close() is a no-op, so
+  // teardown works unchanged.
+  const handleConnectDemo = useCallback(async () => {
+    if (connectInFlightRef.current) {
+      return;
+    }
+    connectInFlightRef.current = true;
+    setStatus("connecting");
+    setAttaching(true);
+    setErrorInfo(null);
+    try {
+      await attachTransport(new MockHidTransport(), true, true);
+    } catch (err) {
+      console.error("[vialite] preview-mode connect failed:", err);
+      await teardown();
+      setErrorInfo(describeConnectError(err));
+      setStatus("error");
+    } finally {
+      connectInFlightRef.current = false;
+      setAttaching(false);
+    }
+  }, [attachTransport, teardown]);
 
   // Runs once the disconnect darken+reveal choreography finishes: the actual
   // teardown was deliberately deferred until now so the config page still had
@@ -370,6 +402,7 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
     lastDeviceName,
     transition,
     handleConnect,
+    handleConnectDemo,
     handleReconnectSaved,
     handleDisconnect,
   };

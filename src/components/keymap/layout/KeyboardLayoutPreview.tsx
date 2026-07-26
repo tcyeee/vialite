@@ -20,8 +20,10 @@ import {
   FONT_SCALES,
   KeyboardZoom,
   KEYCAP_RADIUS_PX,
+  paintCursor,
   shapeStyle,
   WIREFRAME_DARK_COLOR,
+  type PaintTool,
   type PreviewAppearance,
   type PreviewContextTarget,
   type PreviewSize,
@@ -54,6 +56,7 @@ export function KeyboardLayoutPreview({
   layer = 0,
   zoomOverride,
   onContextAssign,
+  paint,
   ...overrides
 }: {
   keyboard: Keyboard;
@@ -72,6 +75,14 @@ export function KeyboardLayoutPreview({
    * the `overrides` rest) so it never reaches {@link appearanceMetrics}.
    */
   zoomOverride?: number | null;
+  /**
+   * Opt-in 键帽上色 paint mode: while set, left-clicking a key calls `onPaint`
+   * instead of just being display-only, and the cap shows a colored brush
+   * cursor (or eraser cursor) via {@link paintCursor}. Only
+   * `KeyboardColorPanel`'s 颜色管理区 flow passes this; every other call site
+   * leaves it unset and stays a plain display/right-click-assign board.
+   */
+  paint?: PaintTool;
 } & PreviewAppearance) {
   const appearance = usePreviewAppearance();
   // Context supplies every value; an explicitly-passed prop overrides just that
@@ -93,6 +104,15 @@ export function KeyboardLayoutPreview({
     fontColor,
     fontPosition,
   } = { ...appearance, ...overrides };
+  const { keycapPalette, keycapColors } = appearance;
+  // Resolves each key's painted color (键帽上色) from the shared palette — see
+  // previewAppearance.tsx. A key with no entry in `keycapColors`, or whose id
+  // no longer exists in the palette (deleted), falls back to the default cap
+  // background from index.css.
+  const keycapHexById = useMemo(
+    () => Object.fromEntries(keycapPalette.map((c) => [c.id, c.hex])),
+    [keycapPalette],
+  );
   // `3d` has no distinct render yet — falls back to `default` (flat, no shading).
   const depth = style === "relief";
   const wireframe = style === "wireframe";
@@ -207,8 +227,8 @@ export function KeyboardLayoutPreview({
           boxShadow: !caseShape && wireframe ? `inset 0 0 0 1.5px ${plateColorFinal}` : undefined,
           borderRadius: caseShape ? 0 : innerRadius,
           // Display-only by default; the caps only need to receive events when
-          // there's a right-click menu to open.
-          pointerEvents: onContextAssign ? undefined : "none",
+          // there's a right-click menu to open, or 键帽上色 paint mode is active.
+          pointerEvents: onContextAssign || paint ? undefined : "none",
           // Cascades to `.key`/`.key-icon` (both `color: inherit`) so labels and
           // mdi icons pick up the chosen 字体颜色.
           color: fontColorFinal,
@@ -225,12 +245,18 @@ export function KeyboardLayoutPreview({
               menu?.target.kind === "key" &&
               menu.target.row === key.row &&
               menu.target.col === key.col;
+            const paintedHex = keycapHexById[keycapColors[`${key.row},${key.col}`]];
             return (
               <div
                 key={`${key.row},${key.col}@${key.x},${key.y}`}
                 className={(isSelected ? "key selected" : "key") + posClass}
                 onContextMenu={(e) => openMenu(e, { kind: "key", row: key.row, col: key.col })}
-                style={shapeStyle(key, shiftX, shiftY, PITCH, inset, plateMargin)}
+                onClick={paint ? () => paint.onPaint(key.row, key.col) : undefined}
+                style={{
+                  ...shapeStyle(key, shiftX, shiftY, PITCH, inset, plateMargin),
+                  background: paintedHex,
+                  cursor: paint ? paintCursor(paint.tool) : undefined,
+                }}
               >
                 {hasSecondRect(key) && (
                   <span

@@ -4,7 +4,7 @@ import { useI18n } from "../../contexts/i18n.tsx";
 import { useToast } from "../../contexts/toast.tsx";
 import { composeLayers, downloadCanvas, frameBoard, nodeToCanvas } from "./layoutImage.ts";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
-import { usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
+import { keyFor, usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { KEYBOARD_HERO_NAME } from "../common/viewTransition.ts";
 import { ColorPicker } from "../common/ColorPicker.tsx";
@@ -22,6 +22,7 @@ import {
   type PreviewContextTarget,
   type PreviewSize,
 } from "../keymap/layout/KeyboardLayoutPreview.tsx";
+import { KeycapColorManager } from "./KeycapColorManager.tsx";
 
 const CASE_RECENT_KEY = "vialite-color-case-recent";
 const PLATE_RECENT_KEY = "vialite-color-plate-recent";
@@ -124,10 +125,42 @@ export function KeyboardColorPanel({
     setFontSize,
     setFontColor,
     setFontPosition,
+    keycapPalette,
+    keycapColors,
+    addKeycapColor,
+    updateKeycapColor,
+    removeKeycapColor,
+    paintKeycap,
   } = usePreviewAppearance();
   // Which layer's keycaps the preview labels; the layer tabs above the board
   // switch it, mirroring the 键盘布局 page. Purely a preview concern — no write.
   const [previewLayer, setPreviewLayer] = useState(0);
+  // 键帽上色: while true, `settings` below swaps every section for
+  // <KeycapColorManager>'s 颜色管理区 and the pinned board becomes paintable —
+  // see the `paint`/`settings` props passed to FullscreenPreviewOverlay.
+  const [coloringMode, setColoringMode] = useState(false);
+  const [activeBrush, setActiveBrush] = useState<string | "eraser" | null>(null);
+  const keycapHexById = useMemo(
+    () => Object.fromEntries(keycapPalette.map((c) => [c.id, c.hex])),
+    [keycapPalette],
+  );
+  // Distinct palette colors actually assigned to a key right now — shown as
+  // the "键盘用到的颜色" swatches in keycapSection below, ahead of the "上色"
+  // button that opens the full management panel.
+  const usedPalette = useMemo(() => {
+    const usedIds = new Set(Object.values(keycapColors));
+    return keycapPalette.filter((c) => usedIds.has(c.id));
+  }, [keycapPalette, keycapColors]);
+  const handleCancelColoring = () => {
+    setColoringMode(false);
+    setActiveBrush(null);
+  };
+  const handlePaint = (row: number, col: number) => {
+    if (activeBrush === null) {
+      return;
+    }
+    paintKeycap(row, col, activeBrush === "eraser" ? null : activeBrush);
+  };
   // Refs for image export: the visible board (current-layer save) and an
   // offscreen board per configured layer (all-layers save, stitched together).
   const currentBoardRef = useRef<HTMLDivElement>(null);
@@ -195,14 +228,19 @@ export function KeyboardColorPanel({
     }
   };
 
+  // Scoped by keyboard.uid (see contexts/previewAppearance.tsx's `keyFor` doc
+  // comment) so a second board's recent-color swatches don't bleed into this
+  // one's — this component only mounts while a keyboard is connected and
+  // fully unmounts on disconnect, so the lazy initializers below always read
+  // the *currently* connected board's own history.
   const [caseRecent, setCaseRecent] = useState<string[]>(() =>
-    readStoredColors(CASE_RECENT_KEY),
+    readStoredColors(keyFor(CASE_RECENT_KEY, keyboard.uid)),
   );
   const [plateRecent, setPlateRecent] = useState<string[]>(() =>
-    readStoredColors(PLATE_RECENT_KEY),
+    readStoredColors(keyFor(PLATE_RECENT_KEY, keyboard.uid)),
   );
   const [fontRecent, setFontRecent] = useState<string[]>(() =>
-    readStoredColors(FONT_RECENT_KEY),
+    readStoredColors(keyFor(FONT_RECENT_KEY, keyboard.uid)),
   );
 
   const sizeIndex = SIZES.indexOf(size);
@@ -260,9 +298,9 @@ export function KeyboardColorPanel({
       });
     };
 
-  const rememberCaseColor = remember(CASE_RECENT_KEY, setCaseRecent);
-  const rememberPlateColor = remember(PLATE_RECENT_KEY, setPlateRecent);
-  const rememberFontColor = remember(FONT_RECENT_KEY, setFontRecent);
+  const rememberCaseColor = remember(keyFor(CASE_RECENT_KEY, keyboard.uid), setCaseRecent);
+  const rememberPlateColor = remember(keyFor(PLATE_RECENT_KEY, keyboard.uid), setPlateRecent);
+  const rememberFontColor = remember(keyFor(FONT_RECENT_KEY, keyboard.uid), setFontRecent);
 
   // All appearance settings now live on the fullscreen config page (see
   // `FullscreenPreviewOverlay`'s `settings` prop below) rather than under the
@@ -535,6 +573,38 @@ export function KeyboardColorPanel({
               </div>
             }
           />
+          <SettingsRow
+            icon={<Icon icon="mdi:palette-outline" className="h-5 w-5" />}
+            label={t("keycapColorTitle")}
+            control={
+              <div className="flex items-center gap-2">
+                {usedPalette.length > 0 ? (
+                  <div className="flex items-center gap-1">
+                    {usedPalette.map((c) => (
+                      <span
+                        key={c.id}
+                        className="h-5 w-5 rounded-full border border-brand-outline/40"
+                        style={{ backgroundColor: c.hex }}
+                        title={c.hex}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-xs text-brand-on-surface-variant/60">
+                    {t("keycapColorNone")}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline gap-2"
+                  onClick={() => setColoringMode(true)}
+                >
+                  <Icon icon="mdi:brush" className="h-4 w-4" />
+                  {t("keycapColorButton")}
+                </button>
+              </div>
+            }
+          />
       </ul>
     </section>
   );
@@ -742,13 +812,41 @@ export function KeyboardColorPanel({
         heroArriving={heroArriving}
         onBack={onBackToHome}
         settings={
-          <>
-            {sizeSection}
-            {fontSection}
-            {keycapSection}
-            {caseSection}
-            {layoutSection}
-          </>
+          coloringMode ? (
+            <KeycapColorManager
+              palette={keycapPalette}
+              activeBrush={activeBrush}
+              onSelectBrush={setActiveBrush}
+              onAddColor={(hex) => setActiveBrush(addKeycapColor(hex))}
+              onEditColor={updateKeycapColor}
+              onDeleteColor={(id) => {
+                removeKeycapColor(id);
+                setActiveBrush((b) => (b === id ? null : b));
+              }}
+              onCancel={handleCancelColoring}
+            />
+          ) : (
+            <>
+              {sizeSection}
+              {fontSection}
+              {keycapSection}
+              {caseSection}
+              {layoutSection}
+            </>
+          )
+        }
+        paint={
+          coloringMode
+            ? {
+                tool:
+                  activeBrush === null
+                    ? null
+                    : activeBrush === "eraser"
+                      ? { kind: "eraser" }
+                      : { kind: "color", hex: keycapHexById[activeBrush] },
+                onPaint: handlePaint,
+              }
+            : undefined
         }
       />
     </>

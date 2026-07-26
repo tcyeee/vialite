@@ -5,6 +5,36 @@ export type PreviewContextTarget =
   | { kind: "key"; row: number; col: number }
   | { kind: "encoder"; index: number; direction: 0 | 1 };
 
+/** The active 键帽上色 brush: either a palette color or the eraser. */
+export type PaintBrush = { kind: "color"; hex: string } | { kind: "eraser" };
+
+/** Opt-in paint-mode wiring passed to `KeyboardLayoutPreview` — see its `paint` prop. */
+export interface PaintTool {
+  /** Selected brush, or `null` while 颜色管理区 is open but nothing is picked yet — clicks are then inert. */
+  tool: PaintBrush | null;
+  /** Called with the clicked key's row/col; the caller decides what a `null` tool means (typically a no-op). */
+  onPaint: (row: number, col: number) => void;
+}
+
+/**
+ * Builds a CSS `cursor` value for 键帽上色 paint mode: a small circular
+ * data-URI SVG dot filled with the selected color, a dashed outline ring for
+ * the eraser, or the plain default pointer while nothing is picked yet.
+ */
+export function paintCursor(tool: PaintBrush | null): string {
+  if (!tool) {
+    return "default";
+  }
+  const fill = tool.kind === "color" ? tool.hex : "none";
+  const stroke = tool.kind === "color" ? "white" : "#666";
+  const dash = tool.kind === "eraser" ? " stroke-dasharray='3 2'" : "";
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22'>` +
+    `<circle cx='11' cy='11' r='8' fill='${fill}' stroke='${stroke}' stroke-width='2'${dash}/>` +
+    `</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 11 11, pointer`;
+}
+
 /**
  * Display size (显示尺寸) is a pure *visual* zoom: the board is always laid out
  * at {@link BASE_UNIT} px per KLE unit and then scaled as a whole via a CSS

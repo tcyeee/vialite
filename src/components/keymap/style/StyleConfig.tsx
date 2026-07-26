@@ -28,6 +28,7 @@ import type { Keyboard } from "../../../protocol/keyboard.ts";
 import { CornerCloseButton } from "../../common/CornerCloseButton.tsx";
 import { KEYBOARD_HERO_NAME } from "../../common/viewTransition.ts";
 import { KeyboardLayoutPreview } from "../layout/KeyboardLayoutPreview.tsx";
+import type { PaintTool } from "../layout/appearance.tsx";
 import type { FullscreenPreviewHandle } from "./useFullscreenPreview.ts";
 import { useFullscreenFitZoom } from "./useFullscreenPreview.ts";
 import { usePullToExitCurtain } from "./usePullToExitCurtain.ts";
@@ -66,6 +67,7 @@ export function FullscreenPreviewOverlay({
   boardRef,
   heroArriving,
   onBack,
+  paint,
 }: {
   keyboard: Keyboard;
   layer: number;
@@ -99,6 +101,12 @@ export function FullscreenPreviewOverlay({
    * the plain collapse-to-compact behavior.
    */
   onBack?: (origin: Element) => void;
+  /**
+   * 键帽上色 paint mode, forwarded verbatim to the pinned board's
+   * `KeyboardLayoutPreview` — see that component's `paint` prop. Only set by
+   * `KeyboardColorPanel` while its 颜色管理区 is open; absent everywhere else.
+   */
+  paint?: PaintTool;
 }) {
   const { t } = useI18n();
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -217,7 +225,7 @@ export function FullscreenPreviewOverlay({
               transformOrigin: "top",
             }}
           >
-            <KeyboardLayoutPreview keyboard={keyboard} layer={layer} zoomOverride={zoom} />
+            <KeyboardLayoutPreview keyboard={keyboard} layer={layer} zoomOverride={zoom} paint={paint} />
           </div>
           {/* Hangs off the container's own bottom edge (unaffected by the board's
               scale/translate above, which are purely visual) so it stays put at

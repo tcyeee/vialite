@@ -25,7 +25,7 @@
 @theme {
   --color-brand-primary: #000000;
   --color-brand-primary-container: #ffd1dc;
-  --color-brand-secondary: #1e7b1e;
+  --color-brand-secondary: #e96a2f;
   --color-brand-secondary-container: #c0f0c0;
   --color-brand-on-secondary-container: #208320;
   --color-brand-tertiary: #665f36;
@@ -35,6 +35,10 @@
   --color-brand-on-surface: #1b1c17;
   --color-brand-on-surface-variant: #4f4446;
   --color-brand-outline: #817476;
+  /* Connection-status LED (NewHomePage's keyboard-name dot): kept green as a
+     distinct "connected/healthy" signal, independent of the brand-secondary
+     accent color above. */
+  --color-status-online: #1e7b1e;
 }
 
 /* Dark equivalents of the brand palette above, same hues rebalanced for a
@@ -45,7 +49,7 @@
 :root[data-theme="dark"] {
   --color-brand-primary: #ffffff;
   --color-brand-primary-container: #4a2c34;
-  --color-brand-secondary: #c0f0c0;
+  --color-brand-secondary: #e96a2f;
   --color-brand-secondary-container: #124a12;
   --color-brand-on-secondary-container: #98e698;
   --color-brand-tertiary: #d3c896;
@@ -55,6 +59,7 @@
   --color-brand-on-surface: #e7e2e4;
   --color-brand-on-surface-variant: #cbbfc1;
   --color-brand-outline: #948e90;
+  --color-status-online: #c0f0c0;
 }
 
 /* Monochrome black accent: override daisyUI's own `primary` token (used by
@@ -345,11 +350,11 @@ textarea,
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-secondary) 55%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-status-online) 55%, transparent);
   }
   50% {
     opacity: 0.6;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-brand-secondary) 0%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-status-online) 0%, transparent);
   }
 }
 
@@ -1141,7 +1146,7 @@ textarea,
   padding: 1px 2px;
   margin: 0 2px 2px;
   border: 1px solid light-dark(rgba(0, 0, 0, 0.28), rgba(255, 255, 255, 0.32));
-  border-radius: 4px;
+  border-radius: var(--key-radius, 4px);
   box-sizing: border-box;
   overflow: hidden;
   white-space: nowrap;

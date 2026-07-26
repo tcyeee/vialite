@@ -1,4 +1,4 @@
-import { useState, type SyntheticEvent } from "react";
+import { useEffect, useState, type SyntheticEvent } from "react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { DualRoleEditor } from "./components/keymap/picker/DualRoleEditor.tsx";
 import { KeyboardLayoutEditor } from "./components/keymap/layout/KeyboardLayoutEditor.tsx";
@@ -28,6 +28,7 @@ import { KeyboardColorPanel } from "./components/color/KeyboardColorPanel.tsx";
 import { TapDancePanel } from "./components/tapdance/TapDancePanel.tsx";
 import { SpinnerIcon, WaitingForConnection } from "./components/connect/WaitingForConnection.tsx";
 import { useI18n } from "./contexts/i18n.tsx";
+import { NO_DEVICE, usePreviewAppearance } from "./contexts/previewAppearance.tsx";
 import { useConnectionTransition } from "./hooks/useConnectionTransition.ts";
 import { usePageNavigation } from "./hooks/usePageNavigation.ts";
 import { useKeySelection, type Selected } from "./hooks/useKeySelection.ts";
@@ -70,6 +71,14 @@ function App() {
     },
   });
   const { keyboard, productName, lastDeviceName } = conn;
+  // Keeps 个性化/键盘配色's persisted settings (spacing, case/keycap color, the
+  // per-key paint map, ...) scoped to whichever keyboard is actually connected
+  // — see contexts/previewAppearance.tsx's doc comment for why this can't just
+  // read `keyboard.uid` directly instead of round-tripping through a setter.
+  const { setActiveDevice } = usePreviewAppearance();
+  useEffect(() => {
+    setActiveDevice(keyboard?.uid ?? NO_DEVICE);
+  }, [keyboard, setActiveDevice]);
   // `boardViewportRef` goes on the overflow-scrolling viewport around the
   // interactive board; its width is independent of the board's, so auto-fit can
   // measure it without feedback. `autoFitZoom` is non-null only while
@@ -447,6 +456,7 @@ function App() {
             attaching={conn.attaching}
             error={conn.error}
             onConnect={conn.handleConnect}
+            onConnectDemo={conn.handleConnectDemo}
             lastDeviceName={lastDeviceName}
             onReconnectSaved={conn.handleReconnectSaved}
             zoom={waitingZoom}

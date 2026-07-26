@@ -103,7 +103,15 @@ export function KeyboardLayoutEditor({
     fontSize,
     fontColor,
     fontPosition,
+    keycapPalette,
+    keycapColors,
   } = usePreviewAppearance();
+  // Resolves each key's painted color (键帽上色) from the shared palette — see
+  // previewAppearance.tsx and the matching lookup in KeyboardLayoutPreview.tsx.
+  const keycapHexById = useMemo(
+    () => Object.fromEntries(keycapPalette.map((c) => [c.id, c.hex])),
+    [keycapPalette],
+  );
   const style = styleOverride ?? contextStyle;
   // `3d` has no distinct render yet — falls back to `default` (flat, no shading).
   const depth = style === "relief";
@@ -260,7 +268,11 @@ export function KeyboardLayoutEditor({
             const isSelected =
               selected?.kind === "key" && selected.row === key.row && selected.col === key.col;
             const selectedPart = isSelected && selected.kind === "key" ? selected.part : undefined;
-            const style = shapeStyle(key, shiftX, shiftY, PITCH, inset, plateMargin);
+            const paintedHex = keycapHexById[keycapColors[`${key.row},${key.col}`]];
+            const style = {
+              ...shapeStyle(key, shiftX, shiftY, PITCH, inset, plateMargin),
+              background: paintedHex,
+            };
             const secondRect = hasSecondRect(key) && (
               <span
                 className="key-part2"

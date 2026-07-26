@@ -22,6 +22,9 @@ interface Props {
   attaching: boolean;
   error: string | null;
   onConnect: () => void;
+  // Enters 功能预览: connects a simulated keyboard (MockHidTransport) so visitors without
+  // hardware on hand can try every panel. Sits to the left of the Detect button.
+  onConnectDemo: () => void;
   // Name of the last keyboard connected in this browser, if any — shows a
   // "重新连接 <name>" shortcut below the Detect button. At most one is ever
   // remembered (see components/connect/lastDevice.ts).
@@ -63,6 +66,7 @@ export function WaitingForConnection({
   attaching,
   error,
   onConnect,
+  onConnectDemo,
   lastDeviceName,
   onReconnectSaved,
   zoom = false,
@@ -209,18 +213,30 @@ export function WaitingForConnection({
             </div>
           )}
 
-          {/* When the browser itself is the blocker (in-app WebView, insecure
-              context, no WebHID) there's nothing to detect, so the title and
-              Detect button are hidden entirely — the warning banner above is the
-              whole message. They return once the browser is capable. */}
-          {supported && (
-            <>
-              <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">{t("waitingTitle")}</h1>
+          {/* The Detect button (and saved-device reconnect/error) needs real WebHID, so those
+              stay gated on `supported` — the warning banner above is the whole message for an
+              incapable browser. 功能预览 doesn't touch navigator.hid at all, so it stays available
+              even then: it's the one way those visitors (Safari/Firefox, no compatible hardware
+              on hand) can still try the app. */}
+          <h1 className="text-3xl font-bold text-brand-on-surface md:text-4xl">
+            {t(supported ? "waitingTitle" : "previewMode")}
+          </h1>
 
-              <div className="pt-4">
+          <div className="pt-4">
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-2xl border border-brand-outline/40 bg-transparent px-5 py-4 text-base font-semibold text-brand-on-surface transition hover:bg-brand-on-surface/5 disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={onConnectDemo}
+                disabled={connecting}
+              >
+                <Icon icon="mdi:eye-outline" className="h-5 w-5" />
+                <span>{t("previewMode")}</span>
+              </button>
+              {supported && (
                 <button
                   type="button"
-                  className="mx-auto flex items-center gap-3 rounded-2xl bg-primary px-8 py-4 text-xl font-bold text-primary-content shadow-none transition hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-primary"
+                  className="flex items-center gap-3 rounded-2xl bg-primary px-8 py-4 text-xl font-bold text-primary-content shadow-none transition hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-primary"
                   onClick={onConnect}
                   disabled={connecting}
                 >
@@ -231,22 +247,22 @@ export function WaitingForConnection({
                   )}
                   <span>{connecting ? t("connecting") : t("detectDevice")}</span>
                 </button>
-                {lastDeviceName && (
-                  <button
-                    type="button"
-                    className="mx-auto mt-3 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-brand-on-surface-variant transition hover:bg-brand-on-surface/5 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={onReconnectSaved}
-                    disabled={connecting}
-                  >
-                    <Icon icon="mdi:history" className="h-4 w-4" />
-                    <span>{t("reconnectSaved", { name: lastDeviceName })}</span>
-                  </button>
-                )}
-              </div>
+              )}
+            </div>
+            {supported && lastDeviceName && (
+              <button
+                type="button"
+                className="mx-auto mt-3 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-brand-on-surface-variant transition hover:bg-brand-on-surface/5 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={onReconnectSaved}
+                disabled={connecting}
+              >
+                <Icon icon="mdi:history" className="h-4 w-4" />
+                <span>{t("reconnectSaved", { name: lastDeviceName })}</span>
+              </button>
+            )}
+          </div>
 
-              {error && <p className="error text-sm font-medium">{error}</p>}
-            </>
-          )}
+          {supported && error && <p className="error text-sm font-medium">{error}</p>}
         </div>
       </div>
 

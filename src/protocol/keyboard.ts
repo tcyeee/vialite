@@ -17,7 +17,7 @@ import {
   type CustomKeycode,
 } from "./keycodes.ts";
 import { deserializeMacros, serializeMacros, type MacroAction } from "./macro.ts";
-import { HidTransport, ProtocolError } from "./transport.ts";
+import { ProtocolError, type Transport } from "./transport.ts";
 import { normalizeVilKeycode, type ParsedVilFile, type VilRestoreReport, type VilSnapshot } from "./vilFile.ts";
 
 export type { MacroAction };
@@ -71,7 +71,8 @@ export const QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_DELAY = 14;
 export const QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_INTERVAL = 15;
 export const QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_MAX_SPEED = 16;
 export const QMK_SETTINGS_QSID_MOUSEKEY_WHEEL_TIME_TO_MAX = 17;
-const QMK_SETTINGS_WIDTH: Record<number, number> = {
+/** Byte width per known qsid — exported so the preview-mode mock firmware (src/protocol/demo/) can declare the same set as supported without duplicating this table. */
+export const QMK_SETTINGS_WIDTH: Record<number, number> = {
   [QMK_SETTINGS_QSID_MAGIC]: 4,
   [QMK_SETTINGS_QSID_GRAVE_ESCAPE]: 1,
   [QMK_SETTINGS_QSID_TAPPING_TERM]: 2,
@@ -138,7 +139,7 @@ export interface PhysicalEncoder extends PhysicalShape {
 /** A layout-options entry: a bare string is a boolean toggle, an array is [label, ...choices]. */
 export type LayoutLabel = string | string[];
 
-interface VialDefinition {
+export interface VialDefinition {
   matrix: { rows: number; cols: number };
   layouts: { keymap: KleData; labels?: LayoutLabel[] };
   customKeycodes?: CustomKeycode[];
@@ -257,7 +258,7 @@ async function decompressXz(data: Uint8Array<ArrayBuffer>): Promise<string> {
  * Kept to a single round trip with few retries: this runs against candidate
  * devices that may not answer at all, so it must not stall the connect flow.
  */
-export async function probeVial(transport: HidTransport): Promise<boolean> {
+export async function probeVial(transport: Transport): Promise<boolean> {
   try {
     const data = await transport.send(
       new Uint8Array([C.CMD_VIA_VIAL_PREFIX, C.CMD_VIAL_GET_KEYBOARD_ID]),
@@ -271,7 +272,7 @@ export async function probeVial(transport: HidTransport): Promise<boolean> {
 }
 
 export class Keyboard {
-  private readonly transport: HidTransport;
+  private readonly transport: Transport;
 
   viaProtocol = -1;
   vialProtocol = -1;
@@ -361,7 +362,7 @@ export class Keyboard {
     for (const listener of this.listeners) listener();
   }
 
-  constructor(transport: HidTransport) {
+  constructor(transport: Transport) {
     this.transport = transport;
   }
 

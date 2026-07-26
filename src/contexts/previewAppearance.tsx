@@ -2,12 +2,15 @@
 // display size, key spacing, keycap width, case (外壳) radius/thickness/color and
 // plate (定位板) color. Lifted out of KeyboardColorPanel so the same settings the
 // user tunes on the 键盘配色 page also drive the interactive board on the main
-// keymap page (both read this context). Each value persists to localStorage.
+// keymap page (both read this context). Each value persists to localStorage,
+// scoped per connected keyboard (see `uid` below) so two different boards — or
+// a real board and 功能预览's simulated one — never see each other's settings.
 
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -53,12 +56,26 @@ const STYLE_KEY = "vialite-color-style";
 const FONT_SIZE_KEY = "vialite-color-font-size";
 const FONT_COLOR_KEY = "vialite-color-font-color";
 const FONT_POSITION_KEY = "vialite-color-font-position";
+const KEYCAP_PALETTE_KEY = "vialite-color-keycap-palette";
+const KEYCAP_COLORS_KEY = "vialite-color-keycap-colors";
 
 const SIZES: PreviewSize[] = ["xs", "s", "m", "l", "xl"];
 
-function readStoredFontSize(): FontSize {
+/**
+ * Namespaces a base storage key by the connected keyboard's `uid` (see
+ * `Keyboard.uid` in protocol/keyboard.ts — a stable 64-bit id from
+ * CMD_VIAL_GET_KEYBOARD_ID, populated before `PreviewAppearanceProvider` ever
+ * mounts). Without this, every board sharing this browser — including
+ * 功能预览's simulated keyboard, which has its own fixed uid — would read and
+ * overwrite the same global appearance/paint settings.
+ */
+export function keyFor(base: string, uid: bigint): string {
+  return `${base}::${uid.toString()}`;
+}
+
+function readStoredFontSize(key: string): FontSize {
   try {
-    const raw = window.localStorage.getItem(FONT_SIZE_KEY);
+    const raw = window.localStorage.getItem(key);
     if (raw && (FONT_SIZES as string[]).includes(raw)) {
       return raw as FontSize;
     }
@@ -68,9 +85,9 @@ function readStoredFontSize(): FontSize {
   return DEFAULT_FONT_SIZE;
 }
 
-function readStoredFontPosition(): FontPosition {
+function readStoredFontPosition(key: string): FontPosition {
   try {
-    const raw = window.localStorage.getItem(FONT_POSITION_KEY);
+    const raw = window.localStorage.getItem(key);
     if (raw && (FONT_POSITIONS as string[]).includes(raw)) {
       return raw as FontPosition;
     }
@@ -80,9 +97,9 @@ function readStoredFontPosition(): FontPosition {
   return DEFAULT_FONT_POSITION;
 }
 
-function readStoredStyle(): PreviewStyle {
+function readStoredStyle(key: string): PreviewStyle {
   try {
-    const raw = window.localStorage.getItem(STYLE_KEY);
+    const raw = window.localStorage.getItem(key);
     if (raw && (PREVIEW_STYLES as string[]).includes(raw)) {
       return raw as PreviewStyle;
     }
@@ -104,9 +121,9 @@ function readStoredLevel(key: string, fallback: SpacingLevel): SpacingLevel {
   return fallback;
 }
 
-function readStoredKeycapRadius(): KeycapRadiusLevel {
+function readStoredKeycapRadius(key: string): KeycapRadiusLevel {
   try {
-    const raw = window.localStorage.getItem(KEYCAP_RADIUS_KEY);
+    const raw = window.localStorage.getItem(key);
     if (raw && (KEYCAP_RADIUS_LEVELS as string[]).includes(raw)) {
       return raw as KeycapRadiusLevel;
     }
@@ -116,9 +133,9 @@ function readStoredKeycapRadius(): KeycapRadiusLevel {
   return DEFAULT_KEYCAP_RADIUS;
 }
 
-function readStoredSize(): PreviewSize {
+function readStoredSize(key: string): PreviewSize {
   try {
-    const raw = window.localStorage.getItem(SIZE_KEY);
+    const raw = window.localStorage.getItem(key);
     if (raw && (SIZES as string[]).includes(raw)) {
       return raw as PreviewSize;
     }
@@ -168,6 +185,32 @@ function store(key: string, value: string) {
   }
 }
 
+function readStoredJSON<T>(key: string, fallback: T): T {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw) {
+      return JSON.parse(raw) as T;
+    }
+  } catch {
+    // Fall through to default.
+  }
+  return fallback;
+}
+
+function storeJSON(key: string, value: unknown) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Non-persistent is fine.
+  }
+}
+
+/** One user-defined keycap color, referenced by id from {@link PreviewAppearanceValue.keycapColors} so editing it retroactively recolors every key using it — see 键帽上色 on the 键盘配色 page. */
+export interface KeycapPaletteColor {
+  id: string;
+  hex: string;
+}
+
 interface PreviewAppearanceValue {
   /**
    * When on (the default), the preview ignores {@link size} and continuously
@@ -192,6 +235,10 @@ interface PreviewAppearanceValue {
   fontSize: FontSize;
   fontColor: string;
   fontPosition: FontPosition;
+  /** User-defined keycap colors (键帽上色 palette) — see {@link KeycapPaletteColor}. */
+  keycapPalette: KeycapPaletteColor[];
+  /** Per-key paint assignments: `"row,col"` → a {@link keycapPalette} entry's `id`. */
+  keycapColors: Record<string, string>;
   setAutoFit: (value: boolean) => void;
   setSize: (value: PreviewSize) => void;
   setSpacing: (value: SpacingLevel) => void;
@@ -207,107 +254,259 @@ interface PreviewAppearanceValue {
   setFontSize: (value: FontSize) => void;
   setFontColor: (value: string) => void;
   setFontPosition: (value: FontPosition) => void;
+  /** Adds a new palette color and returns its id, so the caller can select it as the active brush immediately. */
+  addKeycapColor: (hex: string) => string;
+  /** Rewrites a palette entry's hex in place — every key already painted with this id updates too. */
+  updateKeycapColor: (id: string, hex: string) => void;
+  /** Removes a palette entry and clears any key assignments pointing at it (they revert to the default cap color). */
+  removeKeycapColor: (id: string) => void;
+  /** Paints (or, with `id: null`, erases) one key's color assignment. */
+  paintKeycap: (row: number, col: number, id: string | null) => void;
+  /**
+   * Switches which device's settings this provider reads/writes — call with
+   * `keyboard.uid` once a keyboard connects (App.tsx does this in an effect),
+   * and with {@link NO_DEVICE} on disconnect. Every field above is fully
+   * replaced with that device's stored values (or defaults, if it's never been
+   * seen before); nothing here is shared or merged across devices.
+   */
+  setActiveDevice: (uid: bigint) => void;
 }
 
 const PreviewAppearanceContext = createContext<PreviewAppearanceValue | null>(null);
 
+/**
+ * Sentinel `uid` for "no keyboard connected yet" — matches `Keyboard`'s own
+ * `uid = -1n` default (protocol/keyboard.ts), so this never collides with a
+ * real device's id (from CMD_VIAL_GET_KEYBOARD_ID) or 功能预览's fixed demo uid.
+ */
+export const NO_DEVICE = -1n;
+
+/**
+ * Mounted once near the app root (see main.tsx), a single instance for the
+ * whole session — it must NOT remount on every connect/disconnect, since it
+ * wraps `<App/>` itself (see {@link useAutoFitZoom}'s top-level hook call,
+ * which runs whether or not a keyboard is connected and so needs this context
+ * always present) and `<App/>` owns the actual WebHID connection; tearing
+ * this provider down would tear down the connection with it.
+ *
+ * Instead, switching the active device (via `setActiveDevice`, which App.tsx
+ * calls in an effect whenever `keyboard` changes) is handled by a plain
+ * `useEffect` below that re-reads every field from localStorage under the new
+ * device's namespaced keys (see {@link keyFor}) and overwrites the in-memory
+ * state to match — the same end result a remount would give, without ever
+ * unmounting `children`.
+ */
 export function PreviewAppearanceProvider({ children }: { children: ReactNode }) {
-  const [autoFit, setAutoFitState] = useState(() => readStoredBoolean(AUTO_FIT_KEY, true));
-  const [size, setSizeState] = useState<PreviewSize>(readStoredSize);
-  const [spacing, setSpacingState] = useState<SpacingLevel>(() =>
-    readStoredLevel(SPACING_KEY, DEFAULT_KEY_SPACING),
-  );
+  const [uid, setUid] = useState<bigint>(NO_DEVICE);
+  const [autoFit, setAutoFitState] = useState(true);
+  const [size, setSizeState] = useState<PreviewSize>("m");
+  const [spacing, setSpacingState] = useState<SpacingLevel>(DEFAULT_KEY_SPACING);
   // Keycap width is no longer user-configurable — fixed at the default (xl) so
   // the preview reads consistently. Any stale localStorage value is ignored.
   const [keycapWidth, setKeycapWidthState] = useState<SpacingLevel>(DEFAULT_KEYCAP_WIDTH);
-  const [caseRadius, setCaseRadiusState] = useState<SpacingLevel>(() =>
-    readStoredLevel(CASE_RADIUS_KEY, DEFAULT_CASE_RADIUS),
-  );
-  const [keycapRadius, setKeycapRadiusState] =
-    useState<KeycapRadiusLevel>(readStoredKeycapRadius);
-  const [caseThickness, setCaseThicknessState] = useState(() =>
-    readStoredNumber(CASE_THICKNESS_KEY, DEFAULT_CASE_THICKNESS),
-  );
-  const [caseColor, setCaseColorState] = useState(() =>
-    readStoredString(CASE_COLOR_KEY, DEFAULT_CASE_COLOR),
-  );
-  const [plateColor, setPlateColorState] = useState(() =>
-    readStoredString(PLATE_COLOR_KEY, DEFAULT_PLATE_COLOR),
-  );
-  const [wireframeLineColor, setWireframeLineColorState] = useState(() =>
-    readStoredString(WIREFRAME_LINE_COLOR_KEY, DEFAULT_WIREFRAME_LINE_COLOR),
-  );
+  const [caseRadius, setCaseRadiusState] = useState<SpacingLevel>(DEFAULT_CASE_RADIUS);
+  const [keycapRadius, setKeycapRadiusState] = useState<KeycapRadiusLevel>(DEFAULT_KEYCAP_RADIUS);
+  const [caseThickness, setCaseThicknessState] = useState(DEFAULT_CASE_THICKNESS);
+  const [caseColor, setCaseColorState] = useState(DEFAULT_CASE_COLOR);
+  const [plateColor, setPlateColorState] = useState(DEFAULT_PLATE_COLOR);
+  const [wireframeLineColor, setWireframeLineColorState] = useState(DEFAULT_WIREFRAME_LINE_COLOR);
   // Keycap border is no longer user-configurable — always off. Any stale
   // localStorage value is ignored.
   const [keycapBorder, setKeycapBorderState] = useState(false);
-  const [style, setStyleState] = useState<PreviewStyle>(readStoredStyle);
-  const [fontSize, setFontSizeState] = useState<FontSize>(readStoredFontSize);
-  const [fontColor, setFontColorState] = useState(() =>
-    readStoredString(FONT_COLOR_KEY, DEFAULT_FONT_COLOR),
-  );
-  const [fontPosition, setFontPositionState] =
-    useState<FontPosition>(readStoredFontPosition);
+  const [style, setStyleState] = useState<PreviewStyle>(DEFAULT_PREVIEW_STYLE);
+  const [fontSize, setFontSizeState] = useState<FontSize>(DEFAULT_FONT_SIZE);
+  const [fontColor, setFontColorState] = useState(DEFAULT_FONT_COLOR);
+  const [fontPosition, setFontPositionState] = useState<FontPosition>(DEFAULT_FONT_POSITION);
+  const [keycapPalette, setKeycapPaletteState] = useState<KeycapPaletteColor[]>([]);
+  const [keycapColors, setKeycapColorsState] = useState<Record<string, string>>({});
 
-  const setAutoFit = useCallback((value: boolean) => {
-    setAutoFitState(value);
-    store(AUTO_FIT_KEY, String(value));
-  }, []);
-  const setSize = useCallback((value: PreviewSize) => {
-    setSizeState(value);
-    store(SIZE_KEY, value);
-  }, []);
-  const setSpacing = useCallback((value: SpacingLevel) => {
-    setSpacingState(value);
-    store(SPACING_KEY, value);
-  }, []);
-  const setKeycapWidth = useCallback((value: SpacingLevel) => {
-    setKeycapWidthState(value);
-    store(KEYCAP_WIDTH_KEY, value);
-  }, []);
-  const setCaseRadius = useCallback((value: SpacingLevel) => {
-    setCaseRadiusState(value);
-    store(CASE_RADIUS_KEY, value);
-  }, []);
-  const setKeycapRadius = useCallback((value: KeycapRadiusLevel) => {
-    setKeycapRadiusState(value);
-    store(KEYCAP_RADIUS_KEY, value);
-  }, []);
-  const setCaseThickness = useCallback((value: number) => {
-    setCaseThicknessState(value);
-    store(CASE_THICKNESS_KEY, String(value));
-  }, []);
-  const setCaseColor = useCallback((value: string) => {
-    setCaseColorState(value);
-    store(CASE_COLOR_KEY, value);
-  }, []);
-  const setPlateColor = useCallback((value: string) => {
-    setPlateColorState(value);
-    store(PLATE_COLOR_KEY, value);
-  }, []);
-  const setWireframeLineColor = useCallback((value: string) => {
-    setWireframeLineColorState(value);
-    store(WIREFRAME_LINE_COLOR_KEY, value);
-  }, []);
-  const setKeycapBorder = useCallback((value: boolean) => {
-    setKeycapBorderState(value);
-    store(KEYCAP_BORDER_KEY, String(value));
-  }, []);
-  const setStyle = useCallback((value: PreviewStyle) => {
-    setStyleState(value);
-    store(STYLE_KEY, value);
-  }, []);
-  const setFontSize = useCallback((value: FontSize) => {
-    setFontSizeState(value);
-    store(FONT_SIZE_KEY, value);
-  }, []);
-  const setFontColor = useCallback((value: string) => {
-    setFontColorState(value);
-    store(FONT_COLOR_KEY, value);
-  }, []);
-  const setFontPosition = useCallback((value: FontPosition) => {
-    setFontPositionState(value);
-    store(FONT_POSITION_KEY, value);
-  }, []);
+  // Runs on mount and every time the active device changes (never on a plain
+  // re-render otherwise, since `uid` is the only dependency) — reloads every
+  // field from that device's own namespaced storage, discarding whatever the
+  // previously active device's values were.
+  useEffect(() => {
+    setAutoFitState(readStoredBoolean(keyFor(AUTO_FIT_KEY, uid), true));
+    setSizeState(readStoredSize(keyFor(SIZE_KEY, uid)));
+    setSpacingState(readStoredLevel(keyFor(SPACING_KEY, uid), DEFAULT_KEY_SPACING));
+    setCaseRadiusState(readStoredLevel(keyFor(CASE_RADIUS_KEY, uid), DEFAULT_CASE_RADIUS));
+    setKeycapRadiusState(readStoredKeycapRadius(keyFor(KEYCAP_RADIUS_KEY, uid)));
+    setCaseThicknessState(readStoredNumber(keyFor(CASE_THICKNESS_KEY, uid), DEFAULT_CASE_THICKNESS));
+    setCaseColorState(readStoredString(keyFor(CASE_COLOR_KEY, uid), DEFAULT_CASE_COLOR));
+    setPlateColorState(readStoredString(keyFor(PLATE_COLOR_KEY, uid), DEFAULT_PLATE_COLOR));
+    setWireframeLineColorState(
+      readStoredString(keyFor(WIREFRAME_LINE_COLOR_KEY, uid), DEFAULT_WIREFRAME_LINE_COLOR),
+    );
+    setStyleState(readStoredStyle(keyFor(STYLE_KEY, uid)));
+    setFontSizeState(readStoredFontSize(keyFor(FONT_SIZE_KEY, uid)));
+    setFontColorState(readStoredString(keyFor(FONT_COLOR_KEY, uid), DEFAULT_FONT_COLOR));
+    setFontPositionState(readStoredFontPosition(keyFor(FONT_POSITION_KEY, uid)));
+    setKeycapPaletteState(readStoredJSON(keyFor(KEYCAP_PALETTE_KEY, uid), []));
+    setKeycapColorsState(readStoredJSON(keyFor(KEYCAP_COLORS_KEY, uid), {}));
+    // keycapWidth/keycapBorder are intentionally excluded — they're no longer
+    // user-configurable (see the useState calls above) and always stay at
+    // their fixed default regardless of which device is active.
+  }, [uid]);
+
+  const setActiveDevice = setUid;
+
+  const setAutoFit = useCallback(
+    (value: boolean) => {
+      setAutoFitState(value);
+      store(keyFor(AUTO_FIT_KEY, uid), String(value));
+    },
+    [uid],
+  );
+  const setSize = useCallback(
+    (value: PreviewSize) => {
+      setSizeState(value);
+      store(keyFor(SIZE_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setSpacing = useCallback(
+    (value: SpacingLevel) => {
+      setSpacingState(value);
+      store(keyFor(SPACING_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setKeycapWidth = useCallback(
+    (value: SpacingLevel) => {
+      setKeycapWidthState(value);
+      store(keyFor(KEYCAP_WIDTH_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setCaseRadius = useCallback(
+    (value: SpacingLevel) => {
+      setCaseRadiusState(value);
+      store(keyFor(CASE_RADIUS_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setKeycapRadius = useCallback(
+    (value: KeycapRadiusLevel) => {
+      setKeycapRadiusState(value);
+      store(keyFor(KEYCAP_RADIUS_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setCaseThickness = useCallback(
+    (value: number) => {
+      setCaseThicknessState(value);
+      store(keyFor(CASE_THICKNESS_KEY, uid), String(value));
+    },
+    [uid],
+  );
+  const setCaseColor = useCallback(
+    (value: string) => {
+      setCaseColorState(value);
+      store(keyFor(CASE_COLOR_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setPlateColor = useCallback(
+    (value: string) => {
+      setPlateColorState(value);
+      store(keyFor(PLATE_COLOR_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setWireframeLineColor = useCallback(
+    (value: string) => {
+      setWireframeLineColorState(value);
+      store(keyFor(WIREFRAME_LINE_COLOR_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setKeycapBorder = useCallback(
+    (value: boolean) => {
+      setKeycapBorderState(value);
+      store(keyFor(KEYCAP_BORDER_KEY, uid), String(value));
+    },
+    [uid],
+  );
+  const setStyle = useCallback(
+    (value: PreviewStyle) => {
+      setStyleState(value);
+      store(keyFor(STYLE_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setFontSize = useCallback(
+    (value: FontSize) => {
+      setFontSizeState(value);
+      store(keyFor(FONT_SIZE_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setFontColor = useCallback(
+    (value: string) => {
+      setFontColorState(value);
+      store(keyFor(FONT_COLOR_KEY, uid), value);
+    },
+    [uid],
+  );
+  const setFontPosition = useCallback(
+    (value: FontPosition) => {
+      setFontPositionState(value);
+      store(keyFor(FONT_POSITION_KEY, uid), value);
+    },
+    [uid],
+  );
+  const addKeycapColor = useCallback(
+    (hex: string): string => {
+      const id = crypto.randomUUID();
+      setKeycapPaletteState((prev) => {
+        const next = [...prev, { id, hex }];
+        storeJSON(keyFor(KEYCAP_PALETTE_KEY, uid), next);
+        return next;
+      });
+      return id;
+    },
+    [uid],
+  );
+  const updateKeycapColor = useCallback(
+    (id: string, hex: string) => {
+      setKeycapPaletteState((prev) => {
+        const next = prev.map((c) => (c.id === id ? { id, hex } : c));
+        storeJSON(keyFor(KEYCAP_PALETTE_KEY, uid), next);
+        return next;
+      });
+    },
+    [uid],
+  );
+  const removeKeycapColor = useCallback(
+    (id: string) => {
+      setKeycapPaletteState((prev) => {
+        const next = prev.filter((c) => c.id !== id);
+        storeJSON(keyFor(KEYCAP_PALETTE_KEY, uid), next);
+        return next;
+      });
+      setKeycapColorsState((prev) => {
+        const next = Object.fromEntries(Object.entries(prev).filter(([, v]) => v !== id));
+        storeJSON(keyFor(KEYCAP_COLORS_KEY, uid), next);
+        return next;
+      });
+    },
+    [uid],
+  );
+  const paintKeycap = useCallback(
+    (row: number, col: number, id: string | null) => {
+      setKeycapColorsState((prev) => {
+        const key = `${row},${col}`;
+        const next = { ...prev };
+        if (id === null) {
+          delete next[key];
+        } else {
+          next[key] = id;
+        }
+        storeJSON(keyFor(KEYCAP_COLORS_KEY, uid), next);
+        return next;
+      });
+    },
+    [uid],
+  );
 
   const value = useMemo(
     () => ({
@@ -326,6 +525,8 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       fontSize,
       fontColor,
       fontPosition,
+      keycapPalette,
+      keycapColors,
       setAutoFit,
       setSize,
       setSpacing,
@@ -341,6 +542,11 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setFontSize,
       setFontColor,
       setFontPosition,
+      addKeycapColor,
+      updateKeycapColor,
+      removeKeycapColor,
+      paintKeycap,
+      setActiveDevice,
     }),
     [
       autoFit,
@@ -358,6 +564,8 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       fontSize,
       fontColor,
       fontPosition,
+      keycapPalette,
+      keycapColors,
       setAutoFit,
       setSize,
       setSpacing,
@@ -373,6 +581,11 @@ export function PreviewAppearanceProvider({ children }: { children: ReactNode })
       setFontSize,
       setFontColor,
       setFontPosition,
+      addKeycapColor,
+      updateKeycapColor,
+      removeKeycapColor,
+      paintKeycap,
+      setActiveDevice,
     ],
   );
 

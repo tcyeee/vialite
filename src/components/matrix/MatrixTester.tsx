@@ -371,7 +371,7 @@ export function MatrixTester({ keyboard }: Props) {
               })}
             {placed.encoders.map(({ encoder, shiftX, shiftY }) => (
               <div
-                key={`encoder-${encoder.index}`}
+                key={`encoder-${encoder.index}-${encoder.direction}`}
                 className="encoder"
                 title={`Encoder ${encoder.index}`}
                 style={shapeStyle(encoder, shiftX, shiftY, UNIT, INSET, 0)}

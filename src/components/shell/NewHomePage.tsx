@@ -179,7 +179,7 @@ export function NewHomePage({
         <div className="flex items-center gap-3 text-[15px] font-medium text-black/90 dark:text-white/90">
           <button
             type="button"
-            className="inline-block text-center transition-colors hover:text-[#e2231b]"
+            className="inline-block text-center transition-colors hover:text-brand-secondary"
             style={{ width: 78 }}
             onClick={() => onNavigatePush("siteConfig")}
           >
@@ -312,7 +312,7 @@ export function NewHomePage({
                 status dot, slide-in-from-the-right red circle button on
                 group-hover. */}
             <div className="group flex h-9 items-center gap-2 pl-10">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-brand-secondary animate-status-breathe" />
+              <span className="h-2 w-2 shrink-0 rounded-full bg-status-online animate-status-breathe" />
               <span className="min-w-0 truncate text-sm font-medium uppercase text-black/70 dark:text-white/70">
                 {productName ?? t("disconnect")}
               </span>

@@ -42,7 +42,25 @@ interface PendingRead {
   resolve: (data: Uint8Array<ArrayBuffer> | null) => void;
 }
 
-export class HidTransport {
+/**
+ * The subset of HidTransport that `Keyboard` actually talks to. Pulled out so
+ * a fake device (see `src/protocol/demo/mockHidTransport.ts`, used by the
+ * "功能预览" preview-mode connect path) can stand in for a real one without
+ * subclassing HidTransport — its constructor requires a real HIDDevice, and
+ * its private fields make plain object literals structurally incompatible
+ * with the class type.
+ */
+export interface Transport {
+  readonly productName: string;
+  readonly vendorId: number;
+  readonly productId: number;
+  /** Called once when the underlying device is unplugged. */
+  onDisconnect: (() => void) | null;
+  send(cmd: Uint8Array<ArrayBuffer>, retries?: number, timeoutMs?: number): Promise<Uint8Array<ArrayBuffer>>;
+  close(): Promise<void>;
+}
+
+export class HidTransport implements Transport {
   private readonly device: HIDDevice;
   private waiter: PendingRead | null = null;
   // The device answers each report exactly once, in order, so reply N belongs
