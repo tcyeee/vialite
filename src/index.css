@@ -1303,8 +1303,9 @@ textarea,
 }
 
 /* 线稿(wireframe) 风格：键帽/旋钮只描边、不填充 —— 4 态立体感枚举(PreviewStyle)
-   之一。外壳/底板的描边在 KeyboardLayoutPreview.tsx/KeyboardLayout.tsx 里内联
-   设置（颜色是用户可配的 caseColor/plateColor），这里只补键帽/旋钮/dual-role
+   之一。底板的描边、外壳的半透明填充在 KeyboardLayoutPreview.tsx/
+   KeyboardLayoutEditor.tsx 里内联设置（颜色是用户可配的 caseColor/plateColor），
+   这里只补键帽/旋钮/dual-role
    hold band 的默认色背景（它们的填充色不可配置）。必须排在
    `.keyboard-layout .key`/`.encoder`/`.key-dual-hold` 的默认背景/描边规则之后，
    靠顺序覆盖同特异度的规则。旋钮本就是虚线描边（无填充色可配），去掉背景即可；

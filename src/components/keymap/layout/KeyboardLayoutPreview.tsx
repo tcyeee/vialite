@@ -189,7 +189,25 @@ export function KeyboardLayoutPreview({
       style={{
         padding: caseThickness,
         background: showCase && !caseShape && !wireframe ? caseColorFinal : "transparent",
-        border: showCase && !caseShape && wireframe ? `1.5px solid ${caseColorFinal}` : undefined,
+        // Wireframe keeps every other layer stroke-only, but the case is a
+        // real solid bezel (not a line-drawn glyph like a keycap) — a hairline
+        // border at its outer edge reads as a stray line, not "a shell", so it
+        // gets a translucent tint instead. That tint has to be an *inset*
+        // shadow rather than `background`: a background paints this whole box
+        // including the content area the plate sits in, and since the plate
+        // stays transparent in this style, a background tint would bleed
+        // through underneath the plate/keycaps too, tinting the entire board
+        // instead of just the caseThickness ring. `spread: caseThickness`
+        // makes the inset shadow's ring exactly as wide as the padding band,
+        // so it stops right at the plate's edge.
+        boxShadow:
+          showCase && !caseShape && wireframe
+            ? `inset 0 0 0 ${caseThickness}px color-mix(in srgb, ${caseColorFinal} 25%, transparent)`
+            : undefined,
+        // The outer edge still gets a crisp line in the uniform wireframe line
+        // color (not caseColor) so the case reads as a defined shape, matching
+        // the plate/keycap outlines instead of just fading into the tint above.
+        border: showCase && !caseShape && wireframe ? `1.5px solid ${wireframeLineColorFinal}` : undefined,
         borderRadius: showCase && !caseShape ? outerRadius : 0,
         width: "fit-content",
       }}
@@ -199,6 +217,7 @@ export function KeyboardLayoutPreview({
           shape={caseShape}
           caseColor={caseColorFinal}
           plateColor={plateColorFinal}
+          lineColor={wireframeLineColorFinal}
           depth={depth}
           wireframe={wireframe}
         />
@@ -256,7 +275,13 @@ export function KeyboardLayoutPreview({
                   ...shapeStyle(key, shiftX, shiftY, PITCH, inset, plateMargin),
                   background: paintedHex,
                   cursor: paint ? paintCursor(paint.tool) : undefined,
-                }}
+                  // Lets the 浮雕 (relief) box-shadow in index.css tint its
+                  // highlight/shadow from this key's own paint color instead of a
+                  // fixed white/gray overlay — see `.keyboard-layout-shaded .key`.
+                  // Unset (not just `undefined`) when unpainted so the CSS
+                  // `var(--key-bg, ...)` fallback takes over.
+                  ...(paintedHex ? { "--key-bg": paintedHex } : {}),
+                } as CSSProperties}
               >
                 {hasSecondRect(key) && (
                   <span

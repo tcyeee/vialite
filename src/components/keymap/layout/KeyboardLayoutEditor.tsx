@@ -123,11 +123,15 @@ export function KeyboardLayoutEditor({
   const wireframe = style === "wireframe";
   // Dark mode forces a fixed light-gray font/line color for legibility, same
   // as KeyboardLayoutPreview — but `colorOverride` (a deliberate per-board
-  // design like NewHomePage's hero strip) still wins, see WIREFRAME_DARK_COLOR.
+  // design like NewHomePage's hero strip) still wins for plate/font/line.
+  // The case is deliberately exempt: it should keep showing the board's own
+  // configured caseColor as an accent even when everything else is forced to
+  // one uniform line color.
   const wireframeDark = wireframe && theme === "dark";
-  const caseColorFinal = colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : caseColor);
+  const caseColorFinal = wireframeDark && !colorOverride ? WIREFRAME_DARK_COLOR : caseColor;
   const plateColorFinal = colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : plateColor);
   const fontColorFinal = colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : fontColor);
+  const wireframeLineColorFinal = colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : wireframeLineColor);
   const {
     PITCH,
     inset,
@@ -217,7 +221,25 @@ export function KeyboardLayoutEditor({
       style={{
         padding: caseThickness,
         background: showCase && !caseShape && !wireframe ? caseColorFinal : "transparent",
-        border: showCase && !caseShape && wireframe ? `1.5px solid ${caseColorFinal}` : undefined,
+        // Wireframe keeps every other layer stroke-only, but the case is a
+        // real solid bezel (not a line-drawn glyph like a keycap) — a hairline
+        // border at its outer edge reads as a stray line, not "a shell", so it
+        // gets a translucent tint instead. That tint has to be an *inset*
+        // shadow rather than `background`: a background paints this whole box
+        // including the content area the plate sits in, and since the plate
+        // stays transparent in this style, a background tint would bleed
+        // through underneath the plate/keycaps too, tinting the entire board
+        // instead of just the caseThickness ring. `spread: caseThickness`
+        // makes the inset shadow's ring exactly as wide as the padding band,
+        // so it stops right at the plate's edge.
+        boxShadow:
+          showCase && !caseShape && wireframe
+            ? `inset 0 0 0 ${caseThickness}px color-mix(in srgb, ${caseColorFinal} 25%, transparent)`
+            : undefined,
+        // The outer edge still gets a crisp line in the uniform wireframe line
+        // color (not caseColor) so the case reads as a defined shape, matching
+        // the plate/keycap outlines instead of just fading into the tint above.
+        border: showCase && !caseShape && wireframe ? `1.5px solid ${wireframeLineColorFinal}` : undefined,
         borderRadius: showCase && !caseShape ? outerRadius : 0,
         width: "fit-content",
       }}
@@ -227,6 +249,7 @@ export function KeyboardLayoutEditor({
           shape={caseShape}
           caseColor={caseColorFinal}
           plateColor={plateColorFinal}
+          lineColor={wireframeLineColorFinal}
           depth={depth}
           wireframe={wireframe}
         />
@@ -258,7 +281,7 @@ export function KeyboardLayoutEditor({
           color: fontColorFinal,
           "--key-font-scale": FONT_SCALES[fontSize],
           "--key-radius": `${KEYCAP_RADIUS_PX[keycapRadius]}px`,
-          "--wireframe-line-color": colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : wireframeLineColor),
+          "--wireframe-line-color": wireframeLineColorFinal,
         } as CSSProperties}
       >
         {placed.keys
@@ -272,7 +295,10 @@ export function KeyboardLayoutEditor({
             const style = {
               ...shapeStyle(key, shiftX, shiftY, PITCH, inset, plateMargin),
               background: paintedHex,
-            };
+              // See the matching comment in KeyboardLayoutPreview.tsx: lets the
+              // 浮雕 box-shadow tint from this key's own paint color.
+              ...(paintedHex ? { "--key-bg": paintedHex } : {}),
+            } as CSSProperties;
             const secondRect = hasSecondRect(key) && (
               <span
                 className="key-part2"

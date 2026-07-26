@@ -124,20 +124,26 @@ export function useCaseShape({ placed, PITCH, plateMargin, caseThickness, showCa
  *
  * `depth` (立体感) adds the drop shadows and the two bevel strokes; with it off
  * the layer is flat fills, matching what the div rendering does without
- * `.keyboard-case-shaded` / `.keyboard-layout-shaded`. `wireframe` (线稿) instead
- * strokes the outlines with no fill, matching the div rendering's border-only
- * treatment for that style.
+ * `.keyboard-case-shaded` / `.keyboard-layout-shaded`. `wireframe` (线稿) keeps
+ * the plate stroke-only like every other layer, but fills the case with a
+ * translucent tint of `caseColor` plus a crisp outer edge in `lineColor` (the
+ * same uniform line color the plate/keycaps use) — matching the div
+ * rendering's case treatment for that style (see the comment on
+ * `.keyboard-case`'s inline `background`/`border` in KeyboardLayoutEditor.tsx).
  */
 export function KeyboardCaseOutline({
   shape,
   caseColor,
   plateColor,
+  lineColor,
   depth,
   wireframe,
 }: {
   shape: CaseShape;
   caseColor: string;
   plateColor: string;
+  /** Wireframe-only: the case's outer-edge stroke color (uniform line color, not `caseColor`). */
+  lineColor?: string;
   depth: boolean;
   wireframe?: boolean;
 }) {
@@ -165,6 +171,25 @@ export function KeyboardCaseOutline({
           ))}
         </defs>
       )}
+      {/* Wireframe's tint has to be the donut between casePath and platePath
+          (via evenodd), not a plain casePath fill: casePath's own shape covers
+          the plate's area too (it's the same hull, just offset further out),
+          and platePath renders with no fill in this style — a plain fill here
+          would show straight through it, tinting the whole board instead of
+          just the case ring. Matches the div rendering's inset-shadow-ring
+          trick in KeyboardLayoutEditor.tsx. */}
+      {wireframe &&
+        shape.clusters.map(
+          (c, i) =>
+            c.casePath && (
+              <path
+                key={`ring-${i}`}
+                d={`${c.casePath} ${c.platePath}`}
+                fillRule="evenodd"
+                fill={`color-mix(in srgb, ${caseColor} 25%, transparent)`}
+              />
+            ),
+        )}
       {shape.clusters.map(
         (c, i) =>
           c.casePath && (
@@ -172,7 +197,7 @@ export function KeyboardCaseOutline({
               key={i}
               d={c.casePath}
               fill={wireframe ? "none" : caseColor}
-              stroke={wireframe ? caseColor : undefined}
+              stroke={wireframe ? lineColor : undefined}
               strokeWidth={wireframe ? 1.5 : undefined}
             />
           ),
