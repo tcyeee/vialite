@@ -7,30 +7,20 @@ import {
   type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
-import { Icon } from "@iconify/react";
+import { KEYCODE_CATEGORIES, label as kcLabel, type KeycodeDef } from "../../../protocol/keycodes.ts";
+import { useI18n } from "../../../contexts/i18n.tsx";
+import type { Keyboard } from "../../../protocol/keyboard.ts";
+import { CATEGORY_DESC, CATEGORY_KEYS, CLEAR_LABELS, KEYCODE_HELP, deviceCategories } from "./keycodeMeta.ts";
 import {
-  KEYCODE_CATEGORIES,
-  label as kcLabel,
-  type KeycodeDef,
-} from "../../../protocol/keycodes.ts";
-import { useI18n, type MessageKey } from "../../../contexts/i18n.tsx";
-import type { Keyboard, TapDanceEntry } from "../../../protocol/keyboard.ts";
-import type { MacroAction } from "../../../protocol/macro.ts";
-import {
-  BASIC_GROUPS,
-  CATEGORY_DESC,
-  CATEGORY_KEYS,
-  CLEAR_LABELS,
-  KEYCODE_HELP,
-  LAYER_GROUPS,
-  LAYER_GROUP_OTHER,
-  QUANTUM_GROUPS,
-  QUANTUM_GROUP_MISC,
-  CATEGORY_ICON_FALLBACK,
-  categoryIcon,
-  deviceCategories,
-  type KeycodeGroupMeta,
-} from "./keycodeMeta.ts";
+  buildMiddle,
+  macroIndex,
+  tapDanceConfigured,
+  tapDanceIndex,
+  type Category,
+  type MiddleGroup,
+} from "./cascadeGrouping.ts";
+import { CascadeColumns } from "./CascadeColumns.tsx";
+import { CascadeInfoPanel } from "./CascadeInfoPanel.tsx";
 
 interface Props {
   /**
@@ -87,106 +77,6 @@ interface Props {
   onClose?: () => void;
 }
 
-/** One category column entry: its display name and the keycodes under it. */
-interface Category {
-  name: string;
-  entries: KeycodeDef[];
-}
-
-/** Tap-dance action fields, in the order the preview lists them. */
-const TD_FIELDS: { key: MessageKey; field: keyof TapDanceEntry }[] = [
-  { key: "tapDanceOnTap", field: "onTap" },
-  { key: "tapDanceOnHold", field: "onHold" },
-  { key: "tapDanceOnDoubleTap", field: "onDoubleTap" },
-  { key: "tapDanceOnTapHold", field: "onTapHold" },
-];
-
-/** Macro slot index for an `M0`..`M15` keycode, or null for anything else. */
-const macroIndex = (qmkId: string): number | null => {
-  const m = /^M(\d+)$/.exec(qmkId);
-  return m ? Number(m[1]) : null;
-};
-
-/** Tap-dance slot index for a `TD(n)` keycode, or null for anything else. */
-const tapDanceIndex = (qmkId: string): number | null => {
-  const m = /^TD\((\d+)\)$/.exec(qmkId);
-  return m ? Number(m[1]) : null;
-};
-
-const tapDanceConfigured = (e: TapDanceEntry | undefined): boolean =>
-  !!e &&
-  (e.onTap !== "KC_NO" ||
-    e.onHold !== "KC_NO" ||
-    e.onDoubleTap !== "KC_NO" ||
-    e.onTapHold !== "KC_NO");
-
-/** Readable one-line label for a keycode (collapsing the two-line keycap form). */
-const kcText = (qmkId: string): string => kcLabel(qmkId).split("\n").join(" ");
-
-/**
- * A middle-column item: either a keycode committed directly, or a group that
- * expands into a sub-column, pushing the info panel to the 4th level. Groups
- * carry a `titleKey` (sourced from {@link ./keycodeMeta}) plus an optional
- * description key; layer groups additionally set each entry's `arg` (the target
- * layer index) for the sub-column label.
- */
-type MiddleItem =
-  | { kind: "leaf"; entry: KeycodeDef }
-  | {
-      kind: "group";
-      key: string;
-      titleKey?: MessageKey;
-      /** i18n key for the group's description, shown as the info panel's
-       *  per-key blurb (e.g. a layer/quantum group's help copy). */
-      descKey?: MessageKey;
-      entries: { entry: KeycodeDef; arg?: string }[];
-    };
-
-type MiddleGroup = Extract<MiddleItem, { kind: "group" }>;
-
-/**
- * A cascade sub-category of a top-level category. `match` decides which keycodes
- * fall under it; list order is the render order. The label + description come
- * from the group's i18n keys. `layerArg` marks groups whose sub-entries are
- * labelled by their `FN(n)` layer index.
- */
-interface SubGrouping {
-  key: string;
-  titleKey?: MessageKey;
-  descKey?: MessageKey;
-  match: (qmkId: string) => boolean;
-  layerArg?: boolean;
-}
-
-/** Map shared group metadata to a cascade sub-grouping (label + description from
- *  the same i18n keys the quick-config tabs use). */
-const fromMeta = (m: KeycodeGroupMeta, layerArg = false): SubGrouping => ({
-  key: m.key,
-  titleKey: m.titleKey,
-  descKey: m.helpKey,
-  match: m.match,
-  layerArg,
-});
-
-/** Basic → letters / numbers / symbols / F-keys / editing / mods. Unmatched
- *  keycodes (KC_NO/KC_TRNS) stay as leaves pinned above the groups. */
-const BASIC_SUBCATS: SubGrouping[] = BASIC_GROUPS.map((m) => fromMeta(m));
-/** Layers → MO/TG/… groups (+ Other catch-all); sub-entries are layer indices. */
-const LAYER_SUBCATS: SubGrouping[] = [...LAYER_GROUPS, LAYER_GROUP_OTHER].map((m) =>
-  fromMeta(m, true),
-);
-/** Quantum → held-mods / mod-tap / layer-tap / one-shot (+ misc catch-all). */
-const QUANTUM_SUBCATS: SubGrouping[] = [...QUANTUM_GROUPS, QUANTUM_GROUP_MISC].map((m) =>
-  fromMeta(m),
-);
-
-/** Top-level categories subdivided into a middle-column sub-category table. */
-const CATEGORY_SUBGROUPS: Record<string, SubGrouping[]> = {
-  Basic: BASIC_SUBCATS,
-  Layers: LAYER_SUBCATS,
-  Quantum: QUANTUM_SUBCATS,
-};
-
 /** Info-panel width in px, matching its `w-52` class (kept in sync by hand — it
  *  feeds the fits-on-the-right test, which runs before the panel is laid out). */
 const INFO_PANEL_W = 208;
@@ -194,56 +84,6 @@ const INFO_PANEL_W = 208;
 /** How long the pointer must rest on a described keycode before the info panel
  *  opens — long enough that scrubbing through a column doesn't flash it. */
 const INFO_DELAY_MS = 500;
-
-/** Icons for the two promoted clear keycodes in the first-level column. */
-const CLEAR_ICONS: Record<string, string> = {
-  KC_NO: "mdi:eraser",
-  KC_TRNS: "mdi:arrow-down-circle-outline",
-};
-
-/** Layer index for a `FN(n)` keycode, else undefined (e.g. FN_MO13). */
-const layerArgOf = (qmkId: string): string | undefined =>
-  /^[A-Z]+\((\d+)\)$/.exec(qmkId)?.[1];
-
-/** Bucket entries by a sub-category table: unmatched entries become leaves (kept
- *  in order, pinned on top), groups render in table order. */
-const groupBySubcats = (entries: KeycodeDef[], subs: SubGrouping[]): MiddleItem[] => {
-  const leaves: MiddleItem[] = [];
-  const groups = new Map<string, MiddleGroup>();
-  for (const entry of entries) {
-    const sub = subs.find((s) => s.match(entry.qmkId));
-    if (!sub) {
-      leaves.push({ kind: "leaf", entry });
-      continue;
-    }
-    let g = groups.get(sub.key);
-    if (!g) {
-      g = {
-        kind: "group",
-        key: sub.key,
-        titleKey: sub.titleKey,
-        descKey: sub.descKey,
-        entries: [],
-      };
-      groups.set(sub.key, g);
-    }
-    g.entries.push({ entry, arg: sub.layerArg ? layerArgOf(entry.qmkId) : undefined });
-  }
-  const ordered = subs
-    .map((s) => groups.get(s.key))
-    .filter((g): g is MiddleGroup => g !== undefined);
-  return [...leaves, ...ordered];
-};
-
-/** Middle-column items for a category: subdivided by its sub-category table if
- *  it has one, else a flat list of leaves. */
-const buildMiddle = (category: string | null, entries: KeycodeDef[]): MiddleItem[] => {
-  const subs = category ? CATEGORY_SUBGROUPS[category] : undefined;
-  return subs
-    ? groupBySubcats(entries, subs)
-    : entries.map((entry) => ({ kind: "leaf", entry }));
-};
-
 
 /**
  * Full keycode catalogue as a three-level cascade: the left column lists every
@@ -257,6 +97,11 @@ const buildMiddle = (category: string | null, entries: KeycodeDef[]): MiddleItem
  * Closing is driven by a document pointer-down listener (not focus/blur, whose
  * relatedTarget is unreliable across browsers); the active category is seeded on
  * open so the right column is never empty.
+ *
+ * The catalogue/grouping logic lives in `cascadeGrouping.ts`, and the popover's
+ * two heaviest render blocks are split out as `CascadeColumns` (the selection
+ * columns) and `CascadeInfoPanel` (the read-only description card) — this
+ * component owns the state machine (open/hover/position) they're driven by.
  */
 export function KeycodeCascadeSelector({
   onPick,
@@ -402,8 +247,7 @@ export function KeycodeCascadeSelector({
     return entry.label || entry.qmkId;
   };
 
-  const activeEntries =
-    categories.find((c) => c.name === activeCat)?.entries ?? [];
+  const activeEntries = categories.find((c) => c.name === activeCat)?.entries ?? [];
   // The promoted clear keycodes belong to no category, so fall back to them for
   // the info panel when one of the pinned items is hovered.
   const activeEntry =
@@ -434,10 +278,7 @@ export function KeycodeCascadeSelector({
 
   // Middle column for the active category, with layer keycodes folded into
   // groups, plus the currently-expanded group's sub-column (if any).
-  const activeMiddle = useMemo(
-    () => buildMiddle(activeCat, activeEntries),
-    [activeCat, activeEntries],
-  );
+  const activeMiddle = useMemo(() => buildMiddle(activeCat, activeEntries), [activeCat, activeEntries]);
   const activeGroup =
     (activeMiddle.find(
       (it) => it.kind === "group" && it.key === activeGroupKey,
@@ -590,20 +431,6 @@ export function KeycodeCascadeSelector({
     return cat ? t(cat) : null;
   })();
 
-  const activeMacroIdx = infoEntry ? macroIndex(infoEntry.qmkId) : null;
-  const activeTapDanceIdx = infoEntry ? tapDanceIndex(infoEntry.qmkId) : null;
-
-  const macroActionKind = (a: MacroAction): string => {
-    if (a.kind === "text") return t("macroActionText");
-    if (a.kind === "delay") return t("macroActionDelay");
-    return { tap: t("macroActionTap"), down: t("macroActionDown"), up: t("macroActionUp") }[a.kind];
-  };
-  const macroActionValue = (a: MacroAction): string => {
-    if (a.kind === "text") return a.text;
-    if (a.kind === "delay") return `${a.ms} ms`;
-    return a.keycodes.map(kcText).join(" + ");
-  };
-
   // Middle-column group label: its i18n title, or the raw key as a last resort.
   const groupLabel = (g: MiddleGroup): string => (g.titleKey ? t(g.titleKey) : g.key);
   // Sub-column item label: a layer index for layer groups, else the key's label.
@@ -643,244 +470,45 @@ export function KeycodeCascadeSelector({
       // moving between the popover's own columns, only on a real exit).
       onMouseLeave={collapse}
     >
-            <div className="relative flex items-start">
-            {/* Selection columns (category / middle / sub) grouped into one card. */}
-            <div
-              ref={columnsRef}
-              className="flex overflow-hidden rounded-box bg-base-100 shadow ring-1 ring-base-content/10"
-            >
-            <ul data-lenis-prevent className="menu menu-sm max-h-72 w-36 flex-nowrap overflow-y-auto border-r border-base-content/10 p-1">
-              {/* 清空 / 穿透: committed straight from the first level (they need
-                  no drill-in), separated from the categories below by a rule so
-                  they read as actions rather than another category. */}
-              {clearEntries.map((entry) => (
-                <li key={entry.qmkId}>
-                  <button
-                    type="button"
-                    // Highlighted on hover like the categories below (and the
-                    // level-2 groups / level-3 entries), not only when picked.
-                    className={`justify-start ${
-                      activeEntryId === entry.qmkId || pickedId === entry.qmkId
-                        ? "menu-active"
-                        : ""
-                    }`}
-                    title={entry.qmkId}
-                    // Collapse the drilled-in columns: these belong to no
-                    // category, so only the info panel should follow the hover.
-                    onMouseEnter={() => {
-                      setActiveCat(null);
-                      setActiveGroupKey(null);
-                      setActiveEntryId(entry.qmkId);
-                    }}
-                    onClick={() => commit(entry)}
-                  >
-                    <Icon
-                      icon={CLEAR_ICONS[entry.qmkId] ?? CATEGORY_ICON_FALLBACK}
-                      className="h-4 w-4 shrink-0 opacity-70"
-                      aria-hidden="true"
-                    />
-                    <span className="truncate">{entryLabel(entry)}</span>
-                  </button>
-                </li>
-              ))}
-              {clearEntries.length > 0 && (
-                <li className="pointer-events-none my-1 border-t border-base-content/10" />
-              )}
-              {categories.map((c) => (
-                <li key={c.name}>
-                  <button
-                    type="button"
-                    className={`flex justify-between ${
-                      activeCat === c.name ? "menu-active" : ""
-                    }`}
-                    onMouseEnter={() => selectCat(c.name)}
-                    onClick={() => selectCat(c.name)}
-                  >
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <Icon
-                        icon={categoryIcon(c.name)}
-                        className="h-4 w-4 shrink-0 opacity-70"
-                        aria-hidden="true"
-                      />
-                      <span className="truncate">{catLabel(c.name)}</span>
-                    </span>
-                    <span className="opacity-50">›</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {/* Middle column: revealed only once a category is active, so opening
-                shows just the category column (progressive left→right drill-in). */}
-            {activeCat !== null && (
-            <ul data-lenis-prevent className="menu menu-sm max-h-72 w-44 flex-nowrap overflow-y-auto p-1">
-              {activeMiddle.map((item) =>
-                item.kind === "leaf" ? (
-                  <li key={item.entry.qmkId}>
-                    <button
-                      type="button"
-                      className={`justify-start ${item.entry.masked ? "italic" : ""} ${
-                        pickedId === item.entry.qmkId ? "menu-active" : ""
-                      }`}
-                      title={item.entry.title ?? item.entry.qmkId}
-                      onMouseEnter={() => seed({ group: null, qmkId: item.entry.qmkId })}
-                      onClick={() => commit(item.entry)}
-                    >
-                      <span className="flex items-center gap-1.5 truncate">
-                        {/* Secondary dot marks macro / tap-dance slots the user has set. */}
-                        {isConfigured(item.entry.qmkId) && (
-                          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-secondary" />
-                        )}
-                        <span className="truncate">{entryLabel(item.entry)}</span>
-                      </span>
-                    </button>
-                  </li>
-                ) : (
-                  <li key={`group:${item.key}`}>
-                    <button
-                      type="button"
-                      className={`flex justify-between ${
-                        activeGroupKey === item.key ? "menu-active" : ""
-                      }`}
-                      onMouseEnter={() =>
-                        seed({ group: item.key, qmkId: item.entries[0]?.entry.qmkId ?? null })
-                      }
-                      onClick={() =>
-                        seed({ group: item.key, qmkId: item.entries[0]?.entry.qmkId ?? null })
-                      }
-                    >
-                      <span className="truncate">{groupLabel(item)}</span>
-                      <span className="opacity-50">›</span>
-                    </button>
-                  </li>
-                ),
-              )}
-            </ul>
-            )}
-            {/* Sub-column: parameterised variants of the expanded group (e.g. the
-                target layer for MO/TG/…). Only rendered when a group is active,
-                pushing the info panel to the 4th level. */}
-            {activeGroup && (
-              <ul data-lenis-prevent className="menu menu-sm max-h-72 w-32 flex-nowrap overflow-y-auto border-l border-base-content/10 p-1">
-                {activeGroup.entries.map((sub) => (
-                  <li key={sub.entry.qmkId}>
-                    <button
-                      type="button"
-                      className={`justify-start ${sub.entry.masked ? "italic" : ""} ${
-                        activeEntryId === sub.entry.qmkId ? "menu-active" : ""
-                      }`}
-                      title={sub.entry.title ?? sub.entry.qmkId}
-                      onMouseEnter={() => setActiveEntryId(sub.entry.qmkId)}
-                      onClick={() => commit(sub.entry)}
-                    >
-                      <span className="truncate">{subItemLabel(sub)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            </div>
-            {/* Info panel: a read-only, standalone card describing the active
-                keycode — a function blurb, a macro / tap-dance preview, and the
-                raw encoding. Visually detached (own gap + rounded corners) from
-                the selection columns; not selectable, purely informational.
-                Only shown while the pointer is over a level-2+ item (a described
-                keycode) — hovering just a category leaves it hidden — and only
-                after it has rested there for INFO_DELAY_MS. Stays mounted once
-                shown (kept fed by `infoEntry`) so it can animate back out.
-                Styled as an inverted `neutral` tooltip surface rather than
-                another base-100 card, so it reads as annotation rather than as
-                one more column of the menu. */}
-            {infoEntry && (
-            <div
-              data-lenis-prevent
-              aria-hidden={!infoShown}
-              // Out of flow (absolute) so flipping sides never shifts the
-              // selection columns out from under the pointer, and so revealing
-              // it doesn't widen the popover the clamp effect measures.
-              className={`absolute top-0 max-h-72 w-52 overflow-y-auto rounded-box bg-neutral p-3 text-neutral-content shadow-lg ring-1 ring-neutral/40 motion-safe:transition motion-safe:duration-150 motion-safe:ease-out ${
-                infoFlip ? "right-full mr-2 origin-right" : "left-full ml-2 origin-left"
-              } ${
-                infoShown
-                  ? "scale-100 opacity-100"
-                  : // Not just invisible but inert, so the faded-out panel can't
-                    // swallow hovers over whatever sits beside the menu.
-                    `pointer-events-none scale-95 opacity-0 ${
-                      infoFlip ? "translate-x-1" : "-translate-x-1"
-                    }`
-              }`}
-            >
-                <div className="flex flex-col gap-3">
-                  {/* 1. Keycode encoding — always first. */}
-                  <div>
-                    <div className="mb-1 text-xs opacity-50">{zh ? "按键编码" : "Keycode"}</div>
-                    <div className="font-mono text-sm break-all">{infoEntry.qmkId}</div>
-                  </div>
-                  {/* 2. Per-key description. */}
-                  {keyDesc && (
-                    <div>
-                      <div className="mb-1 text-xs opacity-50">{zh ? "按键说明" : "Description"}</div>
-                      <div className="text-xs leading-relaxed opacity-80">{keyDesc}</div>
-                    </div>
-                  )}
-                  {/* 3. Macro / tap-dance content. */}
-                  {activeMacroIdx !== null && (
-                    <div>
-                      <div className="mb-1 text-xs opacity-50">{t("cascadeMacroContents")}</div>
-                      {(macros[activeMacroIdx]?.length ?? 0) === 0 ? (
-                        <div className="text-xs opacity-40">{t("cascadeNotConfigured")}</div>
-                      ) : (
-                        <div className="flex flex-col gap-1 text-xs">
-                          {macros[activeMacroIdx].map((a, i) => (
-                            <div key={i} className="flex items-start gap-1">
-                              {/* Outline, not ghost: ghost paints a base-200
-                                  chip that disappears on the neutral surface. */}
-                              <span className="badge badge-outline badge-xs shrink-0">
-                                {macroActionKind(a)}
-                              </span>
-                              <span className="break-all">{macroActionValue(a)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {activeTapDanceIdx !== null && keyboard && (
-                    <div>
-                      <div className="mb-1 text-xs opacity-50">{t("cascadeTapDanceActions")}</div>
-                      {(() => {
-                        const e = keyboard.tapDanceEntries[activeTapDanceIdx];
-                        if (!tapDanceConfigured(e)) {
-                          return <div className="text-xs opacity-40">{t("cascadeNotConfigured")}</div>;
-                        }
-                        return (
-                          <div className="flex flex-col gap-0.5 text-xs">
-                            {TD_FIELDS.filter((f) => (e[f.field] as string) !== "KC_NO").map((f) => (
-                              <div key={f.field} className="flex justify-between gap-2">
-                                <span className="opacity-50">{t(f.key)}</span>
-                                <span className="font-medium">{kcText(e[f.field] as string)}</span>
-                              </div>
-                            ))}
-                            <div className="mt-0.5 text-right opacity-40">
-                              {t("tapDanceTermMs", { ms: e.tappingTerm })}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                  {/* 4. Other info: the category-level blurb. */}
-                  {catDesc && (
-                    <div>
-                      <div className="mb-1 text-xs opacity-50">{zh ? "分类说明" : "Category"}</div>
-                      <div className="text-xs leading-relaxed opacity-80">{catDesc}</div>
-                    </div>
-                  )}
-                </div>
-            </div>
-            )}
-            </div>
-          </div>
-    );
+      <div className="relative flex items-start">
+        <CascadeColumns
+          columnsRef={columnsRef}
+          clearEntries={clearEntries}
+          categories={categories}
+          activeCat={activeCat}
+          activeEntryId={activeEntryId}
+          pickedId={pickedId}
+          activeMiddle={activeMiddle}
+          activeGroup={activeGroup}
+          activeGroupKey={activeGroupKey}
+          catLabel={catLabel}
+          entryLabel={entryLabel}
+          groupLabel={groupLabel}
+          subItemLabel={subItemLabel}
+          isConfigured={isConfigured}
+          onHoverClear={(qmkId) => {
+            setActiveCat(null);
+            setActiveGroupKey(null);
+            setActiveEntryId(qmkId);
+          }}
+          onHoverSub={setActiveEntryId}
+          selectCat={selectCat}
+          seed={seed}
+          commit={commit}
+        />
+        {infoEntry && (
+          <CascadeInfoPanel
+            infoEntry={infoEntry}
+            infoShown={infoShown}
+            infoFlip={infoFlip}
+            keyDesc={keyDesc}
+            catDesc={catDesc}
+            keyboard={keyboard}
+          />
+        )}
+      </div>
+    </div>
+  );
 
   // Menu mode: just the anchored popover (no trigger/heading), inside a ref
   // wrapper so the outside-click handler can tell inside from outside.

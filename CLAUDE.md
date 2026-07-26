@@ -12,9 +12,8 @@ This is **not** a wrapper or fork of the official `vial-web`/`vial-gui` — `via
 cross-compiles the `vial-gui` Python/PyQt5 desktop app to WebAssembly and renders Qt widgets onto a
 canvas, so it wasn't reusable as an HTML/JS base. Instead, the Vial HID protocol itself is
 reimplemented in TypeScript under `src/protocol/`, ported line-by-line from `vial-gui`'s Python
-implementation (`keyboard_comm.py`, `constants.py`, `keycodes*.py`). See `note.md` for the original
-feasibility analysis (in Chinese) and `README.md` for the license rationale (GPL-2.0, inherited as
-a derivative of `vial-gui`).
+implementation (`keyboard_comm.py`, `constants.py`, `keycodes*.py`). See `README.md` for the
+license rationale (GPL-2.0, inherited as a derivative of `vial-gui`).
 
 When porting or extending protocol behavior, treat `vial-gui`'s Python source as the spec — code
 comments in `src/protocol/` cite the specific upstream file/function each piece mirrors, and
