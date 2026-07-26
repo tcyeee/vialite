@@ -117,8 +117,8 @@ export function KeyboardLayoutEditor({
   // as KeyboardLayoutPreview — but `colorOverride` (a deliberate per-board
   // design like NewHomePage's hero strip) still wins, see WIREFRAME_DARK_COLOR.
   const wireframeDark = wireframe && theme === "dark";
-  const caseColorFinal = colorOverride ?? caseColor;
-  const plateColorFinal = colorOverride ?? plateColor;
+  const caseColorFinal = colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : caseColor);
+  const plateColorFinal = colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : plateColor);
   const fontColorFinal = colorOverride ?? (wireframeDark ? WIREFRAME_DARK_COLOR : fontColor);
   const {
     PITCH,

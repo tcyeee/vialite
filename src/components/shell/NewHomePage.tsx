@@ -43,8 +43,13 @@ interface Props {
    CornerCloseButton,不再有 Navbar 或左侧边栏),用于返回本页,见 App.tsx。 */
 const MENU_ITEMS = NAV_ITEMS.filter(({ kind }) => kind !== "keyboardColor" && kind !== "matrixTest");
 
-/** 米白色线稿颜色,强制盖过用户的键盘配色,在线稿(默认)状态下保持统一的品牌观感。 */
-const HERO_LINE_COLOR = "#1b1515";
+/**
+ * 线稿颜色,强制盖过用户的键盘配色,在线稿(默认)状态下保持统一的品牌观感,与
+ * 应用的浅/深色主题无关。浅色卡片底(`#EAE6E6`)用深色线稿;深色底(`dark:bg-black`)
+ * 换一个浅米白,否则深色线条在黑底上会看不见。
+ */
+const HERO_LINE_COLOR_LIGHT = "#1b1515";
+const HERO_LINE_COLOR_DARK = "#f0e9e0";
 
 /** 3D 跟随倾斜的感应半径(px)——鼠标离卡片中心超过这个距离就恢复水平。 */
 const TILT_RADIUS_PX = 260;
@@ -283,7 +288,7 @@ export function NewHomePage({
                       onEncoderSelect={() => {}}
                       zoomOverride={heroZoom}
                       styleOverride="wireframe"
-                      colorOverride={HERO_LINE_COLOR}
+                      colorOverride={theme === "dark" ? HERO_LINE_COLOR_DARK : HERO_LINE_COLOR_LIGHT}
                     />
                   </div>
                   <div

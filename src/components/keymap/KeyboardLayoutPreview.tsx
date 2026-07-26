@@ -386,6 +386,12 @@ export function KeyboardLayoutPreview({
   const wireframeDark = wireframe && theme === "dark";
   const fontColorFinal = wireframeDark ? WIREFRAME_DARK_COLOR : fontColor;
   const wireframeLineColorFinal = wireframeDark ? WIREFRAME_DARK_COLOR : wireframeLineColor;
+  // Case border / plate outline also draw in wireframe style (see the `border`/
+  // `boxShadow` below and KeyboardCaseOutline's stroke) — without this they'd
+  // stay in whatever caseColor/plateColor was configured, invisible against a
+  // dark background, while only the key borders and labels turned white.
+  const caseColorFinal = wireframeDark ? WIREFRAME_DARK_COLOR : caseColor;
+  const plateColorFinal = wireframeDark ? WIREFRAME_DARK_COLOR : plateColor;
   const {
     PITCH,
     inset,
@@ -444,8 +450,8 @@ export function KeyboardLayoutPreview({
       }
       style={{
         padding: caseThickness,
-        background: showCase && !caseShape && !wireframe ? caseColor : "transparent",
-        border: showCase && !caseShape && wireframe ? `1.5px solid ${caseColor}` : undefined,
+        background: showCase && !caseShape && !wireframe ? caseColorFinal : "transparent",
+        border: showCase && !caseShape && wireframe ? `1.5px solid ${caseColorFinal}` : undefined,
         borderRadius: showCase && !caseShape ? outerRadius : 0,
         width: "fit-content",
       }}
@@ -453,8 +459,8 @@ export function KeyboardLayoutPreview({
       {caseShape && (
         <KeyboardCaseOutline
           shape={caseShape}
-          caseColor={caseColor}
-          plateColor={plateColor}
+          caseColor={caseColorFinal}
+          plateColor={plateColorFinal}
           depth={depth}
           wireframe={wireframe}
         />
@@ -472,7 +478,7 @@ export function KeyboardLayoutPreview({
         style={{
           width: plateWidth,
           height: plateHeight,
-          background: caseShape || wireframe ? "transparent" : plateColor,
+          background: caseShape || wireframe ? "transparent" : plateColorFinal,
           // `box-shadow` instead of `border` — see the identical comment in
           // KeyboardLayoutEditor.tsx: a real border on this padding:0 container
           // shifts every absolutely-positioned `.key`/`.encoder` child inward by
@@ -480,7 +486,7 @@ export function KeyboardLayoutPreview({
           // box), compressing the right/bottom margin and inflating the
           // left/top one. An inset shadow paints the same outline without
           // touching the box model.
-          boxShadow: !caseShape && wireframe ? `inset 0 0 0 1.5px ${plateColor}` : undefined,
+          boxShadow: !caseShape && wireframe ? `inset 0 0 0 1.5px ${plateColorFinal}` : undefined,
           borderRadius: caseShape ? 0 : innerRadius,
           // Display-only by default; the caps only need to receive events when
           // there's a right-click menu to open.
