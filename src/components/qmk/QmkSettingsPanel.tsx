@@ -38,6 +38,7 @@ export function SettingsRow({
   control,
   disabled = false,
   className = "",
+  labelClassName = "",
   collapsed,
 }: {
   icon: ReactNode;
@@ -52,6 +53,8 @@ export function SettingsRow({
   disabled?: boolean;
   /** Extra classes on the row element (e.g. `settings-row-collapse`). */
   className?: string;
+  /** Extra classes on the label `<span>` (e.g. `whitespace-nowrap`). */
+  labelClassName?: string;
   /**
    * When set, the row animates its height in/out (see `.settings-row-collapse`)
    * instead of unmounting, and is taken out of the tab order while collapsed.
@@ -70,7 +73,7 @@ export function SettingsRow({
       <div className="btn btn-circle btn-ghost pointer-events-none text-brand-on-surface">{icon}</div>
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium text-brand-on-surface">{label}</span>
+          <span className={`text-sm font-medium text-brand-on-surface ${labelClassName}`}>{label}</span>
           {badge}
           {help && <HelpIcon text={help} />}
         </div>

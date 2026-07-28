@@ -8,8 +8,7 @@ type PageMode =
   | "combo"
   | "rgb"
   | "color"
-  | "advanced"
-  | "preview3d";
+  | "advanced";
 
 export type NavKind =
   | "home"
@@ -19,8 +18,7 @@ export type NavKind =
   | "combo"
   | "rgb"
   | "keyboardColor"
-  | "advanced"
-  | "preview3d";
+  | "advanced";
 
 /** Canonical nav entries, driving NewHomePage's menu (there is no left sidebar anymore). */
 export const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; icon: string; beta?: boolean }[] = [
@@ -32,5 +30,4 @@ export const NAV_ITEMS: { kind: NavKind; mode: PageMode; labelKey: MessageKey; i
   { kind: "rgb", mode: "rgb", labelKey: "navRgb", icon: "mdi:led-strip-variant", beta: true },
   { kind: "matrixTest", mode: "matrix", labelKey: "navMatrixTest", icon: "mdi:view-grid-outline" },
   { kind: "advanced", mode: "advanced", labelKey: "navAdvanced", icon: "mdi:tune-variant" },
-  { kind: "preview3d", mode: "preview3d", labelKey: "navPreview3d", icon: "mdi:cube-outline", beta: true },
 ];

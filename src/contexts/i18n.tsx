@@ -70,6 +70,12 @@ const MESSAGES = {
     ja: "キーの書き込みに失敗しました:{error}",
     fr: "Échec de l'écriture de la touche : {error}",
   },
+  keyModifiedSuccess: {
+    en: "Saved",
+    zh: "修改成功",
+    ja: "保存しました",
+    fr: "Enregistré",
+  },
   keyboardDisconnected: {
     en: "Keyboard disconnected — plug it back in and reconnect.",
     zh: "键盘已断开——重新插入后再连接。",
@@ -758,13 +764,6 @@ const MESSAGES = {
   colorSaveCurrentLayer: { en: "Save current layer", zh: "保存当前层图片", ja: "現在のレイヤーを保存", fr: "Enregistrer le calque actuel" },
   colorSaveAllLayers: { en: "Save all layers", zh: "保存所有层图片", ja: "すべてのレイヤーを保存", fr: "Enregistrer tous les calques" },
   colorSaving: { en: "Saving…", zh: "保存中…", ja: "保存中…", fr: "Enregistrement…" },
-  colorScreenshotTitle: { en: "Save screenshot", zh: "保存截图", ja: "スクリーンショットを保存", fr: "Enregistrer la capture d'écran" },
-  colorScreenshotDesc: {
-    en: "Download the preview as a PNG image",
-    zh: "将预览效果下载为 PNG 图片",
-    ja: "プレビューを PNG 画像としてダウンロード",
-    fr: "Télécharger l'aperçu au format PNG",
-  },
   colorEditKeymap: { en: "Configure key layout", zh: "配置按键布局", ja: "キーレイアウトを設定", fr: "Configurer la disposition des touches" },
   colorLayoutTitle: { en: "Layout options", zh: "布局选项", ja: "レイアウトオプション", fr: "Options de disposition" },
   fullscreenPreviewTitle: { en: "Fullscreen preview", zh: "全屏预览", ja: "全画面プレビュー", fr: "Aperçu plein écran" },
@@ -1215,7 +1214,13 @@ const MESSAGES = {
   },
   set: { en: "Set", zh: "设置", ja: "設定", fr: "Définir" },
   anyKeycodeHeading: { en: "Any Keycode", zh: "任意键码", ja: "任意のキーコード", fr: "N'importe quel code" },
-  groupConfigSettings: { en: "Config Settings", zh: "配置设置", ja: "設定項目", fr: "Réglages de configuration" },
+  groupConfigSettings: { en: "Config", zh: "配置", ja: "設定", fr: "Config" },
+  configKeyboardColor: {
+    en: "Configure Keyboard Color",
+    zh: "配置键盘颜色",
+    ja: "キーボードの配色を設定",
+    fr: "Configurer la couleur du clavier",
+  },
   autoAdvance: { en: "Auto-select next", zh: "自动选取下一个", ja: "次を自動選択", fr: "Sélection automatique suivante" },
   autoAdvanceHelp: {
     en: "When on, assigning a key automatically selects the next key so you can configure them in sequence.",

@@ -11,6 +11,14 @@ interface BarProps {
   isConfigured?: (layer: number) => boolean;
   /** Extra classes for the tab-bar grid (defaults to `mb-3` when standalone). */
   className?: string;
+  /**
+   * Centers each row of tabs instead of stretching it to fill the container
+   * width. The 键盘配置 page's board sits centered above its own center line
+   * (not flush against the left edge), so its tab row needs the same
+   * centering to stay lined up above it — plain `justify-start` packing would
+   * bunch the tabs at the left, off-axis from a board narrower than the page.
+   */
+  centered?: boolean;
 }
 
 interface Props extends Omit<BarProps, "className"> {
@@ -30,18 +38,29 @@ export function LayerTabBar({
   onSelect,
   isConfigured,
   className = "mb-3",
+  centered = false,
 }: BarProps) {
   const { t } = useI18n();
   // Collapsed state persists across reloads (shared by every instance).
   const [collapsed, setCollapsed] = usePersistedBoolean("vialite-layer-tabs-collapsed");
   return (
-    // Wrapping grid so boards with many layers flow into multiple rows instead
-    // of a single horizontal-scroll strip. `auto-fill` keeps a consistent cell
-    // width and packs as many columns per row as the container allows.
+    // Wrapping so boards with many layers flow into multiple rows instead of a
+    // single horizontal-scroll strip. The default (`grid` + `auto-fill`) keeps
+    // a consistent cell width and packs as many columns per row as the
+    // container allows, stretching the last row across the full width.
+    // `centered` swaps that for `flex-wrap` + `justify-center` so each row
+    // (including a short last one) is centered as a block instead of
+    // stretched — needed when the row sits above a board narrower than the
+    // page, so both share the same center line instead of the tabs bunching
+    // at the left edge.
     <div
       role="tablist"
       aria-label={t("layers")}
-      className={`grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(4.5rem,1fr))] ${className}`}
+      className={
+        centered
+          ? `flex flex-wrap justify-center gap-2 ${className}`
+          : `grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(4.5rem,1fr))] ${className}`
+      }
     >
       {Array.from({ length: layers }, (_, i) => {
         const configured = isConfigured?.(i) ?? false;
@@ -58,8 +77,8 @@ export function LayerTabBar({
             aria-selected={isActive}
             onClick={() => onSelect(i)}
             className={`btn btn-sm relative isolate justify-start gap-1.5 ${
-              isActive ? "btn-primary" : "btn-outline border-base-300"
-            }`}
+              centered ? "w-[4.5rem]" : ""
+            } ${isActive ? "btn-primary" : "btn-outline border-base-300"}`}
             title={t("layerN", { n: i })}
             aria-label={t("layerN", { n: i })}
           >

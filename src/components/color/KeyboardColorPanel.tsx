@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useToast } from "../../contexts/toast.tsx";
@@ -10,6 +10,7 @@ import { KEYBOARD_HERO_NAME } from "../common/viewTransition.ts";
 import { ColorPicker } from "../common/ColorPicker.tsx";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { LayerTabBar } from "../keymap/LayerTabs.tsx";
+import { paintCursor, type PaintBrush } from "../keymap/layout/appearance.tsx";
 import { useAutoFitZoom } from "../keymap/layout/autoFitSize.ts";
 import { FullscreenPreviewOverlay, useFullscreenPreview } from "../keymap/style/StyleConfig.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
@@ -67,10 +68,14 @@ function store(key: string, value: string) {
  */
 export function KeyboardColorPanel({
   keyboard,
+  productName,
   heroArriving,
   onBackToHome,
+  onOpenPreview3d,
 }: {
   keyboard: Keyboard;
+  /** Connected device's WebHID product name, stamped into exported images — see `saveCurrentLayer`/`saveAllLayers`. */
+  productName?: string;
   /**
    * True for the brief window (driven by `App.tsx`'s `handlePersonalize`)
    * while a page-level View Transition is morphing the hero keyboard from
@@ -88,6 +93,12 @@ export function KeyboardColorPanel({
    * `FullscreenPreviewOverlay`'s `onBack`.
    */
   onBackToHome: (origin: Element) => void;
+  /**
+   * Pushes to the standalone 3D 预览 page (see `App.tsx`'s `nav.navigateSlide`).
+   * Its only entry point used to be a NewHomePage menu item; it now lives here
+   * instead, at the bottom of 个性化, right next to the fullscreen button.
+   */
+  onOpenPreview3d?: () => void;
 }) {
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -161,6 +172,30 @@ export function KeyboardColorPanel({
     }
     paintKeycap(row, col, activeBrush === "eraser" ? null : activeBrush);
   };
+  // Selected brush as a `PaintBrush`, or null while nothing (or the picker
+  // itself) is selected — shared by the `paint` prop below and the
+  // page-wide cursor effect so both agree on what's "currently selected".
+  const activeTool: PaintBrush | null = useMemo(
+    () =>
+      activeBrush === null
+        ? null
+        : activeBrush === "eraser"
+          ? { kind: "eraser" }
+          : { kind: "color", hex: keycapHexById[activeBrush] },
+    [activeBrush, keycapHexById],
+  );
+  // The 键帽上色 cursor (color dot / eraser ring) should follow the user
+  // anywhere on the page while a brush is selected — not just while
+  // hovering the board, since a "coloring mode" should read as globally
+  // active until deselected or the page is left. Cleanup always resets to
+  // the default, whether the brush is cleared or this page unmounts.
+  useEffect(() => {
+    if (!activeTool) return;
+    document.body.style.cursor = paintCursor(activeTool);
+    return () => {
+      document.body.style.cursor = "";
+    };
+  }, [activeTool]);
   // Refs for image export: the visible board (current-layer save) and an
   // offscreen board per configured layer (all-layers save, stitched together).
   const currentBoardRef = useRef<HTMLDivElement>(null);
@@ -200,7 +235,7 @@ export function KeyboardColorPanel({
     setSaving(true);
     try {
       const canvas = await nodeToCanvas(currentBoardRef.current);
-      downloadCanvas(frameBoard(canvas), `keyboard-layer-${previewLayer}.png`);
+      downloadCanvas(frameBoard(canvas, productName), `keyboard-layer-${previewLayer}.png`);
     } finally {
       setSaving(false);
     }
@@ -221,7 +256,7 @@ export function KeyboardColorPanel({
         cells.push({ canvas: await nodeToCanvas(node), label: t("layerN", { n: l }) });
       }
       if (cells.length > 0) {
-        downloadCanvas(composeLayers(cells), "keyboard-all-layers.png");
+        downloadCanvas(composeLayers(cells, productName), "keyboard-all-layers.png");
       }
     } finally {
       setSaving(false);
@@ -374,37 +409,35 @@ export function KeyboardColorPanel({
               />
             }
           />
-          {/* Image export lives here rather than on a hover overlay over the
-              board, so the preview is never covered while tuning it. */}
-          <SettingsRow
-            icon={<Icon icon="mdi:camera-outline" className="h-5 w-5" />}
-            label={t("colorScreenshotTitle")}
-            description={t("colorScreenshotDesc")}
-            control={
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline"
-                  onClick={() => void saveCurrentLayer()}
-                  disabled={saving}
-                >
-                  <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
-                  {saving ? t("colorSaving") : t("colorSaveCurrentLayer")}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline"
-                  onClick={() => void saveAllLayers()}
-                  disabled={saving || configuredLayers.length === 0}
-                >
-                  <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
-                  {saving ? t("colorSaving") : t("colorSaveAllLayers")}
-                </button>
-              </div>
-            }
-          />
       </ul>
     </section>
+  );
+
+  // Image export buttons: rendered below the board on the fullscreen page
+  // (FullscreenPreviewOverlay's `boardActions`), centered, rather than buried
+  // in the settings grid, so they stay reachable without scrolling regardless
+  // of which settings section is open.
+  const screenshotActions = (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        className="btn btn-sm btn-outline"
+        onClick={() => void saveCurrentLayer()}
+        disabled={saving}
+      >
+        <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
+        {saving ? t("colorSaving") : t("colorSaveCurrentLayer")}
+      </button>
+      <button
+        type="button"
+        className="btn btn-sm btn-outline"
+        onClick={() => void saveAllLayers()}
+        disabled={saving || configuredLayers.length === 0}
+      >
+        <Icon icon="mdi:content-save-outline" className="h-4 w-4" />
+        {saving ? t("colorSaving") : t("colorSaveAllLayers")}
+      </button>
+    </div>
   );
 
   const fontSection = (
@@ -769,8 +802,9 @@ export function KeyboardColorPanel({
         {/* All appearance settings (size, font, keycap, case, layout) now live
             on the fullscreen config page opened by this button, rather than
             scrolling below the board here — see `FullscreenPreviewOverlay`'s
-            `settings` prop below. */}
-        <div className="flex justify-center">
+            `settings` prop below. 3D 预览的入口现在也在这里——原先首页菜单的
+            那一份已经去掉,见 navItems.ts。 */}
+        <div className="flex justify-center gap-2">
           <button
             type="button"
             className="btn btn-outline gap-2"
@@ -779,6 +813,13 @@ export function KeyboardColorPanel({
             <Icon icon="mdi:fullscreen" className="h-4 w-4" />
             {t("fullscreenPreviewButton")}
           </button>
+          {onOpenPreview3d && (
+            <button type="button" className="btn btn-outline gap-2" onClick={onOpenPreview3d}>
+              <Icon icon="mdi:cube-outline" className="h-4 w-4" />
+              {t("navPreview3d")}
+              <span className="badge badge-secondary badge-sm">Beta</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -811,6 +852,7 @@ export function KeyboardColorPanel({
         boardRef={currentBoardRef}
         heroArriving={heroArriving}
         onBack={onBackToHome}
+        boardActions={coloringMode ? undefined : screenshotActions}
         settings={
           coloringMode ? (
             <KeycapColorManager
@@ -835,19 +877,7 @@ export function KeyboardColorPanel({
             </>
           )
         }
-        paint={
-          coloringMode
-            ? {
-                tool:
-                  activeBrush === null
-                    ? null
-                    : activeBrush === "eraser"
-                      ? { kind: "eraser" }
-                      : { kind: "color", hex: keycapHexById[activeBrush] },
-                onPaint: handlePaint,
-              }
-            : undefined
-        }
+        paint={coloringMode ? { tool: activeTool, onPaint: handlePaint } : undefined}
       />
     </>
   );

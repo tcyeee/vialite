@@ -95,6 +95,7 @@ function App() {
     autoAdvance,
     setAutoAdvance,
     importing,
+    justModified,
     handleAssign,
     handleHoldWrite,
     handleContextAssign,
@@ -177,7 +178,7 @@ function App() {
               } else if (nav.mode === "color") {
                 nav.navigate("newHome");
               } else {
-                nav.navigateSlide("newHome", "push-back");
+                nav.navigateBack();
               }
             }}
             label={t("navBackToNewHome")}
@@ -245,6 +246,7 @@ function App() {
                     active={layer}
                     onSelect={setLayer}
                     isConfigured={(l) => keyboard.isLayerConfigured(l)}
+                    centered
                   />
                   {/* 吸顶:px/py 给外壳的立体投影(.keyboard-case-shaded 向下与
                       左右的 box-shadow)留出空间:overflow-x-auto 会让
@@ -266,8 +268,12 @@ function App() {
                     ref={boardViewportRef}
                     className="keyboard-preview-sticky sticky top-0 z-10 -mx-4 mb-1.5 -mt-2 overflow-x-auto px-4 pb-6 pt-2"
                   >
-                    <div key={layer} className="tab-panel-appear w-full">
-                      {/* Nested (not on the tab-panel-appear div itself) so this
+                    <div key={layer} className="tab-panel-appear flex w-full justify-center">
+                      {/* `justify-center`: a board narrower than the viewport (small
+                          layouts, or auto-fit not needing to shrink to full width)
+                          would otherwise sit flush left, off-axis from the centered
+                          layer tabs above it (see `centered` on that LayerTabBar).
+                          Nested (not on the tab-panel-appear div itself) so this
                           element's own view-transition-group morph animation
                           doesn't fight the mount keyframe above it — only tagged
                           with KEYBOARD_HERO_NAME for the brief window
@@ -309,6 +315,16 @@ function App() {
                       </div>
                     </div>
                   </div>
+                  {/* 修改成功提示:固定高度占位避免出现/消失时内容跳动;透明度过渡
+                      而非直接切换 display,退场更柔和。计时逻辑(含"连续修改则重置
+                      计时")在 useKeySelection 的 markModified 里。 */}
+                  <p
+                    className="mt-1.5 h-4 text-center text-xs text-success transition-opacity duration-150"
+                    style={{ opacity: justModified ? 1 : 0 }}
+                    aria-live="polite"
+                  >
+                    {t("keyModifiedSuccess")}
+                  </p>
                   {/* 按键配置区:与上面的预览一样标记出来,点击这里不会清空选中态
                       (清空逻辑见文件顶部的 pointerdown 监听)。 */}
                   <div data-key-config>
@@ -363,6 +379,7 @@ function App() {
                           importing={importing}
                           onExport={handleExport}
                           onImportFile={handleImportFile}
+                          onOpenPersonalization={nav.handlePersonalize}
                         />
                       </div>
                     </section>
@@ -413,8 +430,10 @@ function App() {
               {keyboard && nav.mode === "color" && (
                 <KeyboardColorPanel
                   keyboard={keyboard}
+                  productName={productName}
                   heroArriving={nav.heroNavAnimating}
                   onBackToHome={nav.handleBackToHome}
+                  onOpenPreview3d={() => nav.navigateSlide("preview3d", "push")}
                 />
               )}
               </div>

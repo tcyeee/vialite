@@ -12,6 +12,8 @@ interface Props {
   importing: boolean;
   onExport: () => void;
   onImportFile: (file: File) => void;
+  /** "配置键盘颜色": opens the 个性化 page via the same hero View Transition NewHomePage uses. */
+  onOpenPersonalization: (origin: Element) => void;
 }
 
 /**
@@ -26,19 +28,39 @@ export function ConfigSettingsSection({
   importing,
   onExport,
   onImportFile,
+  onOpenPersonalization,
 }: Props) {
   const { t } = useI18n();
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <section className="flex w-full flex-col items-center" {...{ [ALWAYS_ENABLED_ATTR]: "" }}>
+    <section className="flex shrink-0 flex-col items-start" {...{ [ALWAYS_ENABLED_ATTR]: "" }}>
       <h4 className="mb-2 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
       {/* Same grouped-`list` look as the 个性化 / 网站设置 pages, so a setting
-          reads identically wherever it surfaces. */}
-      <ul className="list w-full max-w-md rounded-box border border-brand-outline/30">
+          reads identically wherever it surfaces. Deliberately narrow (not
+          `max-w-md`/`w-full`): this section now sits as the last column
+          alongside 特殊按键区域's other columns on the same row, so its width
+          should stay as small as the content allows rather than stretching. */}
+      <ul className="list w-64 rounded-box border border-brand-outline/30">
+        <SettingsRow
+          icon={<Icon icon="mdi:palette-outline" className="h-4.5 w-4.5" />}
+          label={t("configKeyboardColor")}
+          labelClassName="whitespace-nowrap"
+          control={
+            <button
+              type="button"
+              className="btn btn-circle btn-ghost"
+              onClick={(e) => onOpenPersonalization(e.currentTarget)}
+              aria-label={t("configKeyboardColor")}
+            >
+              <Icon icon="mdi:chevron-right" className="h-4.5 w-4.5" />
+            </button>
+          }
+        />
         <SettingsRow
           icon={<Icon icon="mdi:cursor-default-click-outline" className="h-4.5 w-4.5" />}
           label={t("autoAdvance")}
+          labelClassName="whitespace-nowrap"
           help={t("autoAdvanceHelp")}
           control={
             <input
@@ -53,7 +75,7 @@ export function ConfigSettingsSection({
         <SettingsRow
           icon={<Icon icon="mdi:download" className="h-4.5 w-4.5" />}
           label={t("exportLayout")}
-          description={t("exportLayoutDesc")}
+          labelClassName="whitespace-nowrap"
           control={
             <button
               type="button"
@@ -69,7 +91,7 @@ export function ConfigSettingsSection({
         <SettingsRow
           icon={<Icon icon="mdi:upload" className="h-4.5 w-4.5" />}
           label={t("importLayout")}
-          description={t("importLayoutDesc")}
+          labelClassName="whitespace-nowrap"
           control={
             <button
               type="button"

@@ -80,6 +80,13 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
     );
   }, []);
 
+  // Remembers whatever `mode` was immediately before the current one, through
+  // every navigation path (not just navigateSlide's "push") — see
+  // `navigateBack` below, used by the shared page shell's CornerCloseButton so
+  // a pushed page (e.g. 3D 预览, now reachable from 个性化 instead of only
+  // NewHomePage) closes back to wherever it was actually opened from.
+  const previousModeRef = useRef<PageMode>("newHome");
+
   // Tries to switch page mode, but detours through QmkSettingsPanel's "unsaved changes" dialog
   // first when leaving Advanced Settings with edits still pending.
   const navigate = useCallback(
@@ -90,6 +97,7 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
         return;
       }
       track(`view/${next}`);
+      if (next !== mode) previousModeRef.current = mode;
       setMode(next);
       onNavigated?.();
     },
@@ -155,11 +163,13 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
     [navigate],
   );
 
-  // Every other page reachable from NewHomePage's menu (网站信息, matrix, macro,
-  // tapdance, combo, rgb, advanced, preview3d): no shared hero element to morph,
-  // so instead the whole page slides as one unit — see the `data-page-anim`
-  // rules in index.css. `direction` picks which way: "push" when navigating
-  // away from NewHomePage, "push-back" when returning to it (the exact mirror).
+  // Every other page reachable via a push transition (网站信息, matrix, macro,
+  // tapdance, combo, rgb, advanced) plus 3D 预览 (now pushed from 个性化's
+  // bottom button instead of NewHomePage's menu): no shared hero element to
+  // morph, so instead the whole page slides as one unit — see the
+  // `data-page-anim` rules in index.css. `direction` picks which way: "push"
+  // when navigating away from the current page, "push-back" when returning
+  // (the exact mirror).
   const navigateSlide = useCallback(
     (next: PageMode, direction: "push" | "push-back") => {
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -178,6 +188,16 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
     [navigate],
   );
 
+  // Returns to whatever `mode` was immediately before the current one (see
+  // `previousModeRef` above) — used by the shared page shell's
+  // CornerCloseButton (App.tsx) instead of a hardcoded "newHome", so a pushed
+  // page (e.g. 3D 预览, now reachable from 个性化 instead of only NewHomePage)
+  // closes back to its actual origin instead of always dropping the user at
+  // the home page.
+  const navigateBack = useCallback(() => {
+    navigateSlide(previousModeRef.current, "push-back");
+  }, [navigateSlide]);
+
   const handleQmkLeaveResolved = useCallback(
     (shouldLeave: boolean) => {
       setQmkLeaveRequested(false);
@@ -185,6 +205,8 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
       qmkPendingNavigationRef.current = null;
       if (shouldLeave && next !== null) {
         track(`view/${next}`);
+        // Only ever reached while leaving "advanced" — see shouldInterceptNavigation.
+        previousModeRef.current = "advanced";
         setMode(next);
         onNavigated?.();
       }
@@ -240,6 +262,7 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
   // to run these resets inline.
   const resetForConnect = useCallback(() => {
     setMode("newHome");
+    previousModeRef.current = "newHome";
     setQmkPendingCount(0);
     setQmkLeaveRequested(false);
     qmkPendingNavigationRef.current = null;
@@ -264,6 +287,7 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
     setQmkPendingCount,
     navigate,
     navigateSlide,
+    navigateBack,
     handlePersonalize,
     handleGoToKeymap,
     handleBackToHome,

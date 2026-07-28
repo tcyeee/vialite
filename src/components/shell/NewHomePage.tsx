@@ -22,7 +22,6 @@ type PushablePageMode =
   | "combo"
   | "rgb"
   | "advanced"
-  | "preview3d"
   | "siteConfig";
 
 interface Props {
@@ -42,7 +41,9 @@ interface Props {
 
 /* 右侧竖排菜单的条目来源——直接取 navItems.ts 的 NAV_ITEMS,排除"个性化"
    (keyboardColor),它已有自己的入口(左侧的个性化按钮),不需要在这里重复一份;
-   也排除"键盘测试"(matrixTest),测试入口已从右侧菜单里去掉。
+   也排除"键盘测试"(matrixTest),测试入口已从右侧菜单里去掉。"3D 预览"
+   (preview3d) 已经从 NAV_ITEMS 里整个去掉了——首页不再提供 3D 预览入口,改为
+   放在个性化页面最底部,见 KeyboardColorPanel.tsx。
    "网站信息"从 NAV_ITEMS 里直接去掉了,顶部导航栏的"网站配置"是它现在唯一的
    入口(见下方 SiteConfigPage)。点击条目跳转到共享页面壳层(只有右上角的
    CornerCloseButton,不再有 Navbar 或左侧边栏),用于返回本页,见 App.tsx。 */
@@ -178,7 +179,7 @@ export function NewHomePage({
   const windowMinWidth = Math.min(HERO_WINDOW_MIN_PX, cardWidth);
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-[#EAE6E6] text-black dark:bg-black dark:text-white">
+    <div className="relative flex h-screen flex-col overflow-x-hidden overflow-y-auto bg-[#EAE6E6] text-black dark:bg-black dark:text-white lg:overflow-y-hidden">
       <nav className="flex items-center justify-between px-10 py-4 md:px-14">
         <span className="text-[1.95rem] font-extrabold tracking-tight">Vialite</span>
         <div className="flex items-center gap-3 text-[15px] font-medium text-black/90 dark:text-white/90">
@@ -223,11 +224,19 @@ export function NewHomePage({
         </div>
       </nav>
 
-      <main className=" ">
+      {/* flex-1 让 main 撑满 nav 之下的剩余高度;内层 grid 用 m-auto 在这个高度里
+          垂直居中——用 margin auto 而不是 items-center,是因为小屏堆叠后内容可能
+          比可视高度还高,margin auto 在溢出时会从顶部开始正常显示、可以被外层
+          overflow-y-auto 完整滚动到,而 items-center/justify-center 遇到溢出会从
+          两端一起裁掉,顶部内容会被吞掉、滚不出来。 */}
+      <main className="flex flex-1 flex-col px-6 sm:px-10 lg:px-0">
         {/* 左侧键盘 : 右侧菜单 = 2:3 的宽度比,靠 grid-cols-[2fr_3fr] 分配轨道宽度,
             两栏各自 justify-self 贴向中间的 gap,视觉上还是紧挨着的一对。宽度不够
-            (< lg)时退化成单列纵向堆叠,菜单顺着 DOM 顺序自然掉到键盘下方。 */}
-        <div className="grid w-full grid-cols-1 items-center justify-items-center gap-10 lg:grid-cols-[2fr_3fr] lg:gap-[6rem]">
+            (< lg)时退化成单列纵向堆叠,菜单顺着 DOM 顺序自然掉到键盘下方,并且
+            靠 justify-items-start(而不是 center)贴向窗口左边——lg 断点下两个子项
+            各自的 justify-self-end/justify-self-start 会覆盖这个默认值,所以只在
+            小屏生效。 */}
+        <div className="m-auto grid w-full grid-cols-1 items-center justify-items-start gap-10 py-8 lg:grid-cols-[2fr_3fr] lg:gap-[6rem] lg:py-0">
           {/* -translate-y-20 moved here (off the box itself) so it shifts the
               box together with the name/disconnect row and the personalize
               button below it, keeping them visually attached to the box
@@ -380,7 +389,7 @@ export function NewHomePage({
                     ? onGoToKeymap(e.currentTarget)
                     : onNavigatePush(itemMode as PushablePageMode)
                 }
-                className="group whitespace-nowrap border-none bg-transparent pl-8 text-5xl font-bold text-black/50 transition-colors duration-300 ease-out hover:text-brand-secondary dark:text-white/50"
+                className="group whitespace-nowrap border-none bg-transparent pl-8 text-[clamp(1.75rem,3.5vw,3rem)] font-bold text-black/50 transition-colors duration-300 ease-out hover:text-brand-secondary dark:text-white/50"
               >
                 <span className="flex -translate-x-8 items-center gap-2 transition-transform duration-300 ease-out group-hover:translate-x-0">
                   {t(labelKey)}

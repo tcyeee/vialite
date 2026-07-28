@@ -68,6 +68,7 @@ export function FullscreenPreviewOverlay({
   heroArriving,
   onBack,
   paint,
+  boardActions,
 }: {
   keyboard: Keyboard;
   layer: number;
@@ -107,6 +108,13 @@ export function FullscreenPreviewOverlay({
    * `KeyboardColorPanel` while its 颜色管理区 is open; absent everywhere else.
    */
   paint?: PaintTool;
+  /**
+   * Centered row rendered directly below the pinned board, above the
+   * `settings` grid — used by `KeyboardColorPanel` for its "save current
+   * layer"/"save all layers" export buttons, so they stay tied to the board
+   * they act on instead of living as just another settings-grid row.
+   */
+  boardActions?: ReactNode;
 }) {
   const { t } = useI18n();
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -237,6 +245,7 @@ export function FullscreenPreviewOverlay({
             style={{ height: BOARD_FADE_ZONE_HEIGHT }}
           />
         </div>
+        {boardActions && <div className="flex w-full justify-center">{boardActions}</div>}
         {settings && (
           // CSS multi-column rather than `grid-cols-2`: a grid pairs sections into
           // rows (row height = the taller of the two cells), leaving gaps below

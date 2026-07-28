@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../contexts/i18n.tsx";
 import { useToast } from "../contexts/toast.tsx";
 import { track } from "../lib/analytics.ts";
@@ -94,6 +94,18 @@ export function useKeySelection({
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [importing, setImporting] = useState(false);
 
+  // "修改成功" 绿色提示:每次成功写入都(重新)启动一个 1 秒定时器,期间再次写入
+  // 会先清掉旧定时器再重新计时,而不是叠加,所以连续修改时提示会一直显示、只在
+  // 停手 1 秒后才消失。
+  const [justModified, setJustModified] = useState(false);
+  const modifiedTimerRef = useRef<number | undefined>(undefined);
+  const markModified = useCallback(() => {
+    window.clearTimeout(modifiedTimerRef.current);
+    setJustModified(true);
+    modifiedTimerRef.current = window.setTimeout(() => setJustModified(false), 1000);
+  }, []);
+  useEffect(() => () => window.clearTimeout(modifiedTimerRef.current), []);
+
   // Assigns a keycode to the currently-selected key/encoder. Unlike the old
   // popup flow, the selection is kept so the user can keep re-assigning the
   // same key from the quick-config board below.
@@ -123,6 +135,7 @@ export function useKeySelection({
           await keyboard.setEncoder(layer, selected.index, selected.direction, qmkId);
         }
         ok = true;
+        markModified();
       } catch (err) {
         showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
       }
@@ -137,7 +150,7 @@ export function useKeySelection({
         }
       }
     },
-    [keyboard, selected, layer, t, showToast, autoAdvance],
+    [keyboard, selected, layer, t, showToast, autoAdvance, markModified],
   );
 
   // Dual-role hold editor writes a fully-rebuilt keycode (Mod-Tap / Layer-Tap /
@@ -152,6 +165,7 @@ export function useKeySelection({
       const { row, col } = selected;
       try {
         await keyboard.setKey(layer, row, col, qmkId);
+        markModified();
       } catch (err) {
         showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
       }
@@ -159,7 +173,7 @@ export function useKeySelection({
         setSelected({ kind: "key", row, col });
       }
     },
-    [keyboard, selected, layer, t, showToast],
+    [keyboard, selected, layer, t, showToast, markModified],
   );
 
   // Right-click context menu on the layout preview: write KC_NO / KC_TRNS
@@ -180,11 +194,12 @@ export function useKeySelection({
         } else {
           await keyboard.setEncoder(layer, target.index, target.direction, qmkId);
         }
+        markModified();
       } catch (err) {
         showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
       }
     },
-    [keyboard, layer, t, showToast],
+    [keyboard, layer, t, showToast, markModified],
   );
 
   const handleExport = useCallback(() => {
@@ -236,6 +251,7 @@ export function useKeySelection({
     autoAdvance,
     setAutoAdvance,
     importing,
+    justModified,
     handleAssign,
     handleHoldWrite,
     handleContextAssign,

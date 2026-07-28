@@ -6,6 +6,7 @@ import type { Keyboard } from "../../../protocol/keyboard.ts";
 import { HelpIcon } from "../../common/HelpIcon.tsx";
 import { MacroTapDanceCards } from "./MacroTapDanceCards.tsx";
 import { BasicKeyboardGrid } from "./BasicKeyboardGrid.tsx";
+import { SpecialKeyButtons } from "./SpecialKeyButtons.tsx";
 import { CATEGORY_KEYS, KEYCODE_HELP, deviceCategories } from "../picker/keycodeMeta.ts";
 import { LayerKeyPicker } from "./LayerKeyPicker.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
@@ -52,6 +53,8 @@ interface Props {
   onExport: () => void;
   /** Import a layout from a user-picked `.vil` file. */
   onImportFile: (file: File) => void;
+  /** "配置键盘颜色" row: opens the 个性化 page via the same hero View Transition NewHomePage uses. */
+  onOpenPersonalization: (origin: Element) => void;
   /**
    * 选中了双功能键(dualRole)的上半部分(轻触/tap 半区)时置 true。此时该半区只能
    * 是基础键码,所以除「功能」列前三张卡片(F13~F24 / 鼠标 / 媒体,连同基础模拟键盘)
@@ -86,6 +89,7 @@ export function QuickConfigPanel({
   importing,
   onExport,
   onImportFile,
+  onOpenPersonalization,
 }: Props) {
   const { t } = useI18n();
   // Preview scaling is no longer duplicated here: the board follows the 个性化
@@ -306,35 +310,33 @@ export function QuickConfigPanel({
         </div>
       )}
       {isBasic && (
-        // 2026-07-25 起,基础按键改为纵向排布、整体居中的三个 section(整页向下
-        // 滚动,不再有任何横向滚动):1. 基础按键(89 键模拟键盘 + 特殊按键)
-        // 2. 配置设置 3. 特殊按键区域(功能 / 组合按键 / 其他,窄屏下换行而不是
-        // 横向滚动)。
+        // 2026-07-28 起,基础按键区改为两个纵向排布、整体居中的 row(整页向下
+        // 滚动,不再有任何横向滚动):1. 基础按键 + 清空/穿透/任意按键,同一横轴,
+        // 窄屏下换行 2. 特殊按键区域(功能 / 组合按键 / 其他)+ 配置设置,同样同一
+        // 横轴、配置设置列宽度尽可能窄,窄屏下换行而不是横向滚动。
         <div className="mt-4 flex flex-col items-center gap-8">
-          {/* Section 1: physical keyboard grid + special keys (both rendered
-              inside BasicKeyboardGrid). */}
+          {/* Row 1: 基础按键(89 键模拟键盘)+ 清空/穿透/任意按键,并排显示在
+              同一横轴上;窄屏下换行而不是横向滚动。 */}
           <section className="flex w-full flex-col items-center">
-            <BasicKeyboardGrid
-              onPick={(qmkId) => pick({ qmkId, label: qmkId })}
-              disabled={disabled}
-            />
+            <div className="flex w-full flex-row flex-wrap items-start justify-center gap-6">
+              <div className="shrink-0">
+                <BasicKeyboardGrid
+                  onPick={(qmkId) => pick({ qmkId, label: qmkId })}
+                  disabled={disabled}
+                />
+              </div>
+              <div className="shrink-0">
+                <SpecialKeyButtons
+                  onPick={(qmkId) => pick({ qmkId, label: qmkId })}
+                  disabled={disabled}
+                />
+              </div>
+            </div>
           </section>
 
-          {/* Section 2: 配置设置不跟随 `dim`:它是面板级设置(自动选取下一个 /
-              导入导出),未选中按键时同样可以调整,所以既不置灰也不被点击拦截器
-              吞掉。「配置预览样式」行已移除——个性化改由 NewHomePage 的入口进入。 */}
-          <ConfigSettingsSection
-            autoAdvance={autoAdvance}
-            onAutoAdvanceChange={onAutoAdvanceChange}
-            importing={importing}
-            onExport={onExport}
-            onImportFile={onImportFile}
-          />
-
-          {/* Section 3: 特殊按键区域 — Fn/Media/Mouse + 层按键, Macros/Tap
-              Dance/Combo + 多功能, and Lighting/键盘配置/其他, laid out side by
-              side and wrapping (instead of horizontally scrolling) onto
-              multiple centered rows on narrow screens. */}
+          {/* Row 2: 特殊按键区域 — Fn/Media/Mouse + 层按键, Macros/Tap
+              Dance/Combo + 多功能, Lighting/键盘配置/其他,以及配置设置(列宽
+              尽可能窄),全部并排显示在同一横轴上,窄屏下换行而不是横向滚动。 */}
           <section className="flex w-full flex-col items-center">
             <h4 className="mb-2 text-sm font-semibold opacity-70">{t("sectionSpecialKeys")}</h4>
             <div className="flex w-full flex-row flex-wrap items-start justify-center gap-6">
@@ -445,6 +447,19 @@ export function QuickConfigPanel({
                   />
                 </div>
               </div>
+              {/* 配置设置,列宽尽可能窄,置于特殊按键区域最后方(同一横轴上的
+                  最后一列)。它不跟随 `dim`:是面板级设置(自动选取下一个 /
+                  导入导出),未选中按键时同样可以调整,所以既不置灰也不被点击
+                  拦截器吞掉。「配置预览样式」行已移除——个性化改由 NewHomePage
+                  的入口进入。 */}
+              <ConfigSettingsSection
+                autoAdvance={autoAdvance}
+                onAutoAdvanceChange={onAutoAdvanceChange}
+                importing={importing}
+                onExport={onExport}
+                onImportFile={onImportFile}
+                onOpenPersonalization={onOpenPersonalization}
+              />
             </div>
           </section>
         </div>

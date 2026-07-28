@@ -121,38 +121,109 @@ const LABEL_FONT = "600 30px system-ui, sans-serif";
 const BG = "#ffffff";
 const LABEL_COLOR = "#333333";
 
-// Site credit stamped into the bottom-right of every exported image. CREDIT_GAP
-// is the space between the board content and the credit; CREDIT_HEIGHT the band
-// reserved for the credit text itself, both in the same device pixels.
+// Site credit stamped into the bottom-right of every exported image, as a
+// three-line right-aligned block (site name / domain / keyboard name, top to
+// bottom — see drawCreditBlock). CREDIT_GAP is the space between the board
+// content and the block; the per-line *_LINE_HEIGHT constants below are each
+// line's own reserved band, all in the same device pixels.
 const SITE_NAME = "Vialite";
 const SITE_URL = "https://vialite.viii.me";
 const CREDIT_GAP = 30;
-const CREDIT_HEIGHT = 40;
 const URL_COLOR = "#9aa0a6";
 
+// 20% larger than the site name's old single-line size (28px).
+const SITE_NAME_FONT = "700 33.6px system-ui, sans-serif";
+const SITE_NAME_LINE_HEIGHT = 40;
+
+const URL_FONT = "400 24px system-ui, sans-serif";
+const URL_LINE_HEIGHT = 32;
+
+// Keyboard name: smaller and unbolded compared to the old single-line stamp,
+// with a small "link" glyph in front standing in for "connected to" the site
+// name above it — stamped only when the caller knows the connected device's
+// name.
+const NAME_FONT = "400 22px system-ui, sans-serif";
+const NAME_LINE_HEIGHT = 30;
+const NAME_ICON_SIZE = 18;
+const NAME_ICON_GAP = 6;
+
+// mdi:link (from @iconify-json/mdi), 24x24 viewBox — reused here as a raw SVG
+// path since the credit block is drawn on a canvas, not the DOM, so the
+// <Icon> component used elsewhere in the app isn't an option.
+const LINK_ICON_PATH =
+  "M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7a5 5 0 0 0-5 5a5 5 0 0 0 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1M8 13h8v-2H8zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4a5 5 0 0 0 5-5a5 5 0 0 0-5-5";
+const LINK_ICON_VIEWBOX = 24;
+
+/** Draw the mdi:link glyph, `size` px square, its top-left corner at (x, y). */
+function drawLinkIcon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size / LINK_ICON_VIEWBOX, size / LINK_ICON_VIEWBOX);
+  ctx.fillStyle = color;
+  ctx.fill(new Path2D(LINK_ICON_PATH));
+  ctx.restore();
+}
+
 /**
- * Draw the site credit — the bold site name followed by its URL — right-aligned
- * so its right edge sits at `right`, vertically centered on `y`. Shared by both
- * export paths so the current-layer and all-layers images carry an identical
- * bottom-right credit.
+ * Total height of the bottom-right credit block drawn by {@link
+ * drawCreditBlock} — callers use this to reserve vertical space below the
+ * board instead of duplicating the block's own line-height math.
  */
-function drawSiteCredit(ctx: CanvasRenderingContext2D, right: number, y: number) {
-  const nameFont = "700 28px system-ui, sans-serif";
-  const urlFont = "400 24px system-ui, sans-serif";
-  const GAP_NAME_URL = 14;
-  ctx.textAlign = "left";
+function creditBlockHeight(hasKeyboardName: boolean): number {
+  return SITE_NAME_LINE_HEIGHT + URL_LINE_HEIGHT + (hasKeyboardName ? NAME_LINE_HEIGHT : 0);
+}
+
+/**
+ * Draw the bottom-right credit block, right-aligned so its right edge sits at
+ * `right` and its bottom edge at `bottom`: "Vialite" on top, its domain below
+ * that, and — when `keyboardName` is given — the connected keyboard's name on
+ * a third line at the bottom, smaller and unbolded, prefixed by a small link
+ * glyph. Shared by both export paths so the current-layer and all-layers
+ * images carry an identical stamp.
+ */
+function drawCreditBlock(
+  ctx: CanvasRenderingContext2D,
+  right: number,
+  bottom: number,
+  keyboardName?: string,
+) {
+  ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  ctx.font = nameFont;
-  const nameW = ctx.measureText(SITE_NAME).width;
-  ctx.font = urlFont;
-  const urlW = ctx.measureText(SITE_URL).width;
-  const x = right - (nameW + GAP_NAME_URL + urlW);
-  ctx.font = nameFont;
-  ctx.fillStyle = LABEL_COLOR;
-  ctx.fillText(SITE_NAME, x, y);
-  ctx.font = urlFont;
+
+  let cursorY = bottom;
+
+  if (keyboardName) {
+    cursorY -= NAME_LINE_HEIGHT / 2;
+    ctx.font = NAME_FONT;
+    ctx.fillStyle = LABEL_COLOR;
+    const textWidth = ctx.measureText(keyboardName).width;
+    ctx.fillText(keyboardName, right, cursorY);
+    drawLinkIcon(
+      ctx,
+      right - textWidth - NAME_ICON_GAP - NAME_ICON_SIZE,
+      cursorY - NAME_ICON_SIZE / 2,
+      NAME_ICON_SIZE,
+      LABEL_COLOR,
+    );
+    cursorY -= NAME_LINE_HEIGHT / 2;
+  }
+
+  cursorY -= URL_LINE_HEIGHT / 2;
+  ctx.font = URL_FONT;
   ctx.fillStyle = URL_COLOR;
-  ctx.fillText(SITE_URL, x + nameW + GAP_NAME_URL, y);
+  ctx.fillText(SITE_URL, right, cursorY);
+  cursorY -= URL_LINE_HEIGHT / 2;
+
+  cursorY -= SITE_NAME_LINE_HEIGHT / 2;
+  ctx.font = SITE_NAME_FONT;
+  ctx.fillStyle = LABEL_COLOR;
+  ctx.fillText(SITE_NAME, right, cursorY);
 }
 
 /**
@@ -160,12 +231,14 @@ function drawSiteCredit(ctx: CanvasRenderingContext2D, right: number, y: number)
  * credit in the bottom-right. Used for the current-layer export, whose raw node
  * canvas otherwise hugs the board with no margin. The credit sits below the
  * board separated by {@link CREDIT_GAP}, mirroring {@link composeLayers}' image.
+ * When `keyboardName` is given, it's stamped as the bottom line of the same
+ * bottom-right block.
  */
-export function frameBoard(source: HTMLCanvasElement): HTMLCanvasElement {
+export function frameBoard(source: HTMLCanvasElement, keyboardName?: string): HTMLCanvasElement {
+  const blockHeight = creditBlockHeight(!!keyboardName);
   const out = document.createElement("canvas");
   out.width = source.width + OUTER_MARGIN * 2;
-  out.height =
-    OUTER_MARGIN + source.height + CREDIT_GAP + CREDIT_HEIGHT + OUTER_MARGIN;
+  out.height = OUTER_MARGIN + source.height + CREDIT_GAP + blockHeight + OUTER_MARGIN;
 
   const ctx = out.getContext("2d");
   if (!ctx) {
@@ -174,11 +247,7 @@ export function frameBoard(source: HTMLCanvasElement): HTMLCanvasElement {
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, out.width, out.height);
   ctx.drawImage(source, OUTER_MARGIN, OUTER_MARGIN);
-  drawSiteCredit(
-    ctx,
-    out.width - OUTER_MARGIN,
-    out.height - OUTER_MARGIN - CREDIT_HEIGHT / 2,
-  );
+  drawCreditBlock(ctx, out.width - OUTER_MARGIN, out.height - OUTER_MARGIN, keyboardName);
 
   return out;
 }
@@ -187,23 +256,21 @@ export function frameBoard(source: HTMLCanvasElement): HTMLCanvasElement {
  * Stitch per-layer board canvases into one image, two per row, each captioned
  * with its layer name. Cells are sized to the widest/tallest board so every board
  * is centered in a uniform cell (boards can differ in size if a layout option
- * changed geometry, though in practice they match). Returns the composed canvas.
+ * changed geometry, though in practice they match). When `keyboardName` is
+ * given, it's stamped as the bottom line of the bottom-right credit block,
+ * mirroring {@link frameBoard}. Returns the composed canvas.
  */
-export function composeLayers(cells: LayerCell[]): HTMLCanvasElement {
+export function composeLayers(cells: LayerCell[], keyboardName?: string): HTMLCanvasElement {
   const cellW = Math.max(...cells.map((c) => c.canvas.width));
   const boardH = Math.max(...cells.map((c) => c.canvas.height));
   const cellH = LABEL_HEIGHT + boardH;
   const rows = Math.ceil(cells.length / COLS);
+  const blockHeight = creditBlockHeight(!!keyboardName);
 
   const out = document.createElement("canvas");
   out.width = OUTER_MARGIN * 2 + COLS * cellW + (COLS - 1) * GAP;
   out.height =
-    OUTER_MARGIN +
-    rows * cellH +
-    (rows - 1) * GAP +
-    CREDIT_GAP +
-    CREDIT_HEIGHT +
-    OUTER_MARGIN;
+    OUTER_MARGIN + rows * cellH + (rows - 1) * GAP + CREDIT_GAP + blockHeight + OUTER_MARGIN;
 
   const ctx = out.getContext("2d");
   if (!ctx) {
@@ -231,11 +298,7 @@ export function composeLayers(cells: LayerCell[]): HTMLCanvasElement {
     ctx.drawImage(canvas, boardX, cellY + LABEL_HEIGHT);
   });
 
-  drawSiteCredit(
-    ctx,
-    out.width - OUTER_MARGIN,
-    out.height - OUTER_MARGIN - CREDIT_HEIGHT / 2,
-  );
+  drawCreditBlock(ctx, out.width - OUTER_MARGIN, out.height - OUTER_MARGIN, keyboardName);
 
   return out;
 }
