@@ -315,7 +315,7 @@ export function QuickConfigPanel({
         // 窄屏下换行 2. 特殊按键区域(功能 / 组合按键 / 其他)+ 配置设置,同样同一
         // 横轴、配置设置列宽度尽可能窄,窄屏下换行而不是横向滚动。
         <div className="mt-4 flex flex-col items-center gap-8">
-          {/* Row 1: 基础按键(89 键模拟键盘)+ 清空/穿透/任意按键,并排显示在
+          {/* Row 1: 基础按键(104 键模拟键盘)+ 清空/穿透/任意按键,并排显示在
               同一横轴上;窄屏下换行而不是横向滚动。 */}
           <section className="flex w-full flex-col items-center">
             <div className="flex w-full flex-row flex-wrap items-start justify-center gap-6">
