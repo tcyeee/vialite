@@ -346,6 +346,13 @@ export function QmkSettingsPanel({
   const [leaveApplying, setLeaveApplying] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetApplying, setResetApplying] = useState(false);
+  // A board with no QMK Settings qsids at all still gets the whole page,
+  // greyed out and inert behind an explanatory banner — mirrors RgbPanel's
+  // treatment of a board with no VialRGB lighting (see `supportsVialRgb`).
+  // Every *Settings section below already renders null when its own qsids
+  // aren't supported, so in this state they contribute nothing visible;
+  // the banner is what actually tells the user why the page looks empty.
+  const supported = keyboard.supportsQmkSettings;
 
   // Scan for whichever sections actually rendered (some hide themselves when the connected
   // keyboard doesn't expose their qsid) instead of re-deriving each section's own visibility rule.
@@ -410,14 +417,31 @@ export function QmkSettingsPanel({
   return (
     <QmkPendingContext.Provider value={{ pending, stage, discard, commit }}>
       <div ref={containerRef} className="flex flex-col gap-10">
-        <MagicSettings keyboard={keyboard} />
-        <GraveEscapeSettings keyboard={keyboard} />
-        <TapHoldSettings keyboard={keyboard} />
-        <ComboSettings keyboard={keyboard} />
-        <OneShotSettings keyboard={keyboard} />
-        <MouseKeySettings keyboard={keyboard} />
+        {!supported && (
+          <div role="alert" className="alert alert-warning">
+            <Icon icon="mdi:alert-outline" className="h-5 w-5 shrink-0" />
+            <span>{t("qmkSettingsUnsupported")}</span>
+          </div>
+        )}
+        <div
+          className={supported ? "flex flex-col gap-10" : "flex flex-col gap-10 select-none opacity-40"}
+          inert={!supported}
+          aria-disabled={!supported}
+        >
+          <MagicSettings keyboard={keyboard} />
+          <GraveEscapeSettings keyboard={keyboard} />
+          <TapHoldSettings keyboard={keyboard} />
+          <ComboSettings keyboard={keyboard} />
+          <OneShotSettings keyboard={keyboard} />
+          <MouseKeySettings keyboard={keyboard} />
+        </div>
         <div className="flex justify-end">
-          <button type="button" className="btn btn-outline btn-sm gap-1.5" onClick={() => setResetConfirmOpen(true)}>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm gap-1.5"
+            onClick={() => setResetConfirmOpen(true)}
+            disabled={!supported}
+          >
             <Icon icon="mdi:restore" className="h-4 w-4" />
             {t("resetAllSettings")}
           </button>

@@ -1042,6 +1042,12 @@ const MESSAGES = {
     ja: "このキーボードのファームウェアは VialRGB ライティングでビルドされていません。以下の設定は参考として表示されているだけで、変更できません。",
     fr: "Le firmware de ce clavier n'a pas été compilé avec l'éclairage VialRGB. Les réglages ci-dessous sont affichés à titre indicatif uniquement et ne peuvent pas être modifiés.",
   },
+  qmkSettingsUnsupported: {
+    en: "This keyboard's firmware doesn't expose QMK Settings — common on boards whose vendor ships a compiled Vial-compatible firmware without configuring (or publishing) any QMK Settings. This page isn't available on this keyboard.",
+    zh: "这块键盘的固件没有开放 QMK 设置——常见于厂商只提供编译好的 Vial 兼容固件,而未在固件里配置(或公开)QMK 设置的情况。此页面在这块键盘上不可用。",
+    ja: "このキーボードのファームウェアは QMK 設定を公開していません。ベンダーが Vial 対応のコンパイル済みファームウェアのみを配布し、QMK 設定を構成(または公開)していない場合によく見られます。このキーボードではこのページを利用できません。",
+    fr: "Le firmware de ce clavier n'expose pas les réglages QMK — un cas fréquent lorsque le fabricant ne fournit qu'un firmware compilé compatible Vial, sans configurer (ni publier) de réglages QMK. Cette page n'est pas disponible sur ce clavier.",
+  },
   rgbEffect: { en: "Effect", zh: "灯光效果", ja: "エフェクト", fr: "Effet" },
   rgbEffectDesc: {
     en: "{n} effect(s) available on this keyboard",

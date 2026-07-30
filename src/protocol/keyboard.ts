@@ -1137,6 +1137,18 @@ export class Keyboard {
     return this.qmkSettings.has(qsid);
   }
 
+  /**
+   * Whether this board exposes QMK Settings at all — gates the page as
+   * enabled vs greyed-out-behind-a-banner (mirrors `supportsVialRgb`). False
+   * both when the firmware predates `VIAL_PROTOCOL_QMK_SETTINGS` and when it
+   * speaks the protocol but the QUERY comes back empty — e.g. a vendor who
+   * ships a Vial-compatible compiled firmware without publishing (or without
+   * having actually configured) any QMK Settings qsids in their keymap.
+   */
+  get supportsQmkSettings(): boolean {
+    return this.qmkSettings.size > 0;
+  }
+
   getQmkSettingBit(qsid: number, bit: number): boolean {
     const value = this.qmkSettings.get(qsid);
     return value !== undefined && (value & (1 << bit)) !== 0;
