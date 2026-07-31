@@ -9,6 +9,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import type { Keyboard, PhysicalKey } from "../../protocol/keyboard.ts";
 import { label } from "../../protocol/keycodes.ts";
+import { isLinkFatal } from "../../protocol/transport.ts";
 import { UnlockDialog } from "./UnlockDialog.tsx";
 import { track } from "../../lib/analytics.ts";
 import { hasSecondRect, placeLayout } from "../keymap/layout/layoutGeometry.ts";
@@ -232,8 +233,14 @@ export function MatrixTester({ keyboard }: Props) {
           if (cancelled) {
             return;
           }
-          // Don't stop on a failed read — surface it as a retry banner and try
-          // again after a back-off, so a transient HID hiccup self-recovers.
+          // A dead link can't be retried into life — the transport is closed for good and the
+          // app is already on its way back to the connect screen, so stop rather than spin a
+          // poll loop against it until the page unmounts.
+          if (isLinkFatal(err)) {
+            return;
+          }
+          // Anything else: surface it as a retry banner and try again after a
+          // back-off, so a transient HID hiccup self-recovers.
           setPollError(err instanceof Error ? err.message : String(err));
           await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
           continue;

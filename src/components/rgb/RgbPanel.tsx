@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useToast } from "../../contexts/toast.tsx";
+import { useWriteError } from "../../hooks/useWriteError.ts";
 import { ColorPicker } from "../common/ColorPicker.tsx";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
@@ -82,6 +83,7 @@ interface Props {
 export function RgbPanel({ keyboard }: Props) {
   const { t, lang } = useI18n();
   const { showToast } = useToast();
+  const onWriteError = useWriteError("rgbWriteFailed");
   // Mirrors of the device state, so a dragging slider tracks the pointer at
   // React speed instead of at HID round-trip speed. `keyboard` stays the source
   // of truth; these are re-seeded from it on mount and updated in lockstep.
@@ -108,7 +110,7 @@ export function RgbPanel({ keyboard }: Props) {
       try {
         await fn();
       } catch (err) {
-        showToast(t("rgbWriteFailed", { error: err instanceof Error ? err.message : String(err) }));
+        onWriteError(err);
       } finally {
         writing.current = false;
         const next = queued.current;
@@ -148,7 +150,7 @@ export function RgbPanel({ keyboard }: Props) {
       await keyboard.saveRgb();
       showToast(t("rgbSaved"), "success");
     } catch (err) {
-      showToast(t("rgbWriteFailed", { error: err instanceof Error ? err.message : String(err) }));
+      onWriteError(err);
     } finally {
       setSaving(false);
     }

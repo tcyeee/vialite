@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Icon } from "@iconify/react";
 import type { Keyboard } from "../../protocol/keyboard.ts";
 import { SettingsRow } from "../qmk/QmkSettingsPanel.tsx";
+import { useWriteError } from "../../hooks/useWriteError.ts";
 
 interface Props {
   keyboard: Keyboard;
@@ -19,6 +20,7 @@ interface Props {
  * boolean toggle, an array is a label followed by its choices.
  */
 export function LayoutOptions({ keyboard, children }: Props) {
+  const onWriteError = useWriteError();
   const labels = keyboard.layoutLabels;
   const hasDeviceOptions = !!labels && labels.length > 0 && keyboard.layoutOptions >= 0;
   if (!hasDeviceOptions && !children) {
@@ -29,7 +31,14 @@ export function LayoutOptions({ keyboard, children }: Props) {
   const update = async (index: number, value: number) => {
     const next = [...choices];
     next[index] = value;
-    await keyboard.setLayoutOptions(next);
+    try {
+      await keyboard.setLayoutOptions(next);
+    } catch (err) {
+      // Every caller here is a `void update(...)` from an input handler, so an uncaught
+      // rejection would be swallowed by the runtime and the switch would just sit there
+      // showing a value the device never took.
+      onWriteError(err);
+    }
   };
 
   return (

@@ -16,7 +16,7 @@ import * as C from "../constants.ts";
 import { deserialize as kcDeserialize } from "../keycodes.ts";
 import { Keyboard, packLayoutOptions, QMK_SETTINGS_WIDTH } from "../keyboard.ts";
 import { serializeMacros } from "../macro.ts";
-import type { Transport } from "../transport.ts";
+import type { ProtocolError, Transport } from "../transport.ts";
 import { DEMO_LAYOUT_LABELS } from "./demoDefinition.ts";
 import { DEMO_DEFINITION_XZ_BASE64 } from "./demoDefinitionCompressed.data.ts";
 import {
@@ -85,6 +85,9 @@ function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
 
 export class MockHidTransport implements Transport {
   onDisconnect: (() => void) | null = null;
+  // The fake firmware answers every command, so the link can never die under it — the field
+  // exists only to satisfy Transport.
+  onFatal: ((err: ProtocolError) => void) | null = null;
   readonly productName = DEMO_PRODUCT_NAME;
   readonly vendorId = DEMO_VENDOR_ID;
   readonly productId = DEMO_PRODUCT_ID;
@@ -162,6 +165,7 @@ export class MockHidTransport implements Transport {
 
   async close(): Promise<void> {
     this.onDisconnect = null;
+    this.onFatal = null;
   }
 
   private dispatch(cmd: Uint8Array<ArrayBuffer>, resp: Uint8Array<ArrayBuffer>): void {

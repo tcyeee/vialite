@@ -7,6 +7,7 @@ import type { KeyPart } from "../components/keymap/layout/KeyboardLayoutEditor.t
 import type { Keyboard } from "../protocol/keyboard.ts";
 import { dualRole, withTap } from "../protocol/keycodes.ts";
 import { parseVil, serializeVil } from "../protocol/vilFile.ts";
+import { useWriteError } from "./useWriteError.ts";
 
 export type Selected =
   | { kind: "key"; row: number; col: number; part?: KeyPart }
@@ -74,6 +75,7 @@ export function useKeySelection({
 }: UseKeySelectionOptions) {
   const { t } = useI18n();
   const { showToast } = useToast();
+  const onWriteError = useWriteError("writeKeyFailed");
   // 点击键盘预览与按键配置区(快捷配置 / 双功能编辑器)之外的任何地方都取消选中,
   // 这样选中态不会在用户已经把注意力移开后继续挂着。用文档级监听而不是背景遮罩,
   // 页面其余部分才能照常点击;两个区域各自带 data- 标记,便于命中测试区分内外。
@@ -137,7 +139,7 @@ export function useKeySelection({
         ok = true;
         markModified();
       } catch (err) {
-        showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
+        onWriteError(err);
       }
       // "自动选取下一个": once a whole cap is assigned, advance the selection to the
       // next key in reading order so the user can configure a run of keys without
@@ -150,7 +152,7 @@ export function useKeySelection({
         }
       }
     },
-    [keyboard, selected, layer, t, showToast, autoAdvance, markModified],
+    [keyboard, selected, layer, onWriteError, autoAdvance, markModified],
   );
 
   // Dual-role hold editor writes a fully-rebuilt keycode (Mod-Tap / Layer-Tap /
@@ -167,13 +169,13 @@ export function useKeySelection({
         await keyboard.setKey(layer, row, col, qmkId);
         markModified();
       } catch (err) {
-        showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
+        onWriteError(err);
       }
       if (!dualRole(qmkId)) {
         setSelected({ kind: "key", row, col });
       }
     },
-    [keyboard, selected, layer, t, showToast, markModified],
+    [keyboard, selected, layer, onWriteError, markModified],
   );
 
   // Right-click context menu on the layout preview: write KC_NO / KC_TRNS
@@ -196,10 +198,10 @@ export function useKeySelection({
         }
         markModified();
       } catch (err) {
-        showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
+        onWriteError(err);
       }
     },
-    [keyboard, layer, t, showToast, markModified],
+    [keyboard, layer, onWriteError, markModified],
   );
 
   const handleExport = useCallback(() => {

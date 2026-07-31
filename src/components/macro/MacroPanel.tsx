@@ -4,13 +4,13 @@ import { useI18n } from "../../contexts/i18n.tsx";
 import { VIAL_PROTOCOL_ADVANCED_MACROS } from "../../protocol/constants.ts";
 import type { Keyboard, MacroAction } from "../../protocol/keyboard.ts";
 import { serializeMacro, serializeMacros } from "../../protocol/macro.ts";
-import { useToast } from "../../contexts/toast.tsx";
 import { usePersistedBoolean } from "../../hooks/usePersistedBoolean.ts";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
 import { KeycodeCascadeSelector } from "../keymap/picker/KeycodeCascadeSelector.tsx";
 import { UnlockDialog } from "../matrix/UnlockDialog.tsx";
 import { MacroKeycap3D } from "./MacroKeycap3D.tsx";
+import { useWriteError } from "../../hooks/useWriteError.ts";
 
 interface Props {
   keyboard: Keyboard;
@@ -179,7 +179,7 @@ function MacroActionRow({
 
 export function MacroPanel({ keyboard }: Props) {
   const { t } = useI18n();
-  const { showToast } = useToast();
+  const onWriteError = useWriteError();
   const [active, setActive] = useState(0);
   const [edited, setEdited] = useState<MacroAction[][]>(() => keyboard.macros);
   const [savedMacros, setSavedMacros] = useState<MacroAction[][]>(() => keyboard.macros);
@@ -252,7 +252,7 @@ export function MacroPanel({ keyboard }: Props) {
       setSavedMacros(edited);
       await keyboard.lock().catch(() => {});
     } catch (err) {
-      showToast(err instanceof Error ? err.message : String(err));
+      onWriteError(err);
     } finally {
       setSaving(false);
     }
@@ -267,7 +267,7 @@ export function MacroPanel({ keyboard }: Props) {
         setUnlocking(true);
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : String(err));
+      onWriteError(err);
     }
   };
 

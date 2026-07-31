@@ -64,6 +64,13 @@ const MESSAGES = {
     ja: "保存されたキーマップは別のキーボード用です。続行してもよろしいですか?",
     fr: "Cette configuration enregistrée appartient à un autre clavier. Voulez-vous vraiment continuer ?",
   },
+  // Generic write failure, for panels with no wording of their own — see hooks/useWriteError.ts.
+  writeFailed: {
+    en: "Failed to write to the keyboard: {error}",
+    zh: "写入键盘失败:{error}",
+    ja: "キーボードへの書き込みに失敗しました:{error}",
+    fr: "Échec de l'écriture sur le clavier : {error}",
+  },
   writeKeyFailed: {
     en: "Failed to write key: {error}",
     zh: "写入键值失败:{error}",

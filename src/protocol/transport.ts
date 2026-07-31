@@ -36,6 +36,16 @@ export class ProtocolError extends Error {
   }
 }
 
+/**
+ * True for the failures that mean the link itself is gone, not that one particular write was
+ * rejected. Both are terminal for the current transport — see {@link Transport.onFatal} — so
+ * the UI layer that raised the write has nothing useful to say about them: the connection
+ * layer is already tearing the page down and will explain it there.
+ */
+export function isLinkFatal(err: unknown): boolean {
+  return err instanceof ProtocolError && (err.code === "deviceDisconnected" || err.code === "commFailed");
+}
+
 interface PendingRead {
   /** Sequence number of the outgoing report this waiter expects a reply to. */
   expectSeq: number;
@@ -56,6 +66,13 @@ export interface Transport {
   readonly productId: number;
   /** Called once when the underlying device is unplugged. */
   onDisconnect: (() => void) | null;
+  /**
+   * Called once when the link is judged dead without the device ever being unplugged — it
+   * stopped answering and every retry ran out. The transport is closed for business from that
+   * moment on (every later `send` throws `deviceDisconnected` immediately), so the UI has to
+   * treat this exactly like a disconnect: there is no way back except a fresh connect.
+   */
+  onFatal: ((err: ProtocolError) => void) | null;
   send(cmd: Uint8Array<ArrayBuffer>, retries?: number, timeoutMs?: number): Promise<Uint8Array<ArrayBuffer>>;
   close(): Promise<void>;
 }
@@ -75,6 +92,9 @@ export class HidTransport implements Transport {
 
   /** Called once when the underlying device is unplugged. */
   onDisconnect: (() => void) | null = null;
+
+  /** Called once when the device stops answering entirely — see {@link Transport.onFatal}. */
+  onFatal: ((err: ProtocolError) => void) | null = null;
 
   private constructor(device: HIDDevice) {
     this.device = device;
@@ -153,6 +173,7 @@ export class HidTransport implements Transport {
     this.device.removeEventListener("inputreport", this.handleInputReport);
     navigator.hid.removeEventListener("disconnect", this.handleHidDisconnect);
     this.onDisconnect = null;
+    this.onFatal = null;
     this.disconnected = true;
     this.failPending();
     if (this.device.opened) {
@@ -167,8 +188,29 @@ export class HidTransport implements Transport {
     this.disconnected = true;
     this.failPending();
     navigator.hid.removeEventListener("disconnect", this.handleHidDisconnect);
+    // The unplug is the whole story; nothing in flight should also report the link as having
+    // died on its own once the retries it was mid-way through run out.
+    this.onFatal = null;
     this.onDisconnect?.();
   };
+
+  /**
+   * Declares the link dead after the device stopped answering. Every later `send` then fails
+   * immediately instead of burning another five retries against a device that isn't listening
+   * — the UI is on its way back to the connect screen and nothing it does can revive this
+   * transport. Fires {@link onFatal} exactly once, and never after a real unplug (which has
+   * already told the UI the same thing through {@link onDisconnect}).
+   */
+  private markDead(err: ProtocolError): ProtocolError {
+    if (!this.disconnected) {
+      this.disconnected = true;
+      this.failPending();
+      const notify = this.onFatal;
+      this.onFatal = null;
+      notify?.(err);
+    }
+    return err;
+  }
 
   /** Fails the in-flight read (if any) so callers stop waiting immediately. */
   private failPending(): void {
@@ -220,6 +262,15 @@ export class HidTransport implements Transport {
       if (attempt > 0) {
         await sleep(500);
       }
+      // Re-align the counters if replies have somehow overtaken reports — an unsolicited input
+      // report, or one counted for a `sendReport` that rejected after the device had already
+      // seen it. Left alone, that offset is permanent: every subsequent reply fails the
+      // sequence check below, so every subsequent command times out and only a page reload
+      // (a brand-new transport) ever works again.
+      if (this.recvCount > this.sentCount) {
+        debugLog(`[vialite] resyncing reply counter: recv=${this.recvCount} > sent=${this.sentCount}`);
+        this.recvCount = this.sentCount;
+      }
       // If a previous report's reply is still outstanding, give it a short
       // drain window so it gets discarded here rather than crossing with the
       // next report (the sequence check would drop it anyway, but draining
@@ -236,7 +287,10 @@ export class HidTransport implements Transport {
     if (this.disconnected) {
       throw new ProtocolError("device disconnected", "deviceDisconnected");
     }
-    throw new ProtocolError("failed to communicate with the device", "commFailed");
+    // Out of retries with the device still enumerated: it is answering nothing, and in practice
+    // every command after this one fails the same way. Treat the link as gone rather than
+    // leaving the UI sitting on a keyboard it can no longer talk to.
+    throw this.markDead(new ProtocolError("failed to communicate with the device", "commFailed"));
   }
 
   private sendOnce(msg: Uint8Array<ArrayBuffer>, timeoutMs: number): Promise<Uint8Array<ArrayBuffer> | null> {

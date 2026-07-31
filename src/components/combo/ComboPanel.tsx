@@ -10,6 +10,7 @@ import { ConfirmDialog } from "../common/ConfirmDialog.tsx";
 import { startViewTransition } from "../common/viewTransition.ts";
 import { useKeyInfoHover } from "../common/useKeyInfoHover.tsx";
 import { useEscapeKey } from "../../hooks/useEscapeKey.ts";
+import { useWriteError } from "../../hooks/useWriteError.ts";
 import {
   FieldCancelButton,
   FieldConfirmButton,
@@ -397,6 +398,7 @@ const REORDER_SETTLE_MS = 1500;
 export function ComboPanel({ keyboard }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
+  const onWriteError = useWriteError();
   const { hoverProps, hideInfo, infoCard } = useKeyInfoHover();
   /**
    * A freshly added, still-empty slot. Unused entries are normally hidden, so this is what keeps
@@ -461,7 +463,7 @@ export function ComboPanel({ keyboard }: Props) {
     try {
       await keyboard.setCombo(idx, { ...keyboard.comboEntries[idx], ...patch });
     } catch (err) {
-      showToast(err instanceof Error ? err.message : String(err));
+      onWriteError(err);
     }
   };
 
@@ -499,7 +501,7 @@ export function ComboPanel({ keyboard }: Props) {
       setPendingOrder(heldOrder);
       reorderTimer.current = window.setTimeout(settlePendingReorder, REORDER_SETTLE_MS);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : String(err));
+      onWriteError(err);
     }
   };
 

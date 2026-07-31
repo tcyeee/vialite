@@ -9,6 +9,7 @@ import { MagicSettings } from "./MagicSettings.tsx";
 import { MouseKeySettings } from "./MouseKeySettings.tsx";
 import { OneShotSettings } from "./OneShotSettings.tsx";
 import { TapHoldSettings } from "./TapHoldSettings.tsx";
+import { useWriteError } from "../../hooks/useWriteError.ts";
 
 interface Props {
   keyboard: Keyboard;
@@ -341,6 +342,7 @@ export function QmkSettingsPanel({
   onLeaveResolved,
 }: Props) {
   const { t } = useI18n();
+  const onWriteError = useWriteError();
   const containerRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<Map<string, PendingQmkChange>>(new Map());
   const [leaveApplying, setLeaveApplying] = useState(false);
@@ -392,12 +394,22 @@ export function QmkSettingsPanel({
 
   const commit = async (keys: string[]) => {
     const changes = keys.map((key) => pending.get(key)).filter((c): c is PendingQmkChange => c !== undefined);
-    for (const change of changes) {
-      await change.apply();
+    // Written so far, so a failure part-way through a batch only clears what actually reached
+    // the device — the rest stay pending, still showing the user what didn't land. Without the
+    // catch the rejection escaped the modal's `finally` entirely and vanished into an unhandled
+    // promise, which is how a failed write ended up looking like nothing happening at all.
+    const written: string[] = [];
+    try {
+      for (const change of changes) {
+        await change.apply();
+        written.push(change.key);
+      }
+    } catch (err) {
+      onWriteError(err);
     }
     setPending((prev) => {
       const next = new Map(prev);
-      keys.forEach((key) => next.delete(key));
+      written.forEach((key) => next.delete(key));
       return next;
     });
   };
@@ -407,6 +419,8 @@ export function QmkSettingsPanel({
     try {
       await keyboard.resetLayoutOptions();
       await keyboard.resetQmkSettings();
+    } catch (err) {
+      onWriteError(err);
     } finally {
       setResetApplying(false);
       setResetConfirmOpen(false);

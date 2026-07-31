@@ -51,6 +51,20 @@ export function describeConnectError(err: unknown): ConnectErrorInfo {
   return { key: "errConnectFailed", params: { error: err instanceof Error ? err.message : String(err) } };
 }
 
+/**
+ * Why the config page is being torn down. All three play the same darken/reveal choreography
+ * and land on the waiting page; they differ only in what's left to clean up and what the user
+ * is told afterwards.
+ *
+ * - `manual`  — the disconnect button. Close the transport, say nothing.
+ * - `lost`    — the device was unplugged. Nothing left to close.
+ * - `failed`  — the device is still plugged in but stopped answering (see `Transport.onFatal`).
+ *               The transport still needs closing, and the user needs telling: nothing they do
+ *               on the config page could have worked, which is exactly the case that used to
+ *               leave them staring at a page that silently refused every edit.
+ */
+type DisconnectReason = "manual" | "lost" | "failed";
+
 // Module-level so StrictMode's double-invoked mount effect can't trigger two
 // parallel auto-connect attempts.
 let autoConnectStarted = false;
@@ -107,7 +121,7 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
   // finishes to decide which cleanup/toast path to run. A ref (not state) so
   // the possibly-stale closure captured by transport.onDisconnect (set once
   // per attachTransport call) always reads the current value.
-  const pendingDisconnectRef = useRef<"manual" | "lost" | null>(null);
+  const pendingDisconnectRef = useRef<DisconnectReason | null>(null);
   const transportRef = useRef<Transport | null>(null);
   // Guards handleConnect and the auto-connect effect against running
   // concurrently — e.g. a manual click landing in the async gap between the
@@ -137,6 +151,16 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
       };
       const kb = new Keyboard(transport);
       await kb.reload();
+      // Only armed once the handshake is through: a device that dies *during* reload throws out
+      // of here into the caller's connect-error path, and both firing would race the same
+      // teardown from two directions.
+      transport.onFatal = () => {
+        if (pendingDisconnectRef.current) {
+          return;
+        }
+        pendingDisconnectRef.current = "failed";
+        setTransition("darken");
+      };
       setKeyboard(kb);
       setProductName(transport.productName);
       // MockHidTransport isn't a real WebHID grant, so it must never feed the
@@ -284,15 +308,18 @@ export function useConnectionTransition({ onAttached, onDetached }: UseConnectio
   // transport properly (button-triggered); "lost" skips that — the device is
   // already gone, so there's nothing left to close.
   const finishDisconnect = useCallback(
-    async (reason: "manual" | "lost") => {
-      if (reason === "manual") {
-        await teardown();
-        setErrorInfo(null);
-      } else {
+    async (reason: DisconnectReason) => {
+      if (reason === "lost") {
+        // The device is already gone, so there's nothing left to close.
         transportRef.current = null;
         setKeyboard(null);
         setProductName(undefined);
         setErrorInfo({ key: "keyboardDisconnected" });
+      } else {
+        // Both the button and a dead-but-still-plugged-in board leave a real open HID device
+        // behind — release it, or the reconnect that follows can't reopen the same device.
+        await teardown();
+        setErrorInfo(reason === "failed" ? { key: "errCommFailed" } : null);
       }
       setStatus("idle");
       onDetached?.();

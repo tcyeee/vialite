@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
-import { useToast } from "../../contexts/toast.tsx";
 import { useLayerImageExport } from "./useLayerImageExport.tsx";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { keyFor, usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
@@ -28,6 +27,7 @@ import {
   type PreviewSize,
 } from "../keymap/layout/KeyboardLayoutPreview.tsx";
 import { KeycapColorManager } from "./KeycapColorManager.tsx";
+import { useWriteError } from "../../hooks/useWriteError.ts";
 
 const CASE_RECENT_KEY = "vialite-color-case-recent";
 const PLATE_RECENT_KEY = "vialite-color-plate-recent";
@@ -119,7 +119,7 @@ export function KeyboardColorPanel({
   onOpenKeymap?: (origin: Element) => void;
 }) {
   const { t } = useI18n();
-  const { showToast } = useToast();
+  const onWriteError = useWriteError("writeKeyFailed");
   const { keyDisplay, setKeyDisplay, mediaReset, setMediaReset } = useKeyDisplay();
   // Arriving via NewHomePage's hero "个性化" button should land directly on
   // this page's fullscreen 个性化 settings (StyleConfig.tsx), not the compact
@@ -247,7 +247,7 @@ export function KeyboardColorPanel({
         await keyboard.setEncoder(previewLayer, target.index, target.direction, qmkId);
       }
     } catch (err) {
-      showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
+      onWriteError(err);
     }
   };
 
