@@ -2,6 +2,24 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 
+/** Tallest the slot grid ever gets: past this the columns multiply instead, so a board with more
+ *  slots gets a wider menu rather than a taller (or scrolling) one. */
+const MAX_ROWS = 3;
+
+/** Column count below which the grid keeps a fixed shape — a handful of slots shouldn't render as
+ *  a narrow 2-column, 3-row sliver just because it fits in three rows. */
+const MIN_COLS = 5;
+
+/** Width of one slot button. Fixed so every column lines up whatever the number's digit count. */
+const CELL_REM = 2.25;
+const WIDE_CELL_REM = 2.75;
+
+/** Gap between the menu and the viewport edge when a wide grid has to be pulled back in. */
+const VIEWPORT_MARGIN = 8;
+
+/** Gap between the trigger and the menu, on whichever side it opens. */
+const MENU_OFFSET = 4;
+
 interface Props {
   /** Currently selected slot number. */
   index: number;
@@ -39,7 +57,19 @@ export function RenumberPicker({ index, count, usedIndices, icon, title, onMove 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
     const r = triggerRef.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: r.left });
+    // The grid widens with the slot count (see MAX_ROWS), so a picker near the right edge would
+    // otherwise run off screen — pull it back in by its measured width. The menu is already in the
+    // DOM by the time this layout effect runs, and its size doesn't depend on where it's placed.
+    const menuW = menuRef.current?.offsetWidth ?? 0;
+    const menuH = menuRef.current?.offsetHeight ?? 0;
+    const left = Math.max(VIEWPORT_MARGIN, Math.min(r.left, window.innerWidth - menuW - VIEWPORT_MARGIN));
+    // Below the trigger by default; flipped above it when that would hang off the bottom of the
+    // viewport — but only if there's actually more room up there, so a menu taller than either
+    // side still opens downwards (where it can at least be scrolled to) rather than off the top.
+    const below = r.bottom + MENU_OFFSET;
+    const flip = below + menuH > window.innerHeight - VIEWPORT_MARGIN && r.top > window.innerHeight - r.bottom;
+    const top = flip ? Math.max(VIEWPORT_MARGIN, r.top - MENU_OFFSET - menuH) : below;
+    setPos({ top, left });
   }, [open]);
 
   useEffect(() => {
@@ -62,6 +92,12 @@ export function RenumberPicker({ index, count, usedIndices, icon, title, onMove 
     };
   }, [open]);
 
+  // Three rows at most, so the columns are what absorbs the slot count: 30 slots is 10 per row,
+  // 31 is 11. Cells are a fixed width (wider once slot numbers reach 3 digits) so the columns stay
+  // aligned and the menu's own width follows from the count.
+  const cols = Math.max(MIN_COLS, Math.ceil(count / MAX_ROWS));
+  const cellRem = String(count - 1).length > 2 ? WIDE_CELL_REM : CELL_REM;
+
   return (
     <>
       <button
@@ -80,8 +116,13 @@ export function RenumberPicker({ index, count, usedIndices, icon, title, onMove 
           <div
             ref={menuRef}
             data-lenis-prevent
-            style={{ position: "fixed", top: pos.top, left: pos.left }}
-            className="z-50 grid max-h-72 w-72 grid-cols-5 gap-1.5 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
+            style={{
+              position: "fixed",
+              top: pos.top,
+              left: pos.left,
+              gridTemplateColumns: `repeat(${cols}, ${cellRem}rem)`,
+            }}
+            className="z-50 grid max-w-[calc(100vw-1rem)] gap-1.5 overflow-x-auto rounded-box border border-base-300 bg-base-100 p-3 shadow-lg"
           >
             {Array.from({ length: count }).map((_, n) => {
               const current = n === index;
@@ -95,7 +136,9 @@ export function RenumberPicker({ index, count, usedIndices, icon, title, onMove 
                     setOpen(false);
                     if (!current) onMove(n);
                   }}
-                  className={`btn btn-sm ${
+                  // `px-0`: the cell's width is the grid track, so the button's own horizontal
+                  // padding would only squeeze the number inside it.
+                  className={`btn btn-sm px-0 ${
                     current ? "btn-primary" : occupied ? "btn-ghost opacity-30" : "btn-ghost"
                   }`}
                 >
