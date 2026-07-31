@@ -9,6 +9,8 @@ import {
 import { createPortal } from "react-dom";
 import { KEYCODE_CATEGORIES, label as kcLabel, type KeycodeDef } from "../../../protocol/keycodes.ts";
 import { useI18n } from "../../../contexts/i18n.tsx";
+import { useToast } from "../../../contexts/toast.tsx";
+import { copyKeycode, useKeycodeClipboard } from "../../../hooks/useKeycodeClipboard.ts";
 import type { Keyboard } from "../../../protocol/keyboard.ts";
 import {
   CATEGORY_DESC,
@@ -27,7 +29,7 @@ import {
   type Category,
   type MiddleGroup,
 } from "./cascadeGrouping.ts";
-import { CascadeColumns } from "./CascadeColumns.tsx";
+import { CascadeColumns, type ClipboardActions } from "./CascadeColumns.tsx";
 import { CascadeInfoPanel } from "./CascadeInfoPanel.tsx";
 
 interface Props {
@@ -45,6 +47,12 @@ interface Props {
   /** Current keycode, used to seed the trigger label so an existing value shows
    *  through (e.g. a tap-dance slot's current key) instead of the placeholder. */
   value?: string;
+  /** What 复制 puts on the keycode clipboard, when that isn't the same as
+   *  {@link Props.value}. A field built out of several parts edits only one of
+   *  them here — {@link ../../common/ModifierFieldSlot} points this picker at the
+   *  *base* key of e.g. `LCTL(KC_A)` — but 复制 should hand over the field's whole
+   *  keycode, mask and all, not the bare base key. Defaults to `value`. */
+  copyValue?: string;
   /** Trigger text shown before anything is picked (overrides the default). */
   placeholder?: string;
   /** Force the trigger's text, replacing the "category / label" form derived from
@@ -69,13 +77,6 @@ interface Props {
    *  glyph, where a second small triangle next to KC_TRNS's "▽" reads as part of
    *  the keycode — see {@link ../common/KeySlot}. */
   hideCaret?: boolean;
-  /** Restricts every category's listed entries to those passing this predicate
-   *  (categories left empty are dropped); the two clear keycodes (KC_NO/KC_TRNS)
-   *  are unaffected. Used to scope a picker down to a subset of the full
-   *  catalogue — e.g. the combo editor's "regular key" field excludes bare
-   *  modifiers and masked Quantum templates, which it offers through a
-   *  dedicated modifier picker instead. See {@link ../combo/ComboPanel}. */
-  entryFilter?: (entry: KeycodeDef) => boolean;
   /** Context-menu mode: render only the popover (no trigger button), positioned
    *  `fixed` at this viewport point and auto-opened. Used by the keyboard
    *  layout's right-click assign; a fresh object each open re-seeds/reopens it. */
@@ -83,6 +84,13 @@ interface Props {
   /** Dismissal callback (outside-click / Escape / after a pick). Required
    *  companion to {@link Props.anchor} so the parent can unmount the popover. */
   onClose?: () => void;
+  /** Trigger mode: open the popover as soon as the trigger mounts, without the
+   *  click that would normally open it. For a trigger that only exists because
+   *  the user just asked to pick a keycode — the combo / tap dance field that
+   *  was clicked into configuration (see {@link ../../common/ModifierFieldSlot})
+   *  — where that click would otherwise have to be made twice. Read once, on
+   *  mount: closing the popover afterwards doesn't re-open it. */
+  autoOpen?: boolean;
 }
 
 /** Info-panel width in px, matching its `w-52` class (kept in sync by hand — it
@@ -115,6 +123,7 @@ export function KeycodeCascadeSelector({
   onPick,
   keyboard,
   value,
+  copyValue,
   placeholder: placeholderProp,
   triggerLabel,
   keepPicked = true,
@@ -124,16 +133,23 @@ export function KeycodeCascadeSelector({
   hideCaret = false,
   anchor = null,
   onClose,
-  entryFilter,
+  autoOpen = false,
 }: Props) {
   const menuMode = anchor !== null;
   const { t } = useI18n();
+  const { showToast } = useToast();
+  const copied = useKeycodeClipboard();
   const [open, setOpen] = useState(false);
   const [activeCat, setActiveCat] = useState<string | null>(null);
   // The keycode the info panel describes (hovered/seeded in the right column).
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   // The expanded middle-column group (e.g. "MO"), or null when a leaf is active.
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
+  // Which pinned first-level item (复制 / 粘贴 / 清空 / 穿透) the pointer is on.
+  // These sit outside the category cascade, so they can't ride `activeEntryId`:
+  // that names the keycode the *info panel* describes, which 粘贴 points at the
+  // clipboard's keycode — lighting up 清空 whenever the clipboard holds KC_NO.
+  const [pinnedItem, setPinnedItem] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(value ?? null);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -176,6 +192,7 @@ export function KeycodeCascadeSelector({
     setActiveCat(null);
     setActiveGroupKey(null);
     setActiveEntryId(null);
+    setPinnedItem(null);
   };
 
   // Keep the trigger label in sync with a parent-controlled value.
@@ -194,10 +211,10 @@ export function KeycodeCascadeSelector({
       [...KEYCODE_CATEGORIES, ...deviceCategories()]
         .map((c) => ({
           name: c.name,
-          entries: c.entries.filter((e) => !CLEAR_LABELS[e.qmkId] && (!entryFilter || entryFilter(e))),
+          entries: c.entries.filter((e) => !CLEAR_LABELS[e.qmkId]),
         }))
         .filter((c) => c.entries.length > 0),
-    [entryFilter],
+    [],
   );
 
   // KC_NO ("清空") / KC_TRNS ("穿透"), in CLEAR_LABELS order — the two actions
@@ -232,7 +249,13 @@ export function KeycodeCascadeSelector({
       close();
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      // Stopped here so Escape only closes this picker: a selection this picker was opened from
+      // (a combo / tap dance field) listens on `window`, which bubbling never reaches once
+      // propagation ends at `document`. See {@link ../../../hooks/useEscapeKey}.
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        close();
+      }
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKeyDown);
@@ -248,12 +271,21 @@ export function KeycodeCascadeSelector({
   const catLabel = (name: string) => catLabelOf(t, name);
   const entryLabel = (entry: KeycodeDef) => entryLabelOf(t, entry);
 
+  // The keycode sitting on the app-global clipboard, as an entry the info panel
+  // can describe when 粘贴 is hovered (it belongs to no active category, so it
+  // needs its own lookup like the pinned clear keycodes below).
+  const copiedEntry = useMemo<KeycodeDef | null>(
+    () => (copied ? { qmkId: copied, label: kcLabel(copied) } : null),
+    [copied],
+  );
+
   const activeEntries = categories.find((c) => c.name === activeCat)?.entries ?? [];
   // The promoted clear keycodes belong to no category, so fall back to them for
   // the info panel when one of the pinned items is hovered.
   const activeEntry =
     activeEntries.find((e) => e.qmkId === activeEntryId) ??
     clearEntries.find((e) => e.qmkId === activeEntryId) ??
+    (copiedEntry && copiedEntry.qmkId === activeEntryId ? copiedEntry : null) ??
     null;
 
   // The info panel only opens once the pointer has rested on a described keycode
@@ -290,6 +322,7 @@ export function KeycodeCascadeSelector({
   const seed = (loc: { group: string | null; qmkId: string | null }) => {
     setActiveGroupKey(loc.group);
     setActiveEntryId(loc.qmkId);
+    setPinnedItem(null);
   };
 
   // Reveal the middle column for a category, but keep its groups collapsed (no
@@ -300,13 +333,14 @@ export function KeycodeCascadeSelector({
     setActiveCat(name);
     setActiveGroupKey(null);
     setActiveEntryId(null);
+    setPinnedItem(null);
   };
 
   const pickedLabel = (() => {
     if (triggerLabel !== undefined) return triggerLabel;
     if (!pickedId) return placeholder;
-    // Scoped to *this* picker's (possibly filtered) categories, so a trigger never names a
-    // category the popover doesn't offer.
+    // Scoped to *this* picker's categories, so a trigger never names a category the
+    // popover doesn't offer.
     return <QualifiedKeyLabel qmkId={pickedId} categories={categories} />;
   })();
 
@@ -329,6 +363,14 @@ export function KeycodeCascadeSelector({
     openMenu();
     // Keyed on the anchor object identity only; openMenu reads current state.
   }, [anchor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trigger mode, {@link Props.autoOpen}: open once, on mount. The effect runs after the DOM is
+  // committed, so the trigger is laid out and `triggerPoint()` can anchor the popover to it; it
+  // also runs after the click that mounted this trigger has finished dispatching, so the
+  // outside-click listener registered by opening can't catch that same click and close again.
+  useEffect(() => {
+    if (autoOpen && !menuMode) openMenu();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Trigger mode: a `fixed` popover doesn't follow the trigger, so re-read the
   // trigger's rect while scrolling / resizing to keep the two together.
@@ -407,6 +449,45 @@ export function KeycodeCascadeSelector({
     emit(entry);
   };
 
+  // 复制 / 粘贴 on the app-global keycode clipboard. Offered by every instance of
+  // this picker — the layout's right-click menu, the combo / tap-dance / macro
+  // slots — since they all edit one keycode: 复制 stores whatever this picker is
+  // currently pointing at ({@link Props.value}), and 粘贴 commits the stored
+  // keycode down the ordinary pick path, so it lands exactly as picking that
+  // keycode by hand would. Slots with no current value (an empty combo field,
+  // macro's "+" add buttons) simply have nothing to copy, so 复制 greys out.
+  // Whole-keycode source for 复制 — the field's full value where that differs
+  // from the part this picker edits (see {@link Props.copyValue}).
+  const copySource = copyValue ?? value;
+  const clipboard: ClipboardActions = {
+    copiedLabel: copiedEntry ? entryLabel(copiedEntry).split("\n").join(" ") : null,
+    onCopy: copySource
+      ? () => {
+          copyKeycode(copySource);
+          const shown = entryLabel({ qmkId: copySource, label: kcLabel(copySource) })
+            .split("\n")
+            .join(" ");
+          showToast(t("cascadeCopied", { key: shown }), "success");
+          close();
+        }
+      : undefined,
+    onPaste: () => {
+      if (copiedEntry) commit(copiedEntry);
+    },
+    onHoverCopy: () => {
+      collapse();
+      setPinnedItem("copy");
+    },
+    // Describe what would be pasted, so the info panel doubles as a preview of
+    // the clipboard's contents.
+    onHoverPaste: () => {
+      setActiveCat(null);
+      setActiveGroupKey(null);
+      setActiveEntryId(copied);
+      setPinnedItem("paste");
+    },
+  };
+
   // Per-key description ("按键说明"): a Basic clear key's own copy, a per-keycode
   // description from the shared registry (e.g. Lighting keys), a custom keycode's
   // device-provided title, or the active group's shared description (e.g. a layer
@@ -470,10 +551,12 @@ export function KeycodeCascadeSelector({
       <div className="relative flex items-start">
         <CascadeColumns
           columnsRef={columnsRef}
+          clipboard={clipboard}
           clearEntries={clearEntries}
           categories={categories}
           activeCat={activeCat}
           activeEntryId={activeEntryId}
+          pinnedItem={pinnedItem}
           pickedId={pickedId}
           activeMiddle={activeMiddle}
           activeGroup={activeGroup}
@@ -487,8 +570,12 @@ export function KeycodeCascadeSelector({
             setActiveCat(null);
             setActiveGroupKey(null);
             setActiveEntryId(qmkId);
+            setPinnedItem(qmkId);
           }}
-          onHoverSub={setActiveEntryId}
+          onHoverSub={(qmkId) => {
+            setActiveEntryId(qmkId);
+            setPinnedItem(null);
+          }}
           selectCat={selectCat}
           seed={seed}
           commit={commit}

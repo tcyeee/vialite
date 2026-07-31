@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import { Icon } from "@iconify/react";
+import { useI18n } from "../../../contexts/i18n.tsx";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
 import { CATEGORY_ICON_FALLBACK, categoryIcon } from "./keycodeMeta.ts";
 import type { Category, MiddleGroup, MiddleItem } from "./cascadeGrouping.ts";
@@ -10,14 +11,37 @@ const CLEAR_ICONS: Record<string, string> = {
   KC_TRNS: "mdi:arrow-down-circle-outline",
 };
 
+/** 复制 / 粘贴 rows shown above the clear actions. */
+export interface ClipboardActions {
+  /** Label of the keycode currently on the clipboard, or null if it's empty
+   *  (which greys out 粘贴). */
+  copiedLabel: string | null;
+  /** Copy this picker's current keycode. Absent when it has none (an empty slot,
+   *  an "add" trigger), which greys out 复制. */
+  onCopy?: () => void;
+  /** Paste the clipboard's keycode, committing it like an ordinary pick. */
+  onPaste: () => void;
+  /** Point the info panel at the clipboard's keycode while 粘贴 is hovered. */
+  onHoverPaste: () => void;
+  /** Collapse the drilled-in columns while 复制 is hovered. */
+  onHoverCopy: () => void;
+}
+
 interface Props {
   /** Measured to decide which side the info panel opens on — see
    *  `KeycodeCascadeSelector`'s layout effects. */
   columnsRef: RefObject<HTMLDivElement | null>;
+  clipboard: ClipboardActions;
   clearEntries: KeycodeDef[];
   categories: Category[];
   activeCat: string | null;
   activeEntryId: string | null;
+  /** The hovered pinned first-level item — a clear keycode's qmkId, or
+   *  `"copy"` / `"paste"`. Deliberately separate from `activeEntryId` (which
+   *  drives the info panel) and from `pickedId` (the current value): a pinned
+   *  row highlights while the pointer is on it and at no other time, so an empty
+   *  cap's 清空按键 doesn't sit permanently selected. */
+  pinnedItem: string | null;
   pickedId: string | null;
   activeMiddle: MiddleItem[];
   activeGroup: MiddleGroup | null;
@@ -45,10 +69,12 @@ interface Props {
  */
 export function CascadeColumns({
   columnsRef,
+  clipboard,
   clearEntries,
   categories,
   activeCat,
   activeEntryId,
+  pinnedItem,
   pickedId,
   activeMiddle,
   activeGroup,
@@ -64,6 +90,7 @@ export function CascadeColumns({
   seed,
   commit,
 }: Props) {
+  const { t } = useI18n();
   return (
     <div
       ref={columnsRef}
@@ -73,6 +100,46 @@ export function CascadeColumns({
         data-lenis-prevent
         className="menu menu-sm max-h-72 w-36 flex-nowrap overflow-y-auto border-r border-base-content/10 p-1"
       >
+        {/* 复制 / 粘贴: clipboard actions on the keycode this picker is editing, so
+            they sit above the keycode list with their own rule. 粘贴 names what it
+            would paste, and greys out until something has been copied. */}
+        {/* Hover handlers sit on the <li>, not the <button>: a disabled button
+            fires no mouse events in Chrome, which would leave the previously
+            hovered row highlighted while the pointer rests on a greyed-out one. */}
+        <li
+          className={clipboard.onCopy ? "" : "menu-disabled"}
+          onMouseEnter={clipboard.onHoverCopy}
+        >
+          <button
+            type="button"
+            className={`justify-start ${pinnedItem === "copy" ? "menu-active" : ""}`}
+            disabled={!clipboard.onCopy}
+            onClick={clipboard.onCopy}
+          >
+            <Icon icon="mdi:content-copy" className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
+            <span className="truncate">{t("cascadeCopy")}</span>
+          </button>
+        </li>
+        <li
+          className={clipboard.copiedLabel === null ? "menu-disabled" : ""}
+          onMouseEnter={clipboard.onHoverPaste}
+        >
+          <button
+            type="button"
+            className={`justify-start ${pinnedItem === "paste" ? "menu-active" : ""}`}
+            disabled={clipboard.copiedLabel === null}
+            onClick={clipboard.onPaste}
+          >
+            <Icon icon="mdi:content-paste" className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
+            <span className="flex min-w-0 items-baseline gap-1">
+              <span className="shrink-0">{t("cascadePaste")}</span>
+              {clipboard.copiedLabel !== null && (
+                <span className="truncate text-xs opacity-50">{clipboard.copiedLabel}</span>
+              )}
+            </span>
+          </button>
+        </li>
+        <li className="pointer-events-none my-1 border-t border-base-content/10" />
         {/* 清空 / 穿透: committed straight from the first level (they need no
             drill-in), separated from the categories below by a rule so they
             read as actions rather than another category. */}
@@ -80,9 +147,7 @@ export function CascadeColumns({
           <li key={entry.qmkId}>
             <button
               type="button"
-              className={`justify-start ${
-                activeEntryId === entry.qmkId || pickedId === entry.qmkId ? "menu-active" : ""
-              }`}
+              className={`justify-start ${pinnedItem === entry.qmkId ? "menu-active" : ""}`}
               title={entry.qmkId}
               onMouseEnter={() => onHoverClear(entry.qmkId)}
               onClick={() => commit(entry)}

@@ -336,6 +336,17 @@ textarea,
   user-select: text;
 }
 
+/* Number boxes: put the spin buttons back on the box's inline end.
+   daisyUI gives `.input` (and the `<input>` nested inside a `.input` label)
+   `display: inline-flex`; sitting in a flex row that blockifies to `flex`, and
+   Chrome then lays a number input's own internals out as flex items — the
+   editing area shrinks to the digits and the up/down buttons end up stranded
+   mid-box right after them. Plain block layout restores the native placement. */
+input[type="number"].input,
+.input > input[type="number"] {
+  display: block;
+}
+
 /* Hide the horizontal scrollbar chrome while keeping the element scrollable
    (wheel/trackpad/drag still work). Used by the 快捷配置 panel's overflow-x
    rows so the scrollbar doesn't sit under the keyboard/card content. */
@@ -905,6 +916,21 @@ textarea,
   box-shadow: 0 0 0 2px hsl(var(--sel-hue) 85% 55%);
 }
 
+/* The same selected indicator for a card-editor field under configuration (the
+   combo / tap dance tables' ModifierFieldSlot), so "this is the key you're
+   editing" reads identically here and on the board. `outline` rather than the
+   board's `box-shadow`: the ring has to enclose the field's whole block — key
+   box, confirm button, and the modifier tag row beneath them — and an offset
+   outline hugs that wrapper's rounded box without participating in the layout,
+   so the fields packed beside it don't reflow. The offset stays under the 8px
+   inter-field gap so two neighbouring fields' rings can't collide. */
+.field-selected {
+  outline: 2px solid hsl(var(--sel-hue) 85% 55%);
+  outline-offset: 2px;
+  border-radius: var(--radius-field);
+  animation: sel-hue-cycle 3s linear infinite;
+}
+
 /* Focus the selection: while a key/encoder is selected, dim every other cap so
    the animated ring stands out. The selected cap (and, for a dual-role cap, its
    whole `.key.selected` wrapper) keeps full opacity; hovering a dimmed cap
@@ -940,7 +966,8 @@ textarea,
 @media (prefers-reduced-motion: reduce) {
   .keyboard-layout .key.selected,
   .keyboard-layout .encoder.selected,
-  .keyboard-layout .key-hit.active {
+  .keyboard-layout .key-hit.active,
+  .field-selected {
     animation: none;
     --sel-hue: 320;
   }

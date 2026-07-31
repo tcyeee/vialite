@@ -8,9 +8,7 @@ import {
   isBasicQmkId,
   keyBehavior,
   withTap,
-  type KeycodeDef,
 } from "../../protocol/keycodes.ts";
-import { BASIC_MOD_IDS } from "../keymap/picker/keycodeMeta.ts";
 import { QualifiedKeyLabel } from "../keymap/picker/QualifiedKeyLabel.tsx";
 import { KeySlot } from "./KeySlot.tsx";
 
@@ -40,16 +38,6 @@ export const fieldKeyValid = (qmkId: string): boolean => {
   const b = keyBehavior(qmkId);
   return b.kind === "plain" || b.inner !== "KC_NO";
 };
-
-/** A {@link ModifierFieldSlot}'s key field excludes only bare modifiers, which are added
- *  through the dedicated modifier picker below instead.
- *
- *  Masked Quantum templates (Mod-Tap, Layer-Tap, held-mods) are deliberately *not* filtered
- *  out: dropping them hid roughly two thirds of the Quantum category from these fields. The
- *  slot handles each shape on its own terms — a held-mod template lands as an ordinary
- *  fire-together mask (the same thing the modifier chips build), and a real hold keeps its
- *  wrapper while the field edits the key inside it. See {@link ModifierFieldSlot}. */
-export const regularKeyFilter = (e: KeycodeDef) => !BASIC_MOD_IDS.has(e.qmkId);
 
 /**
  * Multi-select popover for a field's modifier mask: a scoped-down cascade selector — a single
@@ -83,7 +71,13 @@ function ModifierMenu({
       onClose();
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // Stopped here so Escape only dismisses this menu: the selection it sits inside listens on
+      // `window`, which bubbling never reaches once propagation ends at `document`. See
+      // {@link ../../hooks/useEscapeKey}.
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKeyDown);
@@ -163,6 +157,28 @@ export const FIELD_ROLE_ROW =
   "flex h-5 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 /**
+ * The buttons in a field's header line — the modify/delete pair a configured field reveals on
+ * hover, and the confirm/cancel pair it shows while being configured. Small enough to fit the
+ * header's fixed height, so swapping one pair for the other can't reflow the field under the
+ * pointer. Combine with a daisyUI style modifier (`btn-ghost`, `btn-primary`, …).
+ */
+export const FIELD_ACTION_BTN = "btn btn-xs h-5 min-h-0 w-5 p-0";
+
+/**
+ * The box a whole field sits in: its header line (label + actions) over the key box and role
+ * tags, padded so the `field-selected` ring the caller adds while the field is being configured
+ * doesn't sit flush against them. Every field wears it, selected or not, so entering the editor
+ * can't resize or shift the fields beside it.
+ */
+export const FIELD_BOX = "rounded-box p-1.5";
+
+/** The same padding above, for the *contents* of a row's fieldless cells (slot number, status,
+ *  row actions) — on a wrapper inside the cell rather than the cell itself, whose own padding it
+ *  would replace. Without it their content sits {@link FIELD_BOX}'s padding higher than the
+ *  fields beside them. */
+export const FIELD_BOX_INSET = "pt-1.5";
+
+/**
  * How a field's value splits into "a base key" plus "a second role", the view both
  * {@link ModifierFieldSlot} and its read-only twin {@link FieldValueDisplay} are built on, so an
  * editable field and a displayed one always read the same keycode the same way.
@@ -232,6 +248,7 @@ export function FieldValueDisplay({
   qmkId,
   className = FIELD_KEY_BOX,
   reserveRoleRow = false,
+  onActivate,
   ...boxProps
 }: {
   qmkId: string;
@@ -240,13 +257,34 @@ export function FieldValueDisplay({
    *  modifiers — for callers (the combo table) that need every field the same height whether or
    *  not it happens to have tags. */
   reserveRoleRow?: boolean;
+  /** Makes the key box itself the way into the editor: given, it becomes a button that switches
+   *  this field into configuration (with the cascade selector already up — see
+   *  {@link ModifierFieldSlot}), so changing a key takes one click on the key rather than a
+   *  detour through the header's modify button. */
+  onActivate?: () => void;
 } & HTMLAttributes<HTMLDivElement>) {
   const { hold, mods, inner } = decompose(qmkId);
   const modTags = mods ? MOD_ABBR.filter(({ m }) => mods[m]) : [];
   const hasTags = !!hold || modTags.length > 0;
   return (
     <div className="flex flex-col gap-1.5">
-      <div className={className} {...boxProps}>
+      <div
+        className={`${className}${onActivate ? " cursor-pointer" : ""}`}
+        {...boxProps}
+        role={onActivate ? "button" : undefined}
+        tabIndex={onActivate ? 0 : undefined}
+        onClick={onActivate}
+        onKeyDown={
+          onActivate
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onActivate();
+                }
+              }
+            : undefined
+        }
+      >
         <QualifiedKeyLabel qmkId={inner} />
       </div>
       {(hasTags || reserveRoleRow) && (
@@ -262,19 +300,50 @@ export function FieldValueDisplay({
   );
 }
 
-/** Small confirm ("check") button appended after the base-key button while a field is being
- *  configured — what turns "配置中" into "已配置" for that one field. */
-export function FieldConfirmButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+/**
+ * Confirm ("check") button of the field being configured, shown in its header line where the
+ * modify/delete buttons sit the rest of the time — what turns "配置中" into "已配置" for that one
+ * field.
+ *
+ * `dirty` says whether there is actually anything to write: with a pending change it's the solid
+ * primary call-to-action, and with none it drops to a muted outline that only closes the editor.
+ * Defaults to `true` for callers whose edits are already written through by the time this shows.
+ */
+export function FieldConfirmButton({
+  disabled,
+  onClick,
+  dirty = true,
+}: {
+  disabled: boolean;
+  onClick: () => void;
+  dirty?: boolean;
+}) {
   const { t } = useI18n();
   return (
     <button
       type="button"
-      className="btn btn-primary btn-sm min-h-9 shrink-0 px-2"
-      title={t("fieldConfirm")}
+      className={`${FIELD_ACTION_BTN} ${dirty ? "btn-primary" : "btn-ghost btn-outline opacity-60"}`}
+      title={dirty ? t("fieldConfirm") : t("fieldConfirmClean")}
       disabled={disabled}
       onClick={onClick}
     >
-      <Icon icon="mdi:check" className="h-4 w-4" />
+      <Icon icon="mdi:check" className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+/** Cancel button beside {@link FieldConfirmButton}: closes the editor and throws the field's
+ *  draft away, leaving the slot exactly as it was — the button form of Escape. */
+export function FieldCancelButton({ onClick }: { onClick: () => void }) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      className={`${FIELD_ACTION_BTN} btn-ghost`}
+      title={t("cancel")}
+      onClick={onClick}
+    >
+      <Icon icon="mdi:close" className="h-3.5 w-3.5" />
     </button>
   );
 }
@@ -290,27 +359,16 @@ export function ConfiguredFieldRow({
   onEdit,
   onDelete,
   reserveRoleRow = false,
-  hoverProps,
 }: {
   qmkId: string;
   onEdit: () => void;
   onDelete: () => void;
   /** See {@link FieldValueDisplay}'s prop of the same name. */
   reserveRoleRow?: boolean;
-  /**
-   * Hover-card wiring for the field, for a caller whose fields are permanently editable (the
-   * combo table) rather than having a read-only twin to hang it on.
-   *
-   * It lands on the wrapper, *not* on the key box: the overlay below takes pointer events the
-   * moment the field is hovered, so handlers on the box would see a `mouseleave` as soon as the
-   * buttons appeared and the card would never survive its own open delay. The wrapper contains
-   * both, and enter/leave don't fire when moving between an element's own descendants.
-   */
-  hoverProps?: HTMLAttributes<HTMLDivElement>;
 }) {
   const { t } = useI18n();
   return (
-    <div className="group/field relative" {...hoverProps}>
+    <div className="group/field relative">
       <FieldValueDisplay qmkId={qmkId} reserveRoleRow={reserveRoleRow} />
       {/* Hover overlay: the whole field darkens and the edit/delete buttons fade in
           centered on top of it, instead of sitting off to the side at all times. */}
@@ -337,24 +395,26 @@ const FIELD_OVERLAY_BTN =
  * Card-editor field, split into the two actions it exposes: "add modifier" opens
  * {@link ModifierMenu} to build a fire-together mask (Ctrl/Shift/Alt/GUI + L/R side, applied via
  * `buildModCombo`) shown as removable chips, and "add regular key" reuses the shared cascade
- * picker — restricted via {@link regularKeyFilter} so a bare modifier or another masked template
- * can't be picked as the regular key, that being the modifier button's job. Together they let a
- * field require e.g. "Ctrl+Shift+A" instead of only a single keycode. Used by both the combo
- * editor (trigger/output keys) and the tap dance editor (per-state action keys).
+ * picker over the *whole* catalogue. Together they let a field require e.g. "Ctrl+Shift+A"
+ * instead of only a single keycode. Used by both the combo editor (trigger/output keys) and the
+ * tap dance editor (per-state action keys).
+ *
+ * The key picker is deliberately unfiltered. Bare modifiers stay on offer even though the
+ * modifier menu also produces them: a field whose whole value is a modifier (a combo triggered
+ * by Shift, say) is a real case, and the menu can only *add* a mask to a base key, not stand in
+ * for one. Masked Quantum templates (Mod-Tap, Layer-Tap, held-mods) likewise stay — the slot
+ * handles each shape on its own terms: a held-mod template lands as an ordinary fire-together
+ * mask (the same thing the chips build), and a real hold keeps its wrapper while the field edits
+ * the key inside it.
  */
 export function ModifierFieldSlot({
   qmkId,
   onChange,
   className = FIELD_KEY_BOX,
-  trailing,
 }: {
   qmkId: string;
   onChange: (id: string) => void;
   className?: string;
-  /** Rendered to the right of the base-key button, in the same row — the field's
-   *  confirm button, kept out of this component so the caller owns what "confirm"
-   *  means for that field. */
-  trailing?: React.ReactNode;
 }) {
   const { t } = useI18n();
   /**
@@ -409,19 +469,25 @@ export function ModifierFieldSlot({
   };
 
   return (
+    // The "this is the field you're editing" ring (`field-selected`, see index.css) belongs to
+    // the caller's field box, which also holds the header line this slot's confirm/cancel buttons
+    // live in — so it rings the whole field rather than only the part below the header.
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <KeySlot
-            qmkId={inner}
-            onChange={pickKey}
-            entryFilter={regularKeyFilter}
-            emptyLabel={t("fieldAddRegularKey")}
-            className={className}
-          />
-        </div>
-        {trailing}
-      </div>
+      <KeySlot
+        qmkId={inner}
+        onChange={pickKey}
+        emptyLabel={t("fieldAddRegularKey")}
+        className={className}
+        // The picker edits the base key, but 复制 hands over the field's whole
+        // keycode — mask/hold included — so pasting it elsewhere reproduces
+        // "Ctrl+Shift+A", not a bare A. A half-configured field (a mask with
+        // no key yet) has nothing meaningful to copy, so it offers nothing.
+        copyId={fieldKeyValid(qmkId) ? qmkId : undefined}
+        // This slot is only ever rendered for the field under configuration, and a field only
+        // enters configuration because the user asked to set its key — so the picker opens with
+        // it, rather than waiting for a second click on the key box that was just clicked.
+        autoOpen
+      />
       <div ref={rowRef} className={FIELD_ROLE_ROW}>
         {/* A real hold owns the whole second role, so it replaces the chip row rather than
             sitting alongside it — removing the badge unwraps the key back to its inner half. */}

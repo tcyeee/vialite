@@ -425,7 +425,7 @@ function App() {
               )}
               {keyboard && nav.mode === "macro" && <MacroPanel keyboard={keyboard} />}
               {keyboard && nav.mode === "tapdance" && (
-                <TapDancePanel keyboard={keyboard} suppressCardNames={nav.heroNameSuppressed} />
+                <TapDancePanel keyboard={keyboard} />
               )}
               {keyboard && nav.mode === "combo" && (
                 <ComboPanel keyboard={keyboard} />

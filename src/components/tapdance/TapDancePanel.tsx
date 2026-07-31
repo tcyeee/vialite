@@ -2,72 +2,102 @@ import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Icon } from "@iconify/react";
 import { type MessageKey, useI18n } from "../../contexts/i18n.tsx";
-import { KeycapFace } from "../keymap/layout/KeycapFace.tsx";
 import type { Keyboard, TapDanceEntry } from "../../protocol/keyboard.ts";
 import { useToast } from "../../contexts/toast.tsx";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { RenumberPicker } from "../common/RenumberPicker.tsx";
 import { ConfirmDialog } from "../common/ConfirmDialog.tsx";
 import { startViewTransition } from "../common/viewTransition.ts";
+import { useKeyInfoHover } from "../common/useKeyInfoHover.tsx";
+import { useEscapeKey } from "../../hooks/useEscapeKey.ts";
 import {
-  ConfiguredFieldRow,
+  FieldCancelButton,
   FieldConfirmButton,
   fieldKeyValid,
+  FieldValueDisplay,
+  FIELD_ACTION_BTN,
+  FIELD_BOX,
+  FIELD_BOX_INSET,
+  FIELD_ROLE_ROW,
   ModifierFieldSlot,
 } from "../common/ModifierFieldSlot.tsx";
 
-const PREVIEW_STATES: { labelKey: MessageKey; field: keyof TapDanceEntry }[] = [
+/** The four tap dance states, in the fixed left-to-right order they occupy as table columns —
+ *  unlike the combo table's trigger keys, a state never moves out of its own column, so the
+ *  columns stay readable against their headers whether or not each one holds a key. */
+type StateField = "onTap" | "onHold" | "onDoubleTap" | "onTapHold";
+const STATES: { labelKey: MessageKey; field: StateField }[] = [
   { labelKey: "tapDanceOnTap", field: "onTap" },
   { labelKey: "tapDanceOnHold", field: "onHold" },
   { labelKey: "tapDanceOnDoubleTap", field: "onDoubleTap" },
   { labelKey: "tapDanceOnTapHold", field: "onTapHold" },
 ];
 
-/** Shared keycap-box treatment for the front (display-state) card face — same border weight,
- *  radius, and minimum footprint for every state key shown there, so the border reads as one
- *  consistent size regardless of each slot's font size or how long its label is. Mirrors
- *  ComboPanel's `CARD_KEY_BOX`, palette-swapped to tap dance's own card tones. */
-const CARD_KEY_BOX =
-  "flex min-h-9 w-full items-center justify-center rounded-lg border border-[#5b434b]/25 px-2 dark:border-[#e7d8dd]/25";
+/**
+ * The tapping term, as a fifth editable field of the row. It holds a number rather than a
+ * keycode, but it's configured exactly like the four states — one at a time, drafted, confirmed —
+ * so it joins them in {@link TapDancePanel}'s `editing` instead of writing through on every
+ * keystroke.
+ */
+const TERM_FIELD = "tappingTerm";
+type EditField = StateField | typeof TERM_FIELD;
 
-interface PreviewCardProps {
+/** Largest tapping term the box accepts, matching the input's own `max`. */
+const TERM_MAX = 10000;
+
+/** Height of the header line above every field, reserved in the cells that have no field of their
+ *  own (slot / status) so their content sits on the key boxes' baseline. */
+const FIELD_HEADER_ROW = "mb-1 h-5";
+
+/** Width of one state field's box, {@link FIELD_BOX}'s padding included. Every state gets its own
+ *  column, so the four are always the same width and always in the same place. */
+const FIELD_COL = "w-[11.75rem]";
+
+/** Fixed width of the slot column, shared by the header and the {@link RenumberPicker} cell, so a
+ *  1- vs 2-digit slot number can't shift the columns beside it. */
+const SLOT_COL = "w-24";
+
+interface RowProps {
   index: number;
   entry: TapDanceEntry;
   /** Total number of tap dance slots on the device, for the renumber picker. */
   tapDanceCount: number;
-  /** Whether TD(index) is placed on a key in the keymap (drives the used/unused tag). */
+  /** Whether TD(index) is placed on a key in the keymap (drives the in-use/not-in-use tag). */
   assigned: boolean;
   /** Slot indices already occupied by another entry — greyed out in the renumber picker. */
   usedIndices: Set<number>;
-  /** Present only for already-configured entries — enables the hover toolbar + flip-to-edit. */
-  onSave?: (patch: Partial<TapDanceEntry>) => void;
-  onDelete?: () => void;
-  /** Moves this entry to a different (free) slot number, from the edit-face TD picker. */
-  onMove?: (toIdx: number) => void;
-  /** Whether this card is the single one currently flipped to its editor face (parent-owned). */
-  editing?: boolean;
-  /** Enter edit mode — the parent makes this the one editing card, un-flipping any other. */
-  onEdit?: () => void;
-  /** Leave edit mode (the "done" button); the parent also drops the slot if it's still unused. */
-  onCloseEdit?: () => void;
-  /** Discard edits (the "cancel" button) — restores the entry to its value from when editing began. */
-  onCancel?: () => void;
-  /** True while a page-level View Transition (e.g. App.tsx's `navigateSlide` push) is in flight and
-   *  this card isn't the one it's meant to morph — drops `tdcard-${index}` for that window so the
-   *  card isn't pulled out of the page's own root snapshot into its own static cross-fade group.
-   *  Same workaround as NewHomePage's `suppressHeroName`. */
-  suppressCardName?: boolean;
+  onSave: (patch: Partial<TapDanceEntry>) => void;
+  onDelete: () => void;
+  /** Moves this entry to a different (free) slot number, from the renumber picker. */
+  onMove: (toIdx: number) => void;
+  /** Panel-level hover-card wiring, spread on each keycap so resting on one explains what it
+   *  does (see {@link useKeyInfoHover}). */
+  hoverProps: ReturnType<typeof useKeyInfoHover>["hoverProps"];
+  /** Closes that hover card — called by the actions that replace the hovered field. */
+  hideInfo: () => void;
+  /** The field on *this* row under configuration (a state, or the tapping term), or null when the
+   *  open one (if any) belongs to another row. Owned by the panel — see
+   *  {@link TapDancePanel}'s `editing`. */
+  activeField: EditField | null;
+  /** That field's pending value, or null when nothing on this row is open. */
+  draft: string | null;
+  /** Open a field for configuration, seeded with its stored value. */
+  onOpenField: (field: EditField, value: string) => void;
+  /** Record a keystroke of the open field's draft, without touching the device. */
+  onDraftChange: (next: string) => void;
+  /** Close the open field, discarding its draft (whatever needed writing is written first). */
+  onCloseField: () => void;
 }
 
 /**
- * Summary of one tap dance entry. When `onSave`/`onDelete` are given, hovering reveals an
- * Edit/Delete toolbar; Edit flips the card (CSS 3D transform) to reveal an inline editor on
- * the back face, so editing happens in place instead of in a separate form. Structurally mirrors
- * {@link ../combo/ComboPanel}'s `ComboPreviewCard` (fixed card height, absolutely-positioned
- * scrollable edit body, add-flow flip-in) — only the card's background palette and field set
- * stay tap-dance-specific.
+ * One tap dance slot as a table row. Every row is permanently editable — there's no display/edit
+ * flip, so no row-level edit/done/cancel buttons: each state cell is the shared
+ * {@link ModifierFieldSlot} editor. Edits made inside a field are held as a draft and only
+ * written to the device when that field's confirm button is pressed; cancelling it (or opening
+ * another field) throws the draft away. Structurally mirrors {@link ../combo/ComboPanel}'s
+ * `ComboRow`.
  */
-function TapDancePreviewCard({
+function TapDanceRow({
   index,
   entry,
   tapDanceCount,
@@ -76,267 +106,292 @@ function TapDancePreviewCard({
   onSave,
   onDelete,
   onMove,
-  editing,
-  onEdit,
-  onCloseEdit,
-  onCancel,
-  suppressCardName,
-}: PreviewCardProps) {
+  hoverProps,
+  hideInfo,
+  activeField,
+  draft,
+  onOpenField,
+  onDraftChange,
+  onCloseField,
+}: RowProps) {
   const { t } = useI18n();
-  const flipped = !!editing;
-  const editable = !!onSave;
-  const cardBodyRef = useRef<HTMLDivElement>(null);
 
   /**
-   * Each of the four state fields is either "being configured" (the {@link ModifierFieldSlot}
-   * picker plus a confirm button) or, once it holds a real value, "configured" (collapsed to a
-   * compact modifier+key display with modify/delete buttons). Only one field may be under
-   * configuration at a time — `activeField` names it, and setting it to a different field
-   * implicitly collapses whichever one it was pointing at back to its display row, since that
-   * row's own "is this the active field" check simply stops matching. Reset to null whenever the
-   * card (re-)enters edit mode. Mirrors {@link ../combo/ComboPanel}'s `ComboPreviewCard`.
+   * The line above a field: that field's buttons — confirm/cancel while it's the one being
+   * configured, modify/delete (revealed on hover) once it holds a value. There's no label — the
+   * column header already names the state — but the line keeps its height in every state, so a
+   * field never reflows under the pointer.
    */
-  const [activeField, setActiveField] = useState<keyof TapDanceEntry | null>(null);
-  useEffect(() => {
-    if (!editing) return;
-    setActiveField(null);
-    // Only re-seed when a card newly enters edit mode, not on every entry edit within the session.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing]);
+  const fieldHeader = (field: StateField, qmkId: string) => {
+    const value = draft ?? qmkId;
+    return (
+      <div className={`${FIELD_HEADER_ROW} flex items-center justify-end gap-1`}>
+        {activeField === field ? (
+          <div className="flex shrink-0 gap-1">
+            {/* Unlike a combo trigger, a state left empty isn't a meaningful value — clearing one
+                is what the delete button is for — so an emptied draft can't be confirmed. */}
+            <FieldConfirmButton
+              dirty={value !== qmkId}
+              disabled={!fieldKeyValid(value) || value === "KC_NO"}
+              onClick={() => {
+                onCloseField();
+                // An unchanged field has nothing to write — confirm just closes the editor.
+                if (value !== qmkId) onSave({ [field]: value } as Partial<TapDanceEntry>);
+              }}
+            />
+            <FieldCancelButton onClick={onCloseField} />
+          </div>
+        ) : (
+          qmkId !== "KC_NO" && (
+            <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover/field:opacity-100 group-focus-within/field:opacity-100">
+              {/* Both actions swap the field below for something else, so the card describing it
+                  has to go with it — the pointer stays put and no `mouseleave` ever fires. */}
+              <button
+                type="button"
+                className={`${FIELD_ACTION_BTN} btn-ghost`}
+                title={t("edit")}
+                onClick={() => {
+                  hideInfo();
+                  onOpenField(field, qmkId);
+                }}
+              >
+                <Icon icon="mdi:pencil" className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className={`${FIELD_ACTION_BTN} btn-ghost hover:text-error`}
+                title={t("delete")}
+                onClick={() => {
+                  hideInfo();
+                  onSave({ [field]: "KC_NO" } as Partial<TapDanceEntry>);
+                }}
+              >
+                <Icon icon="mdi:trash-can-outline" className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )
+        )}
+      </div>
+    );
+  };
+
+  /** One state field: the picker while it's the active one, an "add" button while empty,
+   *  otherwise the read-only value (its actions live in {@link fieldHeader} above it). */
+  const field = (fieldName: StateField, qmkId: string) =>
+    activeField === fieldName ? (
+      <ModifierFieldSlot qmkId={draft ?? qmkId} onChange={onDraftChange} />
+    ) : qmkId === "KC_NO" ? (
+      // Untouched state: switches this field to the editor, which (being the new active field)
+      // collapses whichever other field was mid-edit and opens the picker with itself.
+      <div className="flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={() => onOpenField(fieldName, qmkId)}
+          className="btn btn-sm min-h-9 w-full gap-1 py-0.5 text-xs btn-dash"
+        >
+          <Icon icon="mdi:plus" className="h-3.5 w-3.5" />
+          {t("fieldAddRegularKey")}
+        </button>
+        {/* Blank stand-in for the role-tag line, so an empty field is exactly as tall as a
+            configured one and the row doesn't grow as states are filled in. */}
+        <div className={FIELD_ROLE_ROW} aria-hidden />
+      </div>
+    ) : (
+      // The key itself is the way back into the editor, so changing one takes a single click on
+      // it rather than a detour through the header's modify button.
+      <FieldValueDisplay
+        qmkId={qmkId}
+        reserveRoleRow
+        {...hoverProps(qmkId)}
+        onActivate={() => {
+          hideInfo();
+          onOpenField(fieldName, qmkId);
+        }}
+      />
+    );
 
   /**
-   * Chromium has a known bug where a scroller that becomes visible purely through a CSS
-   * transform — no layout change, which is exactly what flipping this card is: only the
-   * ancestor's `transform` changes, the scroller's own box never moves or resizes — doesn't get
-   * its wheel-scrollable region registered with the compositor. Forcing a synchronous reflow on
-   * the scroller right as the flip settles makes Blink re-register its scrollable region. See
-   * https://issues.chromium.org/issues/40394725.
+   * The tapping term's editor state. Its draft is the raw text of the box, not a number, so a
+   * half-typed or momentarily empty value is something the editor can sit in — it simply can't be
+   * confirmed until it reads as a whole number in range.
    */
-  const handleFlipSettled = (e: React.TransitionEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget || e.propertyName !== "transform" || !flipped) return;
-    const el = cardBodyRef.current;
-    if (!el) return;
-    el.style.display = "none";
-    void el.offsetHeight;
-    el.style.display = "";
+  const termActive = activeField === TERM_FIELD;
+  const termDraft = termActive ? (draft ?? String(entry.tappingTerm)) : String(entry.tappingTerm);
+  const termValue = Number(termDraft);
+  const termValid =
+    termDraft.trim() !== "" && Number.isInteger(termValue) && termValue >= 0 && termValue <= TERM_MAX;
+  const openTerm = () => {
+    if (!termActive) onOpenField(TERM_FIELD, String(entry.tappingTerm));
+  };
+  const commitTerm = () => {
+    onCloseField();
+    // An unchanged box has nothing to write — confirm just closes the editor.
+    if (termValid && termValue !== entry.tappingTerm) onSave({ tappingTerm: termValue });
   };
 
   return (
-    <div
-      className="group/card relative my-2 w-80"
-      style={{
-        perspective: "1200px",
-        viewTransitionName: suppressCardName ? undefined : `tdcard-${index}`,
-      }}
-    >
-      {editable && !flipped && (
-        <div className="absolute -top-3 left-1/2 z-10 flex origin-top -translate-x-1/2 gap-1 rounded-full bg-neutral-900 px-2 py-1 opacity-0 shadow-lg transition-all duration-200 group-hover/card:-translate-y-2.5 group-hover/card:scale-[1.6] group-hover/card:opacity-100 dark:bg-neutral-700">
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs px-2 text-white hover:bg-white/20 hover:text-white"
-            title={t("edit")}
-            onClick={() => onEdit?.()}
-          >
-            <Icon icon="mdi:pencil" className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs px-2 text-white hover:bg-white/20 hover:text-white"
-            title={t("delete")}
-            onClick={() => onDelete?.()}
-          >
-            <Icon icon="mdi:trash-can-outline" className="h-3.5 w-3.5" />
-          </button>
+    <tr className="group/row hover:bg-base-200/40">
+      <td className={`align-top whitespace-nowrap ${SLOT_COL}`}>
+        <div className={FIELD_BOX_INSET}>
+          <div className={FIELD_HEADER_ROW} aria-hidden />
+          <RenumberPicker
+            index={index}
+            count={tapDanceCount}
+            usedIndices={usedIndices}
+            icon="mdi:animation"
+            title={t("tapDanceRenumber")}
+            onMove={onMove}
+          />
         </div>
-      )}
-      <div
-        className="grid transition-transform duration-500"
-        style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : undefined }}
-        onTransitionEnd={handleFlipSettled}
-      >
-        <div
-          style={{ backfaceVisibility: "hidden", gridArea: "1 / 1" }}
-          className="card relative h-[26rem] overflow-hidden bg-[radial-gradient(circle_at_bottom_left,#73575e14_35%,transparent_36%),radial-gradient(circle_at_top_right,#73575e14_35%,transparent_36%)] bg-[#f5ecef] bg-size-[4.95em_4.95em] text-[#5b434b] shadow-lg shadow-stone-900/10 transition-shadow duration-200 group-hover/card:shadow-xl group-hover/card:shadow-stone-900/15 dark:bg-[radial-gradient(circle_at_bottom_left,#ffffff12_35%,transparent_36%),radial-gradient(circle_at_top_right,#ffffff12_35%,transparent_36%)] dark:bg-[#2a2125] dark:text-[#e7d8dd] dark:shadow-black/40 dark:group-hover/card:shadow-black/55"
-        >
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden select-none">
-            <span className="-rotate-12 text-6xl font-black tracking-widest whitespace-nowrap opacity-5">
-              TAP DANCE
-            </span>
-          </div>
-          <div
-            className={`badge badge-sm absolute top-3 right-3 z-10 border-none font-medium text-white ${
-              assigned ? "bg-emerald-600" : "bg-rose-600"
-            }`}
+      </td>
+      <td className="align-top whitespace-nowrap">
+        <div className={FIELD_BOX_INSET}>
+          <div className={FIELD_HEADER_ROW} aria-hidden />
+          <span
+            className={`badge badge-sm badge-soft ${assigned ? "badge-success" : "badge-warning"}`}
             title={t(assigned ? "tapDanceAssignedHelp" : "tapDanceUnassignedHelp", { n: index })}
           >
             {t(assigned ? "tapDanceAssigned" : "tapDanceUnassigned")}
+          </span>
+        </div>
+      </td>
+      {STATES.map(({ field: name }) => (
+        <td key={name} className="align-top">
+          <div
+            className={`group/field ${FIELD_COL} ${FIELD_BOX} ${
+              activeField === name ? "field-selected" : ""
+            }`}
+          >
+            {fieldHeader(name, entry[name])}
+            {field(name, entry[name])}
           </div>
-          <div className="card-body relative flex flex-col pb-3">
-            <div className="mb-4 flex items-center gap-2 font-mono text-4xl font-bold tracking-tight">
-              <Icon icon="mdi:animation" className="h-9 w-9" />
-              {index}
-            </div>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-              {PREVIEW_STATES.map(({ labelKey, field }) => (
-                <div key={field}>
-                  <div className="text-xs opacity-45 uppercase">{t(labelKey)}</div>
-                  <div className={`${CARD_KEY_BOX} bg-white/60 text-xl font-bold dark:bg-white/10`}>
-                    <KeycapFace qmkId={entry[field] as string} className="whitespace-nowrap" />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-auto flex items-center justify-center gap-2 border-t border-[#5b434b]/15 pt-3 text-sm tracking-widest opacity-55 dark:border-[#e7d8dd]/15">
-              {t("tapDanceTermMs", { ms: entry.tappingTerm })}
-            </div>
+        </td>
+      ))}
+      <td className="align-top">
+        {/* Built like a state field so it behaves like one: its own box, the same confirm/cancel
+            pair in the top-right header line, and the same selection ring while it's the field
+            under configuration. `w-fit` keeps that ring hugging the box instead of stretching
+            across the whole cell. */}
+        <div className={`${FIELD_BOX} w-fit ${termActive ? "field-selected" : ""}`}>
+          <div className={`${FIELD_HEADER_ROW} flex items-center justify-end gap-1`}>
+            {termActive && (
+              <div className="flex shrink-0 gap-1">
+                <FieldConfirmButton
+                  dirty={termValid && termValue !== entry.tappingTerm}
+                  disabled={!termValid}
+                  onClick={commitTerm}
+                />
+                <FieldCancelButton onClick={onCloseField} />
+              </div>
+            )}
+          </div>
+          {/* Wide enough for the largest term plus its spin buttons *and* the unit suffix: the
+              suffix is a flex sibling that won't shrink, so anything narrower squeezes the box
+              itself down to the digits. `flex-1 min-w-0` is what makes the input take all of
+              what's left rather than shrinking to its content. */}
+          <label className="input input-sm min-h-9 w-36">
+            <input
+              type="number"
+              className="min-w-0 flex-1"
+              min={0}
+              max={TERM_MAX}
+              value={termDraft}
+              // Until it's the field under configuration the box only displays: every keystroke
+              // then edits the draft, and nothing reaches the device before confirm.
+              readOnly={!termActive}
+              // Clicking into the box is what opens it — `onClick` as well as `onFocus` because a
+              // box that never lost focus (right after confirming into it) fires no second focus
+              // event, and clicking it again would otherwise do nothing.
+              onFocus={openTerm}
+              onClick={openTerm}
+              onChange={(e) => onDraftChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && termActive && termValid) commitTerm();
+              }}
+            />
+            <span className="label">{t("msUnit")}</span>
+          </label>
+        </div>
+      </td>
+      <td className="text-right align-top">
+        <div className={FIELD_BOX_INSET}>
+          <div className={FIELD_HEADER_ROW} aria-hidden />
+          <div className="inline-flex gap-1 opacity-50 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm px-2 hover:text-error"
+              title={t("delete")}
+              onClick={onDelete}
+            >
+              <Icon icon="mdi:trash-can-outline" className="h-4 w-4" />
+            </button>
           </div>
         </div>
-
-        {editable && (
-          <div
-            style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", gridArea: "1 / 1" }}
-            className="card relative h-[26rem] overflow-hidden border-2 border-dashed border-[#73575e]/50 bg-white shadow-lg shadow-stone-900/10 dark:border-[#e7d8dd]/30 dark:bg-[#232326] dark:shadow-black/40"
-          >
-            {/* Absolutely positioned (rather than sized by normal flex flow) so its height is
-                pinned to the card's own fixed height box regardless of how tall the fields
-                inside grow — see `handleFlipSettled` above for why this plus `translateZ(0)`
-                is needed for mouse-wheel scrolling to actually work here once flipped in. */}
-            <div
-              ref={cardBodyRef}
-              className="card-body scrollbar-hide absolute inset-0 gap-1.5 overflow-y-auto px-4 pt-4 pb-2"
-              style={{ transform: "translateZ(0)" }}
-            >
-              <div className="mb-1 flex items-center justify-between">
-                <RenumberPicker
-                  index={index}
-                  count={tapDanceCount}
-                  usedIndices={usedIndices}
-                  icon="mdi:animation"
-                  title={t("tapDanceRenumber")}
-                  onMove={(toIdx) => onMove?.(toIdx)}
-                />
-                <div className="flex items-center gap-1">
-                  <button type="button" className="btn btn-ghost btn-sm text-neutral-400" onClick={() => onCancel?.()}>
-                    {t("cancel")}
-                  </button>
-                  <button type="button" className="btn btn-ghost btn-sm text-neutral-700 dark:text-neutral-200" onClick={() => onCloseEdit?.()}>
-                    {t("done")}
-                  </button>
-                </div>
-              </div>
-
-              <label className="fieldset-label text-xs text-neutral-400">{t("tapDanceTappingTerm")}</label>
-              <div className="mb-1.5 flex items-center gap-1.5">
-                <input
-                  type="number"
-                  className="input input-sm w-28"
-                  min={0}
-                  max={10000}
-                  value={entry.tappingTerm}
-                  onChange={(e) => onSave?.({ tappingTerm: Number(e.target.value) })}
-                />
-                <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("msUnit")}</span>
-              </div>
-
-              {/* One field per row: a ModifierFieldSlot's modifier chips + key button don't fit
-                  two across in the card's 20rem width — see ComboPanel's edit face. */}
-              <div className="flex flex-col gap-2">
-                {PREVIEW_STATES.map(({ labelKey, field }) => {
-                  const qmkId = entry[field] as string;
-                  return (
-                    <div key={field}>
-                      <label className="fieldset-label text-xs text-neutral-400">{t(labelKey)}</label>
-                      {activeField === field ? (
-                        <ModifierFieldSlot
-                          qmkId={qmkId}
-                          onChange={(id) => onSave?.({ [field]: id } as Partial<TapDanceEntry>)}
-                          trailing={
-                            <FieldConfirmButton
-                              disabled={!fieldKeyValid(qmkId) || qmkId === "KC_NO"}
-                              onClick={() => setActiveField(null)}
-                            />
-                          }
-                        />
-                      ) : qmkId === "KC_NO" ? (
-                        <button
-                          type="button"
-                          onClick={() => setActiveField(field)}
-                          className="btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line btn-dash"
-                        >
-                          {t("fieldAddRegularKey")}
-                        </button>
-                      ) : (
-                        <ConfiguredFieldRow
-                          qmkId={qmkId}
-                          onEdit={() => setActiveField(field)}
-                          onDelete={() => onSave?.({ [field]: "KC_NO" } as Partial<TapDanceEntry>)}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Bottom breathing room so the last field doesn't sit flush against the
-                  card edge when scrolled all the way down. */}
-              <div className="h-5 shrink-0" aria-hidden="true" />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }
 
-
 interface Props {
   keyboard: Keyboard;
-  /** Forwarded to every card — see `PreviewCardProps.suppressCardName`. */
-  suppressCardNames?: boolean;
 }
 
 const isUsed = (e: TapDanceEntry) =>
   e.onTap !== "KC_NO" || e.onHold !== "KC_NO" || e.onDoubleTap !== "KC_NO" || e.onTapHold !== "KC_NO";
 
-export function TapDancePanel({ keyboard, suppressCardNames }: Props) {
+const EMPTY_ENTRY: TapDanceEntry = {
+  onTap: "KC_NO",
+  onHold: "KC_NO",
+  onDoubleTap: "KC_NO",
+  onTapHold: "KC_NO",
+  tappingTerm: 200,
+};
+
+/** How long a just-renumbered row stays put before animating into its sorted position — long
+ *  enough that the row doesn't slide out from under the cursor right after the pick. */
+const REORDER_SETTLE_MS = 1500;
+
+export function TapDancePanel({ keyboard }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
+  const { hoverProps, hideInfo, infoCard } = useKeyInfoHover();
   /**
-   * The single slot currently flipped to its editor face. Parent-owned so only one card edits at a
-   * time, and it doubles as the "freshly added, still-unused slot" marker (shown even when empty).
+   * A freshly added, still-empty slot. Unused entries are normally hidden, so this is what keeps
+   * the new row listed until it's given a value (or deleted again).
    */
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [draftIndex, setDraftIndex] = useState<number | null>(null);
   /**
-   * A freshly added, still-unused slot that's visible but not yet flipped — set for the two
-   * animation frames between "新增" being clicked and {@link editingIndex} taking over, so the
-   * new card mounts showing its front face first and then flips into the editor face exactly
-   * like clicking the pencil icon on an existing card, instead of popping directly into the
-   * editor face with no transition.
+   * The one field being configured anywhere on the page: which row, which of its four states (or
+   * its tapping term), and that field's pending value. Held here rather than per row so opening a
+   * field closes whichever
+   * one was open *on any row* — with a page of rows each keeping its own open field, several
+   * half-finished pickers could sit around at once, and only one of them would ever be the one
+   * the confirm button in front of you belongs to.
+   *
+   * `draft` is why nothing reaches the device until confirm: abandoning a field — by cancelling,
+   * or by opening another one here or on a different row — simply drops this record and leaves
+   * the state as it was.
    */
-  const [addingIndex, setAddingIndex] = useState<number | null>(null);
+  const [editing, setEditing] = useState<
+    { row: number; field: EditField; draft: string } | null
+  >(null);
   /**
-   * When set, overrides the natural (ascending) card order so a just-renumbered card stays put for
-   * a beat before it animates to its sorted position. Cleared inside a View Transition.
+   * When set, overrides the natural (ascending) row order so a just-renumbered row stays put for
+   * a moment instead of jumping to its new position under the cursor. Cleared inside a View
+   * Transition once {@link REORDER_SETTLE_MS} elapses.
    */
   const [pendingOrder, setPendingOrder] = useState<number[] | null>(null);
   /** Slot awaiting delete confirmation, or null when the confirm dialog is closed. */
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
   const reorderTimer = useRef<number | null>(null);
-  /** The entry's value captured when editing began, restored verbatim if the user clicks Cancel. */
-  const editSnapshot = useRef<TapDanceEntry | null>(null);
-  /** Pending `requestAnimationFrame` id(s) for the add-flow's delayed flip, cancelled on unmount
-   *  or if another action pre-empts it before the two frames elapse. */
-  const addRaf = useRef<number[]>([]);
-
-  const cancelPendingAddFlip = () => {
-    addRaf.current.forEach((id) => cancelAnimationFrame(id));
-    addRaf.current = [];
-  };
 
   useEffect(() => () => {
     if (reorderTimer.current) clearTimeout(reorderTimer.current);
-    cancelPendingAddFlip();
   }, []);
+
+  // Escape backs out of the selected field. Same effect as cancelling it: the draft is dropped
+  // and nothing reaches the device, so the state is left exactly as it was.
+  useEscapeKey(editing !== null, () => setEditing(null));
 
   const cancelPendingReorder = () => {
     if (reorderTimer.current) {
@@ -346,56 +401,13 @@ export function TapDancePanel({ keyboard, suppressCardNames }: Props) {
     setPendingOrder(null);
   };
 
-  /** Play the deferred re-sort (a card was renumbered while editing) as an animated View Transition. */
-  const settlePendingReorder = (delayMs: number) => {
-    if (reorderTimer.current) clearTimeout(reorderTimer.current);
-    reorderTimer.current = window.setTimeout(() => {
+  /** Play the deferred re-sort (a row was renumbered) as an animated View Transition. */
+  const settlePendingReorder = () => {
+    if (reorderTimer.current) {
+      clearTimeout(reorderTimer.current);
       reorderTimer.current = null;
-      startViewTransition(() => flushSync(() => setPendingOrder(null)));
-    }, delayMs);
-  };
-
-  const handleEdit = (i: number) => {
-    // Switching to another card settles the previous card's pending re-sort first.
-    if (pendingOrder) settlePendingReorder(0);
-    cancelPendingAddFlip();
-    setAddingIndex(null);
-    editSnapshot.current = { ...keyboard.tapDanceEntries[i] };
-    setEditingIndex(i);
-  };
-
-  const handleCloseEdit = () => {
-    if (editingIndex !== null) {
-      const e = keyboard.tapDanceEntries[editingIndex];
-      const invalid =
-        !fieldKeyValid(e.onTap) ||
-        !fieldKeyValid(e.onHold) ||
-        !fieldKeyValid(e.onDoubleTap) ||
-        !fieldKeyValid(e.onTapHold);
-      if (invalid) {
-        showToast(t("fieldInvalidKeycode"));
-        return;
-      }
     }
-    cancelPendingAddFlip();
-    setAddingIndex(null);
-    editSnapshot.current = null;
-    setEditingIndex(null);
-    // Only now (on "done") does the card animate into its sorted position — after a beat that lets
-    // it flip back to its front face first.
-    if (pendingOrder) settlePendingReorder(500);
-  };
-
-  /** Discard edits: restore the entry to its pre-edit value, then leave edit mode with no animation. */
-  const handleCancel = () => {
-    const idx = editingIndex;
-    const snap = editSnapshot.current;
-    editSnapshot.current = null;
-    cancelPendingReorder();
-    cancelPendingAddFlip();
-    setAddingIndex(null);
-    setEditingIndex(null);
-    if (idx !== null && snap) void updateAt(idx, snap);
+    startViewTransition(() => flushSync(() => setPendingOrder(null)));
   };
 
   if (keyboard.tapDanceCount === 0) {
@@ -412,45 +424,36 @@ export function TapDancePanel({ keyboard, suppressCardNames }: Props) {
     }
   };
 
-  const clearAt = (idx: number) =>
-    void updateAt(idx, { onTap: "KC_NO", onHold: "KC_NO", onDoubleTap: "KC_NO", onTapHold: "KC_NO", tappingTerm: 200 });
+  const clearAt = (idx: number) => void updateAt(idx, EMPTY_ENTRY);
 
-  const usedIndices = new Set(
-    keyboard.tapDanceEntries.flatMap((e, i) => (isUsed(e) ? [i] : [])),
-  );
+  const usedIndices = new Set(keyboard.tapDanceEntries.flatMap((e, i) => (isUsed(e) ? [i] : [])));
 
-  /** Cards to show, in the order to show them — `pendingOrder` while a renumber is settling. */
+  /** Rows to show, in the order to show them — `pendingOrder` while a renumber is settling. */
   const sortedVisible = keyboard.tapDanceEntries
     .map((_, i) => i)
-    .filter((i) => isUsed(keyboard.tapDanceEntries[i]) || i === editingIndex || i === addingIndex);
+    .filter((i) => isUsed(keyboard.tapDanceEntries[i]) || i === draftIndex);
   const displayOrder = pendingOrder
     ? pendingOrder.filter((i) => sortedVisible.includes(i))
     : sortedVisible;
+
+  /** Drop the open field if it belongs to row `i` — whose entry is about to move or disappear,
+   *  taking the draft's meaning with it. */
+  const closeEditingOn = (i: number) => setEditing((e) => (e?.row === i ? null : e));
 
   /** Move an entry to a different (free) slot number: write it to the new slot, clear the old one. */
   const moveTo = async (fromIdx: number, toIdx: number) => {
     if (fromIdx === toIdx) return;
     const src = keyboard.tapDanceEntries[fromIdx];
-    // Hold the current visual order, with the moved card renamed in place, until the timer fires.
+    // Hold the current visual order, with the moved row renumbered in place, for a beat.
     const heldOrder = displayOrder.map((i) => (i === fromIdx ? toIdx : i));
     try {
       await keyboard.setTapDance(toIdx, { ...src });
-      if (isUsed(src)) {
-        await keyboard.setTapDance(fromIdx, {
-          onTap: "KC_NO",
-          onHold: "KC_NO",
-          onDoubleTap: "KC_NO",
-          onTapHold: "KC_NO",
-          tappingTerm: 200,
-        });
-      }
-      // Hold the card in place, still in edit mode; the re-sort waits until "done" is clicked.
-      if (reorderTimer.current) {
-        clearTimeout(reorderTimer.current);
-        reorderTimer.current = null;
-      }
-      setEditingIndex(toIdx);
+      if (isUsed(src)) await keyboard.setTapDance(fromIdx, { ...EMPTY_ENTRY });
+      if (draftIndex === fromIdx) setDraftIndex(toIdx);
+      closeEditingOn(fromIdx);
+      if (reorderTimer.current) clearTimeout(reorderTimer.current);
       setPendingOrder(heldOrder);
+      reorderTimer.current = window.setTimeout(settlePendingReorder, REORDER_SETTLE_MS);
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err));
     }
@@ -463,78 +466,102 @@ export function TapDancePanel({ keyboard, suppressCardNames }: Props) {
       return;
     }
     cancelPendingReorder();
-    cancelPendingAddFlip();
-    // Show the freshly added card at the front of the row while it's being edited; the natural
-    // (ascending) order animates back into place only when the user clicks Done or Cancel.
-    const used = keyboard.tapDanceEntries.flatMap((e, i) => (isUsed(e) ? [i] : []));
-    setPendingOrder([freeIdx, ...used]);
-    editSnapshot.current = { ...keyboard.tapDanceEntries[freeIdx] };
-    // Mount the new card showing its front face first, then flip it into the editor face on the
-    // next paint — the same entrance the pencil-icon edit path gets — instead of popping directly
-    // into the editor face with no transition. Two rAFs so the un-flipped frame actually commits
-    // before the transform change that the flip's CSS transition needs to animate from.
-    setAddingIndex(freeIdx);
-    addRaf.current = [
-      requestAnimationFrame(() => {
-        addRaf.current = [
-          requestAnimationFrame(() => {
-            addRaf.current = [];
-            setEditingIndex(freeIdx);
-            setAddingIndex(null);
-          }),
-        ];
-      }),
-    ];
+    setDraftIndex(freeIdx);
+  };
+
+  /** Delete a row. An empty draft row has nothing on the device to erase and nothing to confirm —
+   *  it just stops being listed. */
+  const handleDelete = (i: number) => {
+    closeEditingOn(i);
+    if (!isUsed(keyboard.tapDanceEntries[i])) {
+      setDraftIndex((d) => (d === i ? null : d));
+      return;
+    }
+    setPendingDelete(i);
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col items-start gap-3">
-        <div className="flex items-center gap-3">
-          <progress className="progress h-3 w-80" value={usedCount} max={Math.max(keyboard.tapDanceCount, 1)} />
-          <span className="text-xs text-brand-on-surface-variant">
-            {t("tapDanceUsed", { used: usedCount, total: keyboard.tapDanceCount })}
-          </span>
-          <HelpIcon text={t("tapDanceUsedHelp")} />
-        </div>
-        <button type="button" className="btn btn-primary btn-sm" onClick={handleAdd}>
+      <div className="flex flex-wrap items-center gap-3">
+        <progress className="progress h-3 w-64" value={usedCount} max={Math.max(keyboard.tapDanceCount, 1)} />
+        <span className="text-xs text-brand-on-surface-variant">
+          {t("tapDanceUsed", { used: usedCount, total: keyboard.tapDanceCount })}
+        </span>
+        <HelpIcon text={t("tapDanceUsedHelp")} />
+        <button type="button" className="btn btn-primary btn-sm ml-auto" onClick={handleAdd}>
+          <Icon icon="mdi:plus" className="h-4 w-4" />
           {t("tapDanceAdd")}
         </button>
       </div>
-      <div className="flex flex-wrap gap-4">
-        {displayOrder.length === 0 ? (
-          <p className="text-sm text-brand-on-surface-variant">{t("tapDanceEmpty")}</p>
-        ) : (
-          displayOrder.map((i) => (
-            <TapDancePreviewCard
-              key={i}
-              index={i}
-              entry={keyboard.tapDanceEntries[i]}
-              tapDanceCount={keyboard.tapDanceCount}
-              assigned={keyboard.isKeycodeAssigned(`TD(${i})`)}
-              usedIndices={usedIndices}
-              onSave={(patch) => void updateAt(i, patch)}
-              onDelete={() => setPendingDelete(i)}
-              onMove={(toIdx) => void moveTo(i, toIdx)}
-              editing={i === editingIndex}
-              onEdit={() => handleEdit(i)}
-              onCloseEdit={handleCloseEdit}
-              onCancel={handleCancel}
-              suppressCardName={suppressCardNames}
-            />
-          ))
-        )}
+      <div className="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+        <table className="table">
+          <thead>
+            <tr>
+              <th className={SLOT_COL}>{t("tapDanceColSlot")}</th>
+              <th>
+                {/* `floating` because the table's `overflow-x-auto` wrapper is a scroll container:
+                    a normal CSS tooltip above the header row gets cropped at its top edge whatever
+                    its z-index. */}
+                <span className="inline-flex items-center gap-1.5">
+                  {t("tapDanceColStatus")}
+                  <HelpIcon text={t("tapDanceHint")} floating />
+                </span>
+              </th>
+              {STATES.map(({ labelKey, field }) => (
+                <th key={field} className={FIELD_COL}>
+                  {t(labelKey)}
+                </th>
+              ))}
+              <th>{t("tapDanceTappingTerm")}</th>
+              <th className="w-20 text-right">{t("tapDanceColActions")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayOrder.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="py-8 text-center text-sm text-brand-on-surface-variant">
+                  {t("tapDanceEmpty")}
+                </td>
+              </tr>
+            ) : (
+              displayOrder.map((i) => (
+                <TapDanceRow
+                  key={i}
+                  index={i}
+                  entry={keyboard.tapDanceEntries[i]}
+                  tapDanceCount={keyboard.tapDanceCount}
+                  assigned={keyboard.isKeycodeAssigned(`TD(${i})`)}
+                  usedIndices={usedIndices}
+                  onSave={(patch) => void updateAt(i, patch)}
+                  onDelete={() => handleDelete(i)}
+                  onMove={(toIdx) => void moveTo(i, toIdx)}
+                  hoverProps={hoverProps}
+                  hideInfo={hideInfo}
+                  activeField={editing?.row === i ? editing.field : null}
+                  draft={editing?.row === i ? editing.draft : null}
+                  onOpenField={(field, qmkId) => setEditing({ row: i, field, draft: qmkId })}
+                  onDraftChange={(next) =>
+                    setEditing((e) => (e?.row === i ? { ...e, draft: next } : e))
+                  }
+                  onCloseField={() => setEditing(null)}
+                />
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
       {pendingDelete !== null && (
         <ConfirmDialog
           message={t("tapDanceDeleteConfirm")}
           onConfirm={() => {
             clearAt(pendingDelete);
+            setDraftIndex((d) => (d === pendingDelete ? null : d));
             setPendingDelete(null);
           }}
           onCancel={() => setPendingDelete(null)}
         />
       )}
+      {infoCard}
     </div>
   );
 }

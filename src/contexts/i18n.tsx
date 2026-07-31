@@ -1023,6 +1023,9 @@ const MESSAGES = {
   },
   tapDanceAdd: { en: "Add tap dance", zh: "添加 Tap Dance", ja: "Tap Dance を追加", fr: "Ajouter un Tap Dance" },
   tapDanceRenumber: { en: "Change slot number", zh: "更换槽位编号", ja: "スロット番号を変更", fr: "Changer le numéro d'emplacement" },
+  tapDanceColSlot: { en: "Slot", zh: "槽位", ja: "スロット", fr: "Emplacement" },
+  tapDanceColStatus: { en: "Status", zh: "状态", ja: "状態", fr: "État" },
+  tapDanceColActions: { en: "Actions", zh: "操作", ja: "操作", fr: "Actions" },
   tapDanceEmpty: { en: "No tap dances configured yet.", zh: "还没有配置任何点击舞步。", ja: "まだ Tap Dance が設定されていません。", fr: "Aucun Tap Dance configuré pour l'instant." },
   tapDanceFull: {
     en: "All tap dance slots are in use.",
@@ -1151,6 +1154,7 @@ const MESSAGES = {
   fieldRemoveModifier: { en: "Remove modifier", zh: "移除修饰键", ja: "修飾キーを削除", fr: "Retirer le modificateur" },
   fieldRemoveHold: { en: "Remove hold action", zh: "移除长按功能", ja: "長押し動作を削除", fr: "Retirer l'action de maintien" },
   fieldConfirm: { en: "Confirm", zh: "确认", ja: "確認", fr: "Confirmer" },
+  fieldConfirmClean: { en: "No changes", zh: "无改动", ja: "変更なし", fr: "Aucune modification" },
 
   // DeviceConnect
   connecting: { en: "Connecting…", zh: "连接中…", ja: "接続中…", fr: "Connexion…" },
@@ -1339,6 +1343,16 @@ const MESSAGES = {
     zh: "选择按键",
     ja: "キーコードを選択",
     fr: "Choisir un code de touche",
+  },
+  // 复制 / 粘贴 actions pinned above 清空/穿透 in the right-click menu, plus the
+  // toast confirming a copy (see hooks/useKeycodeClipboard.ts).
+  cascadeCopy: { en: "Copy", zh: "复制", ja: "コピー", fr: "Copier" },
+  cascadePaste: { en: "Paste", zh: "粘贴", ja: "貼り付け", fr: "Coller" },
+  cascadeCopied: {
+    en: "Copied {key}",
+    zh: "已复制 {key}",
+    ja: "{key} をコピーしました",
+    fr: "{key} copié",
   },
   cascadeKeycodeLabel: { en: "Keycode", zh: "按键编码", ja: "キーコード", fr: "Code de touche" },
   cascadeDescriptionLabel: { en: "Description", zh: "按键说明", ja: "説明", fr: "Description" },
