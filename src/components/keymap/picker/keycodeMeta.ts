@@ -150,23 +150,30 @@ export const entryLabel = (t: Translate, entry: KeycodeDef): string => {
 };
 
 /**
- * "<category> / <label>" for a keycode — the form the cascade selector's trigger button shows,
- * so a read-only rendering of the same value (the combo table's display rows) names the key the
- * same way its editor does. `categories` defaults to the full catalogue; the selector passes its
- * own filtered list so a scoped-down picker stays self-consistent. Falls back to the raw qmk_id
- * for anything the catalogue doesn't list (a concrete masked keycode, whose *inner* key is what
- * callers pass here).
+ * The two halves of the "<category> / <label>" naming of a keycode — the form the cascade
+ * selector's trigger button shows, so a read-only rendering of the same value (the combo table's
+ * display rows) names the key the same way its editor does. Split rather than joined because the
+ * two are styled differently: {@link ./QualifiedKeyLabel} greys the category out so the key name
+ * itself carries the row. `category` is null for anything the catalogue doesn't list (a concrete
+ * masked keycode, whose *inner* key is what callers pass here), where `label` is the raw qmk_id.
+ *
+ * `categories` defaults to the full catalogue; the selector passes its own filtered list so a
+ * scoped-down picker stays self-consistent.
+ *
+ * Two-line keycap labels (`"?\n/"` for KC_SLASH, i.e. the shifted glyph over the base one) are
+ * flattened to a single line here — this form names a key inside a sentence-like button, not on a
+ * keycap, and every caller renders it on one row.
  */
-export function qualifiedLabel(
+export function qualifiedLabelParts(
   t: Translate,
   qmkId: string,
   categories?: { name: string; entries: KeycodeDef[] }[],
-): string {
+): { category: string | null; label: string } {
   for (const c of categories ?? [...KEYCODE_CATEGORIES, ...deviceCategories()]) {
     const e = c.entries.find((x) => x.qmkId === qmkId);
-    if (e) return `${catLabel(t, c.name)} / ${entryLabel(t, e)}`;
+    if (e) return { category: catLabel(t, c.name), label: entryLabel(t, e).split("\n").join(" ") };
   }
-  return qmkId;
+  return { category: null, label: qmkId };
 }
 
 // --- Basic -----------------------------------------------------------------

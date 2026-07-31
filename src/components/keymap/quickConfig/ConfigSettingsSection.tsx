@@ -12,8 +12,6 @@ interface Props {
   importing: boolean;
   onExport: () => void;
   onImportFile: (file: File) => void;
-  /** "配置键盘颜色": opens the 个性化 page via the same hero View Transition NewHomePage uses. */
-  onOpenPersonalization: (origin: Element) => void;
 }
 
 /**
@@ -28,7 +26,6 @@ export function ConfigSettingsSection({
   importing,
   onExport,
   onImportFile,
-  onOpenPersonalization,
 }: Props) {
   const { t } = useI18n();
   const importFileInputRef = useRef<HTMLInputElement>(null);
@@ -42,21 +39,7 @@ export function ConfigSettingsSection({
           alongside 特殊按键区域's other columns on the same row, so its width
           should stay as small as the content allows rather than stretching. */}
       <ul className="list w-64 rounded-box border border-brand-outline/30">
-        <SettingsRow
-          icon={<Icon icon="mdi:palette-outline" className="h-4.5 w-4.5" />}
-          label={t("configKeyboardColor")}
-          labelClassName="whitespace-nowrap"
-          control={
-            <button
-              type="button"
-              className="btn btn-circle btn-ghost"
-              onClick={(e) => onOpenPersonalization(e.currentTarget)}
-              aria-label={t("configKeyboardColor")}
-            >
-              <Icon icon="mdi:chevron-right" className="h-4.5 w-4.5" />
-            </button>
-          }
-        />
+        {/* 「配置键盘颜色」已移至 特殊按键 下方的 个性化 块(PersonalizationSection)。 */}
         <SettingsRow
           icon={<Icon icon="mdi:cursor-default-click-outline" className="h-4.5 w-4.5" />}
           label={t("autoAdvance")}

@@ -64,6 +64,7 @@ export function FullscreenPreviewOverlay({
   layer,
   handle,
   settings,
+  settingsTransitionName,
   boardRef,
   heroArriving,
   onBack,
@@ -75,6 +76,13 @@ export function FullscreenPreviewOverlay({
   handle: FullscreenPreviewHandle;
   /** The 个性化 appearance settings sections, moved here from the compact page — each a `<section>` that becomes one grid cell. */
   settings?: ReactNode;
+  /**
+   * `view-transition-name` for the settings grid, set only while the App-level
+   * 键盘配置 ↔ 个性化 swap is animating (see `configSwapName`): it makes this
+   * block slide up in / down out as the counterpart page's config area does
+   * the mirror move, instead of cross-fading with the rest of the page.
+   */
+  settingsTransitionName?: string;
   /**
    * Same ref the compact page attaches to its own board wrapper, so the
    * "Save current layer" screenshot button — now living in `settings`, i.e.
@@ -254,7 +262,10 @@ export function FullscreenPreviewOverlay({
           // `break-inside-avoid` keeps a single section from being split across
           // the column break; the bottom margin substitutes for `gap-y` (columns
           // has no row-gap concept).
-          <div className="w-full columns-1 gap-x-6 pt-[50px] lg:columns-2 [&>section]:mb-4 [&>section]:break-inside-avoid">
+          <div
+            className="w-full columns-1 gap-x-6 pt-[50px] lg:columns-2 [&>section]:mb-4 [&>section]:break-inside-avoid"
+            style={{ viewTransitionName: settingsTransitionName }}
+          >
             {settings}
           </div>
         )}

@@ -12,7 +12,6 @@ import { LayerKeyPicker } from "./LayerKeyPicker.tsx";
 import { FnMediaMouseCards } from "./FnMediaMouseCards.tsx";
 import { KeyboardFunctionCards, type KeyboardFnCardGroup } from "./KeyboardFunctionCards.tsx";
 import { ConfigSettingsSection } from "./ConfigSettingsSection.tsx";
-import { PersonalizationSection } from "./PersonalizationSection.tsx";
 import { MultiFunctionCardBody } from "./MultiFunctionCardBody.tsx";
 import {
   ALWAYS_ENABLED_ATTR,
@@ -54,14 +53,6 @@ interface Props {
   onExport: () => void;
   /** Import a layout from a user-picked `.vil` file. */
   onImportFile: (file: File) => void;
-  /** "配置键盘颜色" row: opens the 个性化 page via the same hero View Transition NewHomePage uses. */
-  onOpenPersonalization: (origin: Element) => void;
-  /** Active layer — what 个性化's 保存当前层图片 button exports. */
-  layer: number;
-  /** Connected device's WebHID product name, stamped into exported images. */
-  productName?: string;
-  /** The keymap board's auto-fit zoom, so exported images match the on-screen scale. */
-  zoomOverride?: number | null;
   /**
    * 选中了双功能键(dualRole)的上半部分(轻触/tap 半区)时置 true。此时该半区只能
    * 是基础键码,所以除「功能」列前三张卡片(F13~F24 / 鼠标 / 媒体,连同基础模拟键盘)
@@ -96,10 +87,6 @@ export function QuickConfigPanel({
   importing,
   onExport,
   onImportFile,
-  onOpenPersonalization,
-  layer,
-  productName,
-  zoomOverride,
 }: Props) {
   const { t } = useI18n();
   // Preview scaling is no longer duplicated here: the board follows the 个性化
@@ -468,21 +455,9 @@ export function QuickConfigPanel({
                 importing={importing}
                 onExport={onExport}
                 onImportFile={onImportFile}
-                onOpenPersonalization={onOpenPersonalization}
               />
             </div>
           </section>
-
-          {/* Row 3: 个性化 — 保存当前层图片 / 保存所有层图片 / 个性化配置. Like
-              配置设置 it's panel-level, so it stays interactive and undimmed with
-              no key selected. */}
-          <PersonalizationSection
-            keyboard={keyboard}
-            layer={layer}
-            productName={productName}
-            zoomOverride={zoomOverride}
-            onOpenPersonalization={onOpenPersonalization}
-          />
         </div>
       )}
       {activeCat.groups

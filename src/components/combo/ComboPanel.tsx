@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
@@ -13,7 +13,7 @@ import {
   ConfiguredFieldRow,
   FieldConfirmButton,
   fieldKeyValid,
-  FieldValueDisplay,
+  FIELD_ROLE_ROW,
   ModifierFieldSlot,
 } from "../common/ModifierFieldSlot.tsx";
 
@@ -31,14 +31,46 @@ function FieldLabel({ text }: { text?: string }) {
   );
 }
 
-/** Read-only counterpart of the editor's dashed "add" button, for a half-filled entry (trigger
- *  keys but no output, or the reverse) — the same dashed box with nothing to add. */
-const FIELD_KEY_BOX_EMPTY = "btn btn-sm min-h-9 w-full py-0.5 text-xs opacity-50 btn-dash";
+/**
+ * Wraps a field state that has no role tags of its own (the "add key" button) in the same
+ * box-over-tag-line stack a valued field wears, with the tag line left blank. Every field in the
+ * table is then exactly one height tall, so a row doesn't grow or shrink as a field flips between
+ * empty, being configured and configured.
+ */
+function FieldStack({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {children}
+      <div className={FIELD_ROLE_ROW} aria-hidden />
+    </div>
+  );
+}
 
-/** Width of one field inside a cell, applied in both states: an editable field (key box plus its
- *  role tags) and its read-only counterpart line up column for column. The trigger cell lays
- *  several out side by side and wraps when the viewport is narrow. */
+/** Width of one field inside a cell. The trigger cell lays several out side by side and wraps
+ *  when the viewport is narrow. */
 const FIELD_COL = "w-44 shrink-0";
+
+/** Fixed width of the slot column, shared by the header and the {@link RenumberPicker} cell, so
+ *  the trigger's width (1- vs 2-digit slot numbers) can't shift the columns beside it. */
+const SLOT_COL = "w-24";
+
+/**
+ * Trigger fields to render, in slot order: every already-set key, plus (only while at least one
+ * slot is still free) the next empty one as an "add key" trigger — rather than always showing all
+ * 4 regardless of use.
+ */
+function keyFieldOrder(keys: ComboEntry["keys"]): number[] {
+  const shown = keys.flatMap((k, i) => (k !== "KC_NO" ? [i] : []));
+  const nextEmpty = keys.findIndex((k) => k === "KC_NO");
+  if (nextEmpty !== -1) shown.push(nextEmpty);
+  return shown;
+}
+
+const sameOrder = (a: number[], b: number[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+
+/** How long a trigger field stays where it is before animating into slot order — long enough that
+ *  a field doesn't slide out from under the cursor the instant a key is picked or cleared. */
+const KEY_REORDER_SETTLE_MS = 500;
 
 interface RowProps {
   index: number;
@@ -51,23 +83,18 @@ interface RowProps {
   onDelete: () => void;
   /** Moves this entry to a different (free) slot number, from the renumber picker. */
   onMove: (toIdx: number) => void;
-  /** Whether this row is the single one currently switched to its editable cells (parent-owned). */
-  editing: boolean;
-  /** Enter edit mode — the parent makes this the one editing row, closing any other. */
-  onEdit: () => void;
-  /** Leave edit mode (the "done" button); the parent also drops the slot if it's still unused. */
-  onCloseEdit: () => void;
-  /** Discard edits (the "cancel" button) — restores the entry to its value from when editing began. */
-  onCancel: () => void;
-  /** Panel-level hover-card wiring, spread on each read-only keycap so resting on one explains
-   *  what it does (see {@link useKeyInfoHover}). */
+  /** Panel-level hover-card wiring, spread on each keycap so resting on one explains what it
+   *  does (see {@link useKeyInfoHover}). */
   hoverProps: ReturnType<typeof useKeyInfoHover>["hoverProps"];
+  /** Closes that hover card — called by the actions that replace the hovered field. */
+  hideInfo: () => void;
 }
 
 /**
- * One combo slot as a table row. In its display state the cells are read-only keycap faces; in
- * edit mode the same cells turn into the shared {@link ModifierFieldSlot} editors in place, so
- * editing never leaves the table.
+ * One combo slot as a table row. Every row is permanently editable — there's no display/edit
+ * flip, so no row-level edit/done/cancel buttons: each cell is the shared
+ * {@link ModifierFieldSlot} editor, and every change is written through to the device as it's
+ * made.
  */
 function ComboRow({
   index,
@@ -77,11 +104,8 @@ function ComboRow({
   onSave,
   onDelete,
   onMove,
-  editing,
-  onEdit,
-  onCloseEdit,
-  onCancel,
   hoverProps,
+  hideInfo,
 }: RowProps) {
   const { t } = useI18n();
 
@@ -91,33 +115,78 @@ function ComboRow({
    * "configured" (collapsed to a compact modifier+key display with modify/delete buttons). Only
    * one field may be under configuration at a time — `activeField` names it ("output" or a key
    * index), and setting it to a different field implicitly collapses whichever one it was
-   * pointing at, since that field's own "am I active" check simply stops matching. Reset to null
-   * whenever the row (re-)enters edit mode.
+   * pointing at, since that field's own "am I active" check simply stops matching.
    */
   const [activeField, setActiveField] = useState<"output" | number | null>(null);
-  useEffect(() => {
-    if (!editing) return;
-    setActiveField(null);
-    // Only re-seed when a row newly enters edit mode, not on every entry edit within the session.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing]);
+
+  /**
+   * Freezes the trigger fields in the order they're currently on screen, overriding slot order.
+   * Slots are refilled lowest-first, so clearing key 1 while key 2 is set leaves the free slot —
+   * and with it the "add key" button — sitting *after* key 2; giving it a value would then snap it
+   * back in front. The order is held instead until the field is done being edited, and only then
+   * (after {@link KEY_REORDER_SETTLE_MS}) is the re-sort played as an animated View Transition.
+   */
+  const [heldOrder, setHeldOrder] = useState<number[] | null>(null);
+  /** True only while that transition runs. The fields carry a `view-transition-name` for exactly
+   *  that window, so no other (page-level, theme) transition pulls them into their own groups. */
+  const [reordering, setReordering] = useState(false);
+  const settleTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+  }, []);
+
+  const slotOrder = keyFieldOrder(entry.keys);
+  // A held order only pins the fields it was captured with: anything since removed drops out, and
+  // a newly shown slot (the next "add key" button) joins at the end.
+  const fieldOrder = heldOrder
+    ? [
+        ...heldOrder.filter((i) => slotOrder.includes(i)),
+        ...slotOrder.filter((i) => !heldOrder.includes(i)),
+      ]
+    : slotOrder;
+
+  /** Play the deferred re-sort. The names have to be on the fields *before* the transition
+   *  captures the old state, hence the separate `flushSync` ahead of it. */
+  const settleOrder = () => {
+    settleTimer.current = null;
+    flushSync(() => setReordering(true));
+    const transition = startViewTransition(() => flushSync(() => setHeldOrder(null)));
+    void transition.finished.then(() => setReordering(false));
+  };
+
+  /**
+   * Arm the re-sort, if one is being held back. Called once the field is finished with — the
+   * confirm button, or a clear (which has no confirm step) — never while the picker is still open:
+   * the fields must not shuffle around under a pointer that's still working inside one of them.
+   */
+  const scheduleSettle = () => {
+    if (heldOrder === null) return;
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = window.setTimeout(settleOrder, KEY_REORDER_SETTLE_MS);
+  };
 
   const setKeyAt = (i: number, id: string) => {
     const keys = [...entry.keys] as ComboEntry["keys"];
     keys[i] = id;
+    // Would this reshuffle the fields already on screen? If so, pin their current order; the timer
+    // that eventually releases it is armed by whoever ends the edit, not here.
+    const next = keyFieldOrder(keys);
+    const held = fieldOrder.filter((k) => next.includes(k));
+    if (!sameOrder(held, next.filter((k) => fieldOrder.includes(k)))) {
+      if (settleTimer.current) {
+        clearTimeout(settleTimer.current);
+        settleTimer.current = null;
+      }
+      setHeldOrder(held);
+      // A clear ends the edit by itself — nothing follows it to arm the settle, so do it here.
+      if (id === "KC_NO") settleTimer.current = window.setTimeout(settleOrder, KEY_REORDER_SETTLE_MS);
+    }
     onSave({ keys });
   };
 
-  // Slots to render in the trigger cell: every already-set key, plus (only while at least one
-  // slot is still free) the next empty one as an "add key" trigger — rather than always showing
-  // all 4 regardless of use.
-  const nextEmptyKeyIndex = entry.keys.findIndex((k) => k === "KC_NO");
-  const visibleKeyIndices = entry.keys.flatMap((k, i) => (k !== "KC_NO" ? [i] : []));
-  if (nextEmptyKeyIndex !== -1) visibleKeyIndices.push(nextEmptyKeyIndex);
-  const setKeyIndices = entry.keys.flatMap((k, i) => (k !== "KC_NO" ? [i] : []));
-
-  /** One editable field: the picker while it's the active one, an "add" button while empty,
-   *  otherwise the compact configured summary. Shared by the trigger keys and the output key. */
+  /** One field: the picker while it's the active one, an "add" button while empty, otherwise the
+   *  compact configured summary. Shared by the trigger keys and the output key. */
   const field = (
     id: "output" | number,
     qmkId: string,
@@ -131,85 +200,47 @@ function ComboRow({
         trailing={
           <FieldConfirmButton
             disabled={!fieldKeyValid(qmkId) || qmkId === "KC_NO"}
-            onClick={() => setActiveField(null)}
+            onClick={() => {
+              setActiveField(null);
+              scheduleSettle();
+            }}
           />
         }
       />
     ) : qmkId === "KC_NO" ? (
       // Untouched slot: switches this field to the editor instead of popping the picker directly,
       // and (being the new active field) collapses whichever other field was mid-edit.
-      <button
-        type="button"
-        onClick={() => setActiveField(id)}
-        className="btn btn-sm min-h-9 w-full gap-1 py-0.5 text-xs btn-dash"
-      >
-        <Icon icon="mdi:plus" className="h-3.5 w-3.5" />
-        {t("fieldAddRegularKey")}
-      </button>
+      <FieldStack>
+        <button
+          type="button"
+          onClick={() => setActiveField(id)}
+          className="btn btn-sm min-h-9 w-full gap-1 py-0.5 text-xs btn-dash"
+        >
+          <Icon icon="mdi:plus" className="h-3.5 w-3.5" />
+          {t("fieldAddRegularKey")}
+        </button>
+      </FieldStack>
     ) : (
-      <ConfiguredFieldRow qmkId={qmkId} onEdit={() => setActiveField(id)} onDelete={onClear} />
+      <ConfiguredFieldRow
+        qmkId={qmkId}
+        // Both actions swap this field for something else, so the card describing it has to go
+        // with it — the pointer stays put and no `mouseleave` ever fires.
+        onEdit={() => {
+          hideInfo();
+          setActiveField(id);
+        }}
+        onDelete={() => {
+          hideInfo();
+          onClear();
+        }}
+        reserveRoleRow
+        hoverProps={hoverProps(qmkId)}
+      />
     );
-
-  if (!editing) {
-    return (
-      <tr className="group/row hover:bg-base-200/60">
-        <td className="font-mono text-base font-bold whitespace-nowrap">
-          <span className="inline-flex items-center gap-1.5">
-            <Icon icon="mdi:vector-combine" className="h-4 w-4 opacity-60" />
-            {index}
-          </span>
-        </td>
-        <td>
-          {/* Same wrapping row of labelled, fixed-width fields the edit state lays out — only
-              the picker affordances are missing — so the row keeps its shape when it flips. */}
-          <div className="flex flex-wrap items-start gap-2">
-            {setKeyIndices.length === 0 ? (
-              <div className={FIELD_COL}>
-                <FieldLabel text={t("comboKeyN", { n: 1 })} />
-                <div className={FIELD_KEY_BOX_EMPTY}>—</div>
-              </div>
-            ) : (
-              setKeyIndices.map((i) => (
-                <div key={i} className={FIELD_COL}>
-                  <FieldLabel text={t("comboKeyN", { n: i + 1 })} />
-                  <FieldValueDisplay qmkId={entry.keys[i]} {...hoverProps(entry.keys[i])} />
-                </div>
-              ))
-            )}
-          </div>
-        </td>
-        <td>
-          <div className={FIELD_COL}>
-            <FieldLabel />
-            {entry.output === "KC_NO" ? (
-              <div className={FIELD_KEY_BOX_EMPTY}>—</div>
-            ) : (
-              <FieldValueDisplay qmkId={entry.output} {...hoverProps(entry.output)} />
-            )}
-          </div>
-        </td>
-        <td className="text-right">
-          <div className="inline-flex gap-1 opacity-50 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
-            <button type="button" className="btn btn-ghost btn-sm px-2" title={t("edit")} onClick={onEdit}>
-              <Icon icon="mdi:pencil" className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm px-2 hover:text-error"
-              title={t("delete")}
-              onClick={onDelete}
-            >
-              <Icon icon="mdi:trash-can-outline" className="h-4 w-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
-    );
-  }
 
   return (
-    <tr className="bg-base-200/50">
-      <td className="align-top">
+    <tr className="group/row hover:bg-base-200/40">
+      <td className={`align-top whitespace-nowrap ${SLOT_COL}`}>
         <RenumberPicker
           index={index}
           count={comboCount}
@@ -221,8 +252,12 @@ function ComboRow({
       </td>
       <td className="align-top">
         <div className="flex flex-wrap items-start gap-2">
-          {visibleKeyIndices.map((i) => (
-            <div key={i} className={FIELD_COL}>
+          {fieldOrder.map((i) => (
+            <div
+              key={i}
+              className={FIELD_COL}
+              style={{ viewTransitionName: reordering ? `combo-key-${index}-${i}` : undefined }}
+            >
               <FieldLabel text={t("comboKeyN", { n: i + 1 })} />
               {field(i, entry.keys[i], (id) => setKeyAt(i, id), () => setKeyAt(i, "KC_NO"))}
             </div>
@@ -241,12 +276,14 @@ function ComboRow({
         </div>
       </td>
       <td className="text-right align-top">
-        <div className="inline-flex gap-1">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
-            {t("cancel")}
-          </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={onCloseEdit}>
-            {t("done")}
+        <div className="inline-flex gap-1 opacity-50 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm px-2 hover:text-error"
+            title={t("delete")}
+            onClick={onDelete}
+          >
+            <Icon icon="mdi:trash-can-outline" className="h-4 w-4" />
           </button>
         </div>
       </td>
@@ -260,27 +297,28 @@ interface Props {
 
 const isUsed = (e: ComboEntry) => e.output !== "KC_NO" || e.keys.some((k) => k !== "KC_NO");
 
+/** How long a just-renumbered row stays put before animating into its sorted position — long
+ *  enough that the row doesn't slide out from under the cursor right after the pick. */
+const REORDER_SETTLE_MS = 1500;
+
 export function ComboPanel({ keyboard }: Props) {
   const { t } = useI18n();
   const { showToast } = useToast();
-  const { hoverProps, infoCard } = useKeyInfoHover();
+  const { hoverProps, hideInfo, infoCard } = useKeyInfoHover();
   /**
-   * The single slot currently switched to its editable cells. Parent-owned so only one row edits
-   * at a time, and it doubles as the "freshly added, still-unused slot" marker (listed even while
-   * the entry is still empty).
+   * A freshly added, still-empty slot. Unused entries are normally hidden, so this is what keeps
+   * the new row listed until it's given a value (or deleted again).
    */
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [draftIndex, setDraftIndex] = useState<number | null>(null);
   /**
    * When set, overrides the natural (ascending) row order so a just-renumbered row stays put for
-   * the rest of the edit session instead of jumping to its new position mid-edit. Cleared inside
-   * a View Transition once editing ends.
+   * a moment instead of jumping to its new position under the cursor. Cleared inside a View
+   * Transition once {@link REORDER_SETTLE_MS} elapses.
    */
   const [pendingOrder, setPendingOrder] = useState<number[] | null>(null);
   /** Slot awaiting delete confirmation, or null when the confirm dialog is closed. */
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
   const reorderTimer = useRef<number | null>(null);
-  /** The entry's value captured when editing began, restored verbatim if the user clicks Cancel. */
-  const editSnapshot = useRef<ComboEntry | null>(null);
 
   useEffect(() => () => {
     if (reorderTimer.current) clearTimeout(reorderTimer.current);
@@ -294,50 +332,13 @@ export function ComboPanel({ keyboard }: Props) {
     setPendingOrder(null);
   };
 
-  /** Play the deferred re-sort (a row was renumbered while editing) as an animated View Transition. */
+  /** Play the deferred re-sort (a row was renumbered) as an animated View Transition. */
   const settlePendingReorder = () => {
     if (reorderTimer.current) {
       clearTimeout(reorderTimer.current);
       reorderTimer.current = null;
     }
     startViewTransition(() => flushSync(() => setPendingOrder(null)));
-  };
-
-  const snapshotOf = (i: number): ComboEntry => {
-    const e = keyboard.comboEntries[i];
-    return { ...e, keys: [...e.keys] as ComboEntry["keys"] };
-  };
-
-  const handleEdit = (i: number) => {
-    // Switching to another row settles the previous row's pending re-sort first.
-    if (pendingOrder) settlePendingReorder();
-    editSnapshot.current = snapshotOf(i);
-    setEditingIndex(i);
-  };
-
-  const handleCloseEdit = () => {
-    if (editingIndex !== null) {
-      const e = keyboard.comboEntries[editingIndex];
-      const invalid = !fieldKeyValid(e.output) || e.keys.some((k) => !fieldKeyValid(k));
-      if (invalid) {
-        showToast(t("fieldInvalidKeycode"));
-        return;
-      }
-    }
-    editSnapshot.current = null;
-    setEditingIndex(null);
-    // Only now does the row animate into its sorted position.
-    if (pendingOrder) settlePendingReorder();
-  };
-
-  /** Discard edits: restore the entry to its pre-edit value, then leave edit mode with no animation. */
-  const handleCancel = () => {
-    const idx = editingIndex;
-    const snap = editSnapshot.current;
-    editSnapshot.current = null;
-    cancelPendingReorder();
-    setEditingIndex(null);
-    if (idx !== null && snap) void updateAt(idx, snap);
   };
 
   if (keyboard.comboCount === 0) {
@@ -362,7 +363,7 @@ export function ComboPanel({ keyboard }: Props) {
   /** Rows to show, in the order to show them — `pendingOrder` while a renumber is settling. */
   const sortedVisible = keyboard.comboEntries
     .map((_, i) => i)
-    .filter((i) => isUsed(keyboard.comboEntries[i]) || i === editingIndex);
+    .filter((i) => isUsed(keyboard.comboEntries[i]) || i === draftIndex);
   const displayOrder = pendingOrder
     ? pendingOrder.filter((i) => sortedVisible.includes(i))
     : sortedVisible;
@@ -371,20 +372,17 @@ export function ComboPanel({ keyboard }: Props) {
   const moveTo = async (fromIdx: number, toIdx: number) => {
     if (fromIdx === toIdx) return;
     const src = keyboard.comboEntries[fromIdx];
-    // Hold the current visual order, with the moved row renumbered in place, until editing ends.
+    // Hold the current visual order, with the moved row renumbered in place, for a beat.
     const heldOrder = displayOrder.map((i) => (i === fromIdx ? toIdx : i));
     try {
       await keyboard.setCombo(toIdx, { ...src, keys: [...src.keys] as ComboEntry["keys"] });
       if (isUsed(src)) {
         await keyboard.setCombo(fromIdx, { keys: ["KC_NO", "KC_NO", "KC_NO", "KC_NO"], output: "KC_NO" });
       }
-      // Keep the row in place, still in edit mode; the re-sort waits until "done" is clicked.
-      if (reorderTimer.current) {
-        clearTimeout(reorderTimer.current);
-        reorderTimer.current = null;
-      }
-      setEditingIndex(toIdx);
+      if (draftIndex === fromIdx) setDraftIndex(toIdx);
+      if (reorderTimer.current) clearTimeout(reorderTimer.current);
       setPendingOrder(heldOrder);
+      reorderTimer.current = window.setTimeout(settlePendingReorder, REORDER_SETTLE_MS);
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err));
     }
@@ -397,8 +395,17 @@ export function ComboPanel({ keyboard }: Props) {
       return;
     }
     cancelPendingReorder();
-    editSnapshot.current = snapshotOf(freeIdx);
-    setEditingIndex(freeIdx);
+    setDraftIndex(freeIdx);
+  };
+
+  /** Delete a row. An empty draft row has nothing on the device to erase and nothing to confirm —
+   *  it just stops being listed. */
+  const handleDelete = (i: number) => {
+    if (!isUsed(keyboard.comboEntries[i])) {
+      setDraftIndex((d) => (d === i ? null : d));
+      return;
+    }
+    setPendingDelete(i);
   };
 
   return (
@@ -418,18 +425,20 @@ export function ComboPanel({ keyboard }: Props) {
         <table className="table">
           <thead>
             <tr>
-              <th className="w-16">{t("comboColSlot")}</th>
+              <th className={SLOT_COL}>{t("comboColSlot")}</th>
               <th>
                 {/* The keys are listed side by side rather than joined by a "+", which would
-                    break their alignment with the edit state's fields — the help icon carries
-                    the "press them together" part instead. */}
+                    break their alignment with the fields below — the help icon carries the
+                    "press them together" part instead. `floating` because the table's
+                    `overflow-x-auto` wrapper is a scroll container: a normal CSS tooltip above
+                    the header row gets cropped at its top edge whatever its z-index. */}
                 <span className="inline-flex items-center gap-1.5">
                   {t("comboColTriggers")}
-                  <HelpIcon text={t("comboHint")} />
+                  <HelpIcon text={t("comboHint")} floating />
                 </span>
               </th>
               <th>{t("comboOutput")}</th>
-              <th className="w-40 text-right">{t("comboColActions")}</th>
+              <th className="w-20 text-right">{t("comboColActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -448,13 +457,10 @@ export function ComboPanel({ keyboard }: Props) {
                   comboCount={keyboard.comboCount}
                   usedIndices={usedIndices}
                   onSave={(patch) => void updateAt(i, patch)}
-                  onDelete={() => setPendingDelete(i)}
+                  onDelete={() => handleDelete(i)}
                   onMove={(toIdx) => void moveTo(i, toIdx)}
-                  editing={i === editingIndex}
-                  onEdit={() => handleEdit(i)}
-                  onCloseEdit={handleCloseEdit}
-                  onCancel={handleCancel}
                   hoverProps={hoverProps}
+                  hideInfo={hideInfo}
                 />
               ))
             )}
@@ -466,6 +472,7 @@ export function ComboPanel({ keyboard }: Props) {
           message={t("comboDeleteConfirm")}
           onConfirm={() => {
             clearAt(pendingDelete);
+            setDraftIndex((d) => (d === pendingDelete ? null : d));
             setPendingDelete(null);
           }}
           onCancel={() => setPendingDelete(null)}

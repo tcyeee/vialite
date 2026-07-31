@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useLenis } from "lenis/react";
-import { startViewTransition } from "../components/common/viewTransition.ts";
+import { startViewTransition, type ConfigSwapSide } from "../components/common/viewTransition.ts";
 import type { MessageKey } from "../contexts/i18n.tsx";
 import { track } from "../lib/analytics.ts";
 
@@ -59,6 +59,12 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
   // animated view-transition group instead of sliding along with the rest of
   // the page, so it's suppressed for that window instead.
   const [heroNameSuppressed, setHeroNameSuppressed] = useState(false);
+  // 只在 键盘配置 ↔ 个性化 这一对页面互相切换时非 null,值是本次导航*离开*的
+  // 那一侧。两个页面都据此决定自己下方配置区该挂 out 还是 in 的
+  // view-transition-name(见 configSwapName),从而在头部键盘做 hero 形变的
+  // 同时,下方配置区跑一段「旧的下滑淡出、新的上滑淡入」的接力动画,而不是跟
+  // 着 root 一起硬交叉淡化。从首页进来时保持 null,行为不变。
+  const [configSwapFrom, setConfigSwapFrom] = useState<ConfigSwapSide | null>(null);
   const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
   const [qmkPendingCount, setQmkPendingCount] = useState(0);
   const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
@@ -118,11 +124,19 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
         navigate("color");
         return;
       }
-      flushSync(() => setHeroNavAnimating(true));
+      // 从 键盘配置 页点过来才算「互切」,要在快照*之前*把离场侧的名字挂上。
+      const swapping = mode === "keymap";
+      flushSync(() => {
+        setHeroNavAnimating(true);
+        if (swapping) setConfigSwapFrom("keymap");
+      });
       const transition = startViewTransition(() => flushSync(() => navigate("color")));
-      void transition.finished.finally(() => setHeroNavAnimating(false));
+      void transition.finished.finally(() => {
+        setHeroNavAnimating(false);
+        setConfigSwapFrom(null);
+      });
     },
-    [navigate],
+    [mode, navigate],
   );
 
   // NewHomePage's "键盘配置" menu entry: same hero-morph treatment as
@@ -134,11 +148,20 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
         navigate("keymap");
         return;
       }
-      flushSync(() => setHeroNavAnimating(true));
+      // 从 个性化 页(即 KeyboardColorPanel 板下方的「键盘按键配置」按钮)点回来
+      // 是互切的另一个方向,离场侧变成 color。
+      const swapping = mode === "color";
+      flushSync(() => {
+        setHeroNavAnimating(true);
+        if (swapping) setConfigSwapFrom("color");
+      });
       const transition = startViewTransition(() => flushSync(() => navigate("keymap")));
-      void transition.finished.finally(() => setHeroNavAnimating(false));
+      void transition.finished.finally(() => {
+        setHeroNavAnimating(false);
+        setConfigSwapFrom(null);
+      });
     },
-    [navigate],
+    [mode, navigate],
   );
 
   // The 个性化/键盘配置 fullscreen page's corner "back" button (see
@@ -281,6 +304,7 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
     mode,
     heroNavAnimating,
     heroNameSuppressed,
+    configSwapFrom,
     qmkSections,
     qmkPendingCount,
     qmkLeaveRequested,

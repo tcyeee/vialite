@@ -12,12 +12,13 @@ import {
 import { useAutoFitZoom } from "./components/keymap/layout/autoFitSize.ts";
 import { CornerCloseButton } from "./components/common/CornerCloseButton.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
-import { KEYBOARD_HERO_NAME } from "./components/common/viewTransition.ts";
+import { configSwapName, KEYBOARD_HERO_NAME } from "./components/common/viewTransition.ts";
 import {
   ALWAYS_ENABLED_ATTR,
   QuickConfigPanel,
 } from "./components/keymap/quickConfig/QuickConfigPanel.tsx";
 import { LayerTabBar } from "./components/keymap/LayerTabs.tsx";
+import { PersonalizationSection } from "./components/keymap/PersonalizationSection.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
 import { MatrixTester } from "./components/matrix/MatrixTester.tsx";
 import { NewHomePage } from "./components/shell/NewHomePage.tsx";
@@ -223,14 +224,6 @@ function App() {
               )}
               {keyboard && nav.mode === "keymap" && (
                 <>
-                  <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-brand-on-surface">
-                      {t("keyboardLayoutTitle")}
-                    </h1>
-                    <p className="mt-1 text-brand-on-surface-variant">
-                      {t("keyboardLayoutSubtitle")}
-                    </p>
-                  </div>
                   {/* Layer tabs stay in normal flow (scroll away); only the
                       board below is pinned — same split as the 键盘配色 page
                       (see KeyboardColorPanel). Both are direct siblings of the
@@ -328,6 +321,26 @@ function App() {
                   {/* 按键配置区:与上面的预览一样标记出来,点击这里不会清空选中态
                       (清空逻辑见文件顶部的 pointerdown 监听)。 */}
                   <div data-key-config>
+                  {/* 个性化:预览与配置区之间的一行横向按钮(配置键盘颜色 / 导出
+                      当前层图片 / 导出所有层图片)。放在 data-key-config 内,点它
+                      不会清空当前选中的按键;放在快捷配置的置灰包裹层之外,未选中
+                      按键时照样可用。 */}
+                  <PersonalizationSection
+                    keyboard={keyboard}
+                    layer={layer}
+                    productName={productName}
+                    zoomOverride={autoFitZoom}
+                    onOpenPersonalization={nav.handlePersonalize}
+                  />
+                  {/* 与 个性化 页互切时,这块「键盘预览下方的配置区」是动画主角:
+                      离场时下滑淡出、入场时上滑淡入(见 configSwapName 与
+                      index.css 的 config-area-slide-out/in)。名字只在那一次导航
+                      期间挂上,平时是 undefined。上面那排个性化按钮刻意留在外面
+                      ——两个页面的按钮排在同一位置且几乎一样,让它跟随 root 交叉
+                      淡化,视觉上就像切换过程中它一直站在原地。 */}
+                  <div
+                    style={{ viewTransitionName: configSwapName(nav.configSwapFrom, "keymap") }}
+                  >
                   {selected?.kind === "key" && selected.part === "hold" ? (
                     <DualRoleEditor
                       key={`${selected.row},${selected.col}`}
@@ -379,16 +392,11 @@ function App() {
                           importing={importing}
                           onExport={handleExport}
                           onImportFile={handleImportFile}
-                          onOpenPersonalization={nav.handlePersonalize}
-                          // 个性化区的两个「保存层图片」按钮:导出当前层用的就是这里
-                          // 的层号,离屏板子跟随可见板子的自适应缩放。
-                          layer={layer}
-                          productName={productName}
-                          zoomOverride={autoFitZoom}
                         />
                       </div>
                     </section>
                   )}
+                  </div>
                   </div>
                 </>
               )}
@@ -437,8 +445,10 @@ function App() {
                   keyboard={keyboard}
                   productName={productName}
                   heroArriving={nav.heroNavAnimating}
+                  configSwapFrom={nav.configSwapFrom}
                   onBackToHome={nav.handleBackToHome}
                   onOpenPreview3d={() => nav.navigateSlide("preview3d", "push")}
+                  onOpenKeymap={nav.handleGoToKeymap}
                 />
               )}
               </div>

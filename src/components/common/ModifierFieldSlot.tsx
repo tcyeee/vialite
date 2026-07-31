@@ -10,7 +10,8 @@ import {
   withTap,
   type KeycodeDef,
 } from "../../protocol/keycodes.ts";
-import { BASIC_MOD_IDS, qualifiedLabel } from "../keymap/picker/keycodeMeta.ts";
+import { BASIC_MOD_IDS } from "../keymap/picker/keycodeMeta.ts";
+import { QualifiedKeyLabel } from "../keymap/picker/QualifiedKeyLabel.tsx";
 import { KeySlot } from "./KeySlot.tsx";
 
 export type ModName = "ctrl" | "shift" | "alt" | "gui";
@@ -152,6 +153,16 @@ export const FIELD_KEY_BOX =
   "btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line btn-soft";
 
 /**
+ * The role-tag line under a field's key box (hold badge / modifier chips). Exactly one badge tall
+ * and never wrapping — extra chips scroll sideways rather than adding a second line — so a field
+ * is the same height with four modifiers as with one. Callers that reserve the line even when
+ * there are no tags (`reserveRoleRow`, or an empty spacer of their own) get a field whose height
+ * doesn't change as it moves between display, editing and empty.
+ */
+export const FIELD_ROLE_ROW =
+  "flex h-5 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
+/**
  * How a field's value splits into "a base key" plus "a second role", the view both
  * {@link ModifierFieldSlot} and its read-only twin {@link FieldValueDisplay} are built on, so an
  * editable field and a displayed one always read the same keycode the same way.
@@ -193,7 +204,7 @@ function RoleTag({
 }) {
   return (
     <span
-      className={`badge badge-sm gap-1 ${onRemove ? "pr-1" : ""} ${
+      className={`badge badge-sm shrink-0 gap-1 ${onRemove ? "pr-1" : ""} ${
         kind === "hold" ? "badge-secondary" : "badge-primary"
       }`}
     >
@@ -220,18 +231,26 @@ function RoleTag({
 export function FieldValueDisplay({
   qmkId,
   className = FIELD_KEY_BOX,
+  reserveRoleRow = false,
   ...boxProps
-}: { qmkId: string; className?: string } & HTMLAttributes<HTMLDivElement>) {
-  const { t } = useI18n();
+}: {
+  qmkId: string;
+  className?: string;
+  /** Keep the {@link FIELD_ROLE_ROW} line's height even when this value carries no hold and no
+   *  modifiers — for callers (the combo table) that need every field the same height whether or
+   *  not it happens to have tags. */
+  reserveRoleRow?: boolean;
+} & HTMLAttributes<HTMLDivElement>) {
   const { hold, mods, inner } = decompose(qmkId);
   const modTags = mods ? MOD_ABBR.filter(({ m }) => mods[m]) : [];
+  const hasTags = !!hold || modTags.length > 0;
   return (
     <div className="flex flex-col gap-1.5">
       <div className={className} {...boxProps}>
-        {qualifiedLabel(t, inner)}
+        <QualifiedKeyLabel qmkId={inner} />
       </div>
-      {(hold || modTags.length > 0) && (
-        <div className="flex flex-wrap items-center gap-1">
+      {(hasTags || reserveRoleRow) && (
+        <div className={FIELD_ROLE_ROW} aria-hidden={hasTags ? undefined : true}>
           {hold ? (
             <RoleTag kind="hold" label={hold.role} />
           ) : (
@@ -270,28 +289,49 @@ export function ConfiguredFieldRow({
   qmkId,
   onEdit,
   onDelete,
+  reserveRoleRow = false,
+  hoverProps,
 }: {
   qmkId: string;
   onEdit: () => void;
   onDelete: () => void;
+  /** See {@link FieldValueDisplay}'s prop of the same name. */
+  reserveRoleRow?: boolean;
+  /**
+   * Hover-card wiring for the field, for a caller whose fields are permanently editable (the
+   * combo table) rather than having a read-only twin to hang it on.
+   *
+   * It lands on the wrapper, *not* on the key box: the overlay below takes pointer events the
+   * moment the field is hovered, so handlers on the box would see a `mouseleave` as soon as the
+   * buttons appeared and the card would never survive its own open delay. The wrapper contains
+   * both, and enter/leave don't fire when moving between an element's own descendants.
+   */
+  hoverProps?: HTMLAttributes<HTMLDivElement>;
 }) {
   const { t } = useI18n();
   return (
-    <div className="group/field relative">
-      <FieldValueDisplay qmkId={qmkId} />
+    <div className="group/field relative" {...hoverProps}>
+      <FieldValueDisplay qmkId={qmkId} reserveRoleRow={reserveRoleRow} />
       {/* Hover overlay: the whole field darkens and the edit/delete buttons fade in
           centered on top of it, instead of sitting off to the side at all times. */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1 rounded-field bg-black/50 opacity-0 transition-opacity group-hover/field:pointer-events-auto group-hover/field:opacity-100 group-focus-within/field:pointer-events-auto group-focus-within/field:opacity-100">
-        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-white hover:bg-white/20 hover:text-white" title={t("edit")} onClick={onEdit}>
-          <Icon icon="mdi:pencil" className="h-3.5 w-3.5" />
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 rounded-field bg-black/50 opacity-0 transition-opacity group-hover/field:pointer-events-auto group-hover/field:opacity-100 group-focus-within/field:pointer-events-auto group-focus-within/field:opacity-100">
+        <button type="button" className={FIELD_OVERLAY_BTN} title={t("edit")} onClick={onEdit}>
+          <Icon icon="mdi:pencil" className="h-7 w-7" />
         </button>
-        <button type="button" className="btn btn-ghost btn-xs px-1.5 text-white hover:bg-white/20 hover:text-white" title={t("delete")} onClick={onDelete}>
-          <Icon icon="mdi:trash-can-outline" className="h-3.5 w-3.5" />
+        <button type="button" className={FIELD_OVERLAY_BTN} title={t("delete")} onClick={onDelete}>
+          <Icon icon="mdi:trash-can-outline" className="h-7 w-7" />
         </button>
       </div>
     </div>
   );
 }
+
+/** The overlay's edit/delete buttons, at 2× their original 14px-icon size — big enough to be the
+ *  obvious target once a field is darkened, while still fitting inside the key box's own height
+ *  so a field with no role-tag line doesn't have them spilling past it. `min-h-0` because
+ *  daisyUI's `.btn` otherwise floors the height at its own size scale and `h-9` never takes. */
+const FIELD_OVERLAY_BTN =
+  "btn btn-ghost h-9 min-h-0 w-9 p-0 text-white hover:bg-white/20 hover:text-white";
 
 /**
  * Card-editor field, split into the two actions it exposes: "add modifier" opens
@@ -382,7 +422,7 @@ export function ModifierFieldSlot({
         </div>
         {trailing}
       </div>
-      <div ref={rowRef} className="flex flex-wrap items-center gap-1">
+      <div ref={rowRef} className={FIELD_ROLE_ROW}>
         {/* A real hold owns the whole second role, so it replaces the chip row rather than
             sitting alongside it — removing the badge unwraps the key back to its inner half. */}
         {hold ? (
@@ -408,7 +448,7 @@ export function ModifierFieldSlot({
                 repeating the same full prompt next to the chips it already applies to. */}
             <button
               type="button"
-              className="badge badge-outline badge-sm cursor-pointer gap-1"
+              className="badge badge-outline badge-sm shrink-0 cursor-pointer gap-1"
               title={hasMods ? t("fieldAddModifier") : undefined}
               onClick={openMenu}
             >

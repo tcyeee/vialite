@@ -6,7 +6,11 @@ import { useLayerImageExport } from "./useLayerImageExport.tsx";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { keyFor, usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
-import { KEYBOARD_HERO_NAME } from "../common/viewTransition.ts";
+import {
+  configSwapName,
+  KEYBOARD_HERO_NAME,
+  type ConfigSwapSide,
+} from "../common/viewTransition.ts";
 import { ColorPicker } from "../common/ColorPicker.tsx";
 import { LayoutOptions } from "../layout/LayoutOptions.tsx";
 import { LayerTabBar } from "../keymap/LayerTabs.tsx";
@@ -70,8 +74,10 @@ export function KeyboardColorPanel({
   keyboard,
   productName,
   heroArriving,
+  configSwapFrom,
   onBackToHome,
   onOpenPreview3d,
+  onOpenKeymap,
 }: {
   keyboard: Keyboard;
   /** Connected device's WebHID product name, stamped into exported images — see `saveCurrentLayer`/`saveAllLayers`. */
@@ -87,6 +93,12 @@ export function KeyboardColorPanel({
    */
   heroArriving?: boolean;
   /**
+   * 本次导航是从 键盘配置 还是 个性化 离开的,只在这两个页面互切时非 null(见
+   * `usePageNavigation` 的 `configSwapFrom`)。转成 `view-transition-name` 挂到
+   * 全屏页那块设置区上,让它跟 键盘配置 页下方的配置区做接力式的上滑/下滑切换。
+   */
+  configSwapFrom?: ConfigSwapSide | null;
+  /**
    * The fullscreen 个性化 page's corner "back" button routes here instead of
    * just collapsing to this component's own compact preview — see
    * `App.tsx`'s `handleBackToHome`. Forwarded straight through to
@@ -99,6 +111,12 @@ export function KeyboardColorPanel({
    * instead, at the bottom of 个性化, right next to the fullscreen button.
    */
   onOpenPreview3d?: () => void;
+  /**
+   * "键盘按键配置", the button left of 保存当前层图片 below the board: jumps to the
+   * keymap page via `App.tsx`'s `nav.handleGoToKeymap`, so the hero keyboard
+   * morphs across the route swap the same way entering this page does.
+   */
+  onOpenKeymap?: (origin: Element) => void;
 }) {
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -389,6 +407,19 @@ export function KeyboardColorPanel({
   // of which settings section is open.
   const screenshotActions = (
     <div className="flex items-center gap-2">
+      {/* 键盘按键配置: leaves 个性化 for the keymap page, using the same hero
+          keyboard morph the entry into this page uses (App.tsx's
+          nav.handleGoToKeymap). Shown only when the host wires it up. */}
+      {onOpenKeymap && (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline"
+          onClick={(e) => onOpenKeymap(e.currentTarget)}
+        >
+          <Icon icon="mdi:keyboard-settings-outline" className="h-4 w-4" />
+          {t("colorKeyConfig")}
+        </button>
+      )}
       <button
         type="button"
         className="btn btn-sm btn-outline"
@@ -804,6 +835,7 @@ export function KeyboardColorPanel({
         handle={fsPreview}
         boardRef={currentBoardRef}
         heroArriving={heroArriving}
+        settingsTransitionName={configSwapName(configSwapFrom ?? null, "color")}
         onBack={onBackToHome}
         boardActions={coloringMode ? undefined : screenshotActions}
         settings={

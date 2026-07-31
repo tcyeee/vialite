@@ -17,8 +17,8 @@ import {
   deviceCategories,
   catLabel as catLabelOf,
   entryLabel as entryLabelOf,
-  qualifiedLabel,
 } from "./keycodeMeta.ts";
+import { QualifiedKeyLabel } from "./QualifiedKeyLabel.tsx";
 import {
   buildMiddle,
   macroIndex,
@@ -307,7 +307,7 @@ export function KeycodeCascadeSelector({
     if (!pickedId) return placeholder;
     // Scoped to *this* picker's (possibly filtered) categories, so a trigger never names a
     // category the popover doesn't offer.
-    return qualifiedLabel(t, pickedId, categories);
+    return <QualifiedKeyLabel qmkId={pickedId} categories={categories} />;
   })();
 
   const openMenu = () => {

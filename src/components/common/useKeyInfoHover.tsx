@@ -15,12 +15,17 @@ const HOVER_DELAY_MS = 500;
  * Spread `hoverProps(qmkId)` on each key element and render `infoCard` once. The card is
  * portalled to `<body>`: it's `position: fixed`, but a transformed or filtered ancestor would
  * still make itself the containing block and pull it back inside a clipping scroller.
+ *
+ * Call `hideInfo` from any action that replaces the hovered element (switching a field into its
+ * editor, clearing it): React fires no `mouseleave` when an element unmounts under the pointer,
+ * so without it the card would outlive the key it describes.
  */
 export function useKeyInfoHover(): {
   hoverProps: (qmkId: string) => {
     onMouseEnter: (e: ReactMouseEvent<HTMLElement>) => void;
     onMouseLeave: () => void;
   };
+  hideInfo: () => void;
   infoCard: ReactNode;
 } {
   // `rect` is the hovered element's viewport box, captured on enter, that anchors the card.
@@ -35,16 +40,18 @@ export function useKeyInfoHover(): {
   };
   useEffect(() => cancel, []);
 
+  const hideInfo = () => {
+    cancel();
+    setHover(null);
+  };
+
   const hoverProps = (qmkId: string) => ({
     onMouseEnter: (e: ReactMouseEvent<HTMLElement>) => {
       cancel();
       const rect = e.currentTarget.getBoundingClientRect();
       timer.current = window.setTimeout(() => setHover({ qmkId, rect }), HOVER_DELAY_MS);
     },
-    onMouseLeave: () => {
-      cancel();
-      setHover(null);
-    },
+    onMouseLeave: hideInfo,
   });
 
   const infoCard = hover
@@ -62,5 +69,5 @@ export function useKeyInfoHover(): {
       )
     : null;
 
-  return { hoverProps, infoCard };
+  return { hoverProps, hideInfo, infoCard };
 }
