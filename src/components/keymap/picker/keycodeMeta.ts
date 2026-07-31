@@ -1,9 +1,10 @@
 import {
   customKeycodeDefs,
   tapDanceKeycodeDefs,
+  KEYCODE_CATEGORIES,
   type KeycodeDef,
 } from "../../../protocol/keycodes.ts";
-import type { MessageKey } from "../../../contexts/i18n.tsx";
+import type { MessageKey, Translate } from "../../../contexts/i18n.tsx";
 
 /**
  * The single, framework-adjacent source of truth for keycode **UI metadata**:
@@ -135,6 +136,37 @@ export function deviceCategories(): { name: string; entries: KeycodeDef[] }[] {
   const tapDance = tapDanceKeycodeDefs();
   if (tapDance.length > 0) out.push({ name: "Tap Dance", entries: [...tapDance] });
   return out;
+}
+
+/** Translated heading for a category name, falling back to the raw name. */
+export const catLabel = (t: Translate, name: string): string =>
+  CATEGORY_KEYS[name] ? t(CATEGORY_KEYS[name]) : name;
+
+/** Translated label for one catalogue entry. The two "clear" keycodes get their plain
+ *  translated names instead of a raw id / the "▽" glyph, matching the picker's own columns. */
+export const entryLabel = (t: Translate, entry: KeycodeDef): string => {
+  const clear = CLEAR_LABELS[entry.qmkId];
+  return clear ? t(clear.label) : entry.label || entry.qmkId;
+};
+
+/**
+ * "<category> / <label>" for a keycode — the form the cascade selector's trigger button shows,
+ * so a read-only rendering of the same value (the combo table's display rows) names the key the
+ * same way its editor does. `categories` defaults to the full catalogue; the selector passes its
+ * own filtered list so a scoped-down picker stays self-consistent. Falls back to the raw qmk_id
+ * for anything the catalogue doesn't list (a concrete masked keycode, whose *inner* key is what
+ * callers pass here).
+ */
+export function qualifiedLabel(
+  t: Translate,
+  qmkId: string,
+  categories?: { name: string; entries: KeycodeDef[] }[],
+): string {
+  for (const c of categories ?? [...KEYCODE_CATEGORIES, ...deviceCategories()]) {
+    const e = c.entries.find((x) => x.qmkId === qmkId);
+    if (e) return `${catLabel(t, c.name)} / ${entryLabel(t, e)}`;
+  }
+  return qmkId;
 }
 
 // --- Basic -----------------------------------------------------------------

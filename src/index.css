@@ -1203,85 +1203,151 @@ textarea,
 
 /* Floating key-info card (KeyInfoCard) shown after a 0.5s hover on the
    interactive board. Fixed-positioned by the caller and anchored above the cap;
-   never intercepts the pointer so it can't flicker the underlying hover. */
+   never intercepts the pointer so it can't flicker the underlying hover.
+   Styled as a dark frosted panel: translucent near-black surface + blur, white
+   text, hairline light border and a wide soft shadow instead of a hard 1px box,
+   so it reads as floating above the board rather than as a second opaque
+   surface. Deliberately dark in BOTH themes (no `light-dark()`): the card is a
+   transient overlay, and one high-contrast treatment keeps it legible over both
+   the light board and the dark one. */
 .key-info-card {
   z-index: 50;
   pointer-events: none;
-  min-width: 11rem;
-  min-height: 3.5rem;
-  max-width: 18rem;
-  padding: 0.75rem 0.875rem;
+  min-width: 13rem;
+  max-width: 22rem;
+  padding: 0.75rem 1.125rem 1.125rem;
   border-radius: 0.5rem;
-  background: light-dark(#ffffff, #2a2a2a);
-  color: light-dark(#1a1a1a, #ededed);
-  border: 1px solid light-dark(#e0e0e0, #4a4a4a);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 25%);
+  background: rgb(24 24 27 / 78%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / 12%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 6%),
+    0 10px 28px -12px rgb(0 0 0 / 55%);
   font-size: 0.75rem;
-  line-height: 1.3;
+  line-height: 1.6;
   text-align: left;
+  text-wrap: pretty;
+  animation: key-info-card-in 140ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.key-info-title {
-  font-weight: 700;
-  font-size: 0.8125rem;
-  margin-bottom: 0.25rem;
+/* Rise-and-fade entrance. Uses the standalone `translate` property, not
+   `transform`: the callers set `transform: translate(-50%, -100%)` inline to
+   anchor the card, and an animated `transform` would override it (animations
+   beat inline styles) and fling the card off its key. `translate` composes
+   with it instead. */
+@keyframes key-info-card-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key-info-card {
+    animation: none;
+  }
+}
+
+/* Title row: the key's name as the card's headline on the left, the raw keycode
+   pushed to the top-right corner of the same line. Sharing one row (rather than
+   giving the code a line of its own) keeps the top-left from opening into dead
+   space, and `align-items: baseline` sits the stamp on the headline's baseline —
+   with a wrapping title that's the first line's, so it stays in the corner. */
+.key-info-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9375rem;
+}
+
+/* Raw keycode as a decorative corner stamp rather than a headline: small, mono
+   and faint, so the eye lands on the key's name first and only picks the code
+   up when it looks for it. `flex-shrink: 0` + `nowrap` keep it intact and let
+   the title beside it take the wrapping instead. */
+.key-info-code {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.625rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: rgb(255 255 255 / 45%);
+}
+
+.key-info-hex {
+  opacity: 0.65;
 }
 
 .key-info-body {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.625rem;
+}
+
+/* The headline: a key glyph, then the key's name. Sized well clear of the
+   0.75rem body text so the name reads as the card's subject at a glance;
+   `min-width: 0` lets it wrap inside the flex row instead of shoving the
+   keycode stamp off the corner. */
+.key-info-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4375rem;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+/* Key glyph ahead of the name. `align-self: center` re-centers it against the
+   first line after the row's baseline alignment, and it stays a shade dimmer
+   than the name so it decorates the headline rather than competing with it. */
+.key-info-title-icon {
+  flex-shrink: 0;
+  align-self: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  opacity: 0.75;
 }
 
 .key-info-line {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 0.375rem;
+  gap: 0.375rem 0.625rem;
 }
 
-/* 点击 / 长按 role chip on a dual-role card row. */
+/* 点击 / 长按 role chip on a dual-role card row — a low-contrast brand-tinted
+   pill, sized to sit quietly beside the label it tags. */
 .key-info-role {
   flex-shrink: 0;
-  padding: 0 0.3rem;
-  border-radius: 0.25rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  background: light-dark(#efe6e9, #4a3b40);
-  color: light-dark(#78555e, #e6ccd4);
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: rgb(230 204 212 / 14%);
+  color: #e0cfd5;
 }
 
 .key-info-name {
   font-weight: 600;
 }
 
-.key-info-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: light-dark(#666, #aaa);
-}
-
-/* Raw keycode pinned at the very top of the card, divider-separated from the
-   name/behaviour body below so it always reads first, with a clear gap. */
-.key-info-code-top {
-  display: block;
-  white-space: nowrap;
-  font-size: 0.6875rem;
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid light-dark(#ececec, #454545);
-}
-
-.key-info-hex {
-  opacity: 0.8;
-}
-
-/* Behaviour hint line at the bottom of the info card (mod-tap / layer-tap /
-   fire-together explanation). Muted, wraps within the card's max-width. */
+/* Behaviour hint at the bottom of the info card (mod-tap / layer-tap /
+   fire-together explanation). Muted and generously leaded — it's a full
+   sentence or two naming this key's own operands, so it wraps over several
+   lines within the card's max-width and needs more air than the rows above.
+   The extra `margin-top` sits on top of the body's own gap, opening a clear
+   break between the description and the name/role block it explains. */
 .key-info-hint {
-  margin-top: 0.125rem;
+  margin-top: 0.375rem;
   font-size: 0.6875rem;
-  line-height: 1.35;
-  color: light-dark(#8a8a8a, #9a9a9a);
+  line-height: 1.7;
+  color: rgb(255 255 255 / 62%);
 }
 
 .keyboard-layout .encoder {

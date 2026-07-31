@@ -67,7 +67,7 @@ export function RenumberPicker({ index, count, usedIndices, icon, title, onMove 
       <button
         ref={triggerRef}
         type="button"
-        className="flex cursor-pointer items-center gap-1 text-lg font-bold tracking-tight text-neutral-900 hover:text-primary"
+        className="flex cursor-pointer items-center gap-1 text-lg font-bold tracking-tight text-neutral-900 hover:text-primary dark:text-neutral-100"
         title={title}
         onClick={() => setOpen((o) => !o)}
       >

@@ -250,7 +250,6 @@ function TapDancePreviewCard({
                         <ModifierFieldSlot
                           qmkId={qmkId}
                           onChange={(id) => onSave?.({ [field]: id } as Partial<TapDanceEntry>)}
-                          className="btn btn-sm min-h-9 flex-wrap py-0.5 text-xs whitespace-pre-line btn-soft"
                           trailing={
                             <FieldConfirmButton
                               disabled={!fieldKeyValid(qmkId) || qmkId === "KC_NO"}

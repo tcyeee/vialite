@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { useToast } from "../../contexts/toast.tsx";
-import { composeLayers, downloadCanvas, frameBoard, nodeToCanvas } from "./layoutImage.ts";
+import { useLayerImageExport } from "./useLayerImageExport.tsx";
 import { useKeyDisplay } from "../../contexts/keyDisplay.tsx";
 import { keyFor, usePreviewAppearance } from "../../contexts/previewAppearance.tsx";
 import type { Keyboard } from "../../protocol/keyboard.ts";
@@ -202,17 +202,22 @@ export function KeyboardColorPanel({
   // Overflow-scrolling viewport around the visible preview; its width is
   // independent of the board's, so auto-fit can measure it without feedback.
   const { ref: previewViewportRef, zoom: autoFitZoom } = useAutoFitZoom(keyboard);
-  const hiddenBoardRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const [saving, setSaving] = useState(false);
-  // Only layers the user has actually configured get exported in the all-layers
-  // image; recomputed each render since Keyboard mutates its keymap in place.
-  const configuredLayers = useMemo(
-    () =>
-      Array.from({ length: keyboard.layers }, (_, i) => i).filter((l) =>
-        keyboard.isLayerConfigured(l),
-      ),
-    [keyboard, keyboard.layoutOptions],
-  );
+  // Image export (保存当前层图片 / 保存所有层图片) is shared with the 键位 page's
+  // quick-config 个性化 block; this page captures its own visible board for the
+  // current layer so the export matches exactly what's on screen.
+  const {
+    saving,
+    saveCurrentLayer,
+    saveAllLayers,
+    configuredLayers,
+    offscreenBoards,
+  } = useLayerImageExport({
+    keyboard,
+    layer: previewLayer,
+    productName,
+    zoomOverride: autoFitZoom,
+    currentBoardRef,
+  });
 
   // Right-click assign from the preview board, writing to the layer the preview
   // is currently showing.
@@ -225,41 +230,6 @@ export function KeyboardColorPanel({
       }
     } catch (err) {
       showToast(t("writeKeyFailed", { error: err instanceof Error ? err.message : String(err) }));
-    }
-  };
-
-  const saveCurrentLayer = async () => {
-    if (!currentBoardRef.current || saving) {
-      return;
-    }
-    setSaving(true);
-    try {
-      const canvas = await nodeToCanvas(currentBoardRef.current);
-      downloadCanvas(frameBoard(canvas, productName), `keyboard-layer-${previewLayer}.png`);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveAllLayers = async () => {
-    if (saving || configuredLayers.length === 0) {
-      return;
-    }
-    setSaving(true);
-    try {
-      const cells = [];
-      for (const l of configuredLayers) {
-        const node = hiddenBoardRefs.current[l];
-        if (!node) {
-          continue;
-        }
-        cells.push({ canvas: await nodeToCanvas(node), label: t("layerN", { n: l }) });
-      }
-      if (cells.length > 0) {
-        downloadCanvas(composeLayers(cells, productName), "keyboard-all-layers.png");
-      }
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -823,27 +793,10 @@ export function KeyboardColorPanel({
         </div>
       </div>
 
-      {/* Offscreen boards, one per configured layer, kept mounted (even while
-          the compact view above is `hidden`) so the all-layers export — its
-          buttons now live in the fullscreen page's settings grid — can
-          rasterize each without flipping the visible tab. `aria-hidden` +
-          off-viewport positioning keeps them out of the a11y tree and layout
-          flow while still being real, measurable DOM for capture. */}
-      <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, pointerEvents: "none" }}>
-        {configuredLayers.map((l) => (
-          <div
-            key={l}
-            ref={(el) => {
-              hiddenBoardRefs.current[l] = el;
-            }}
-            style={{ width: "fit-content" }}
-          >
-            {/* Same zoom as the visible board, so the all-layers export and the
-                current-layer export come out at one consistent scale. */}
-            <KeyboardLayoutPreview keyboard={keyboard} layer={l} zoomOverride={autoFitZoom} />
-          </div>
-        ))}
-      </div>
+      {/* Offscreen boards backing the all-layers export — its buttons live in
+          the fullscreen page's board actions — so it can rasterize each layer
+          without flipping the visible tab. */}
+      {offscreenBoards}
 
       <FullscreenPreviewOverlay
         keyboard={keyboard}

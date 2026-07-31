@@ -1,10 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type HTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
-import { KeycapFace } from "../keymap/layout/KeycapFace.tsx";
-import { buildModCombo, dualRole, holdInfo, keyBehavior, type KeycodeDef } from "../../protocol/keycodes.ts";
-import { BASIC_MOD_IDS } from "../keymap/picker/keycodeMeta.ts";
+import {
+  buildModCombo,
+  holdInfo,
+  isBasicQmkId,
+  keyBehavior,
+  withTap,
+  type KeycodeDef,
+} from "../../protocol/keycodes.ts";
+import { BASIC_MOD_IDS, qualifiedLabel } from "../keymap/picker/keycodeMeta.ts";
 import { KeySlot } from "./KeySlot.tsx";
 
 export type ModName = "ctrl" | "shift" | "alt" | "gui";
@@ -34,11 +40,15 @@ export const fieldKeyValid = (qmkId: string): boolean => {
   return b.kind === "plain" || b.inner !== "KC_NO";
 };
 
-/** A {@link ModifierFieldSlot}'s "regular key" field excludes bare modifiers (added instead
- *  through the dedicated modifier picker below) and masked Quantum templates (Mod-Tap /
- *  Layer-Tap / held-mods — none compose sensibly as the inner key of another modifier combo,
- *  and the slot only ever builds a fire-together mask, never a real hold). */
-export const regularKeyFilter = (e: KeycodeDef) => !e.masked && !BASIC_MOD_IDS.has(e.qmkId);
+/** A {@link ModifierFieldSlot}'s key field excludes only bare modifiers, which are added
+ *  through the dedicated modifier picker below instead.
+ *
+ *  Masked Quantum templates (Mod-Tap, Layer-Tap, held-mods) are deliberately *not* filtered
+ *  out: dropping them hid roughly two thirds of the Quantum category from these fields. The
+ *  slot handles each shape on its own terms — a held-mod template lands as an ordinary
+ *  fire-together mask (the same thing the modifier chips build), and a real hold keeps its
+ *  wrapper while the field edits the key inside it. See {@link ModifierFieldSlot}. */
+export const regularKeyFilter = (e: KeycodeDef) => !BASIC_MOD_IDS.has(e.qmkId);
 
 /**
  * Multi-select popover for a field's modifier mask: a scoped-down cascade selector — a single
@@ -133,29 +143,103 @@ function ModifierMenu({
   );
 }
 
-/** Same-line modifier+base-key summary for a confirmed field: the editor's own modifier
- *  abbreviations (as non-removable chips) followed by the inner key's face, instead of
- *  `KeycapFace`'s stacked dual-role rendering (tap on top, hold band below) — that reads as a
- *  physical keycap, not a flat "Ctrl Shift A" line. Falls back to a bare `KeycapFace` when the
- *  value carries no modifier mask. */
-export function InlineModifierFace({ qmkId }: { qmkId: string }) {
+/**
+ * The key box every state of a field wears: the editable slot's picker trigger, the confirmed
+ * row, and the read-only display. Keeping one class string means a field never changes shape as
+ * it moves between those states — only the affordances around it do.
+ */
+export const FIELD_KEY_BOX =
+  "btn btn-sm min-h-9 w-full flex-wrap py-0.5 text-xs whitespace-pre-line btn-soft";
+
+/**
+ * How a field's value splits into "a base key" plus "a second role", the view both
+ * {@link ModifierFieldSlot} and its read-only twin {@link FieldValueDisplay} are built on, so an
+ * editable field and a displayed one always read the same keycode the same way.
+ *
+ * - `hold` — a real hold (Mod-Tap / Layer-Tap): the wrapper around `inner`, shown as its own tag.
+ * - `mods` — a fire-together modifier mask, or null when the value carries none.
+ * - `inner` — the base key the two roles above apply to (the value itself, when it has neither).
+ */
+function decompose(qmkId: string) {
+  const behavior = keyBehavior(qmkId);
   const info = holdInfo(qmkId);
-  if (info?.type !== "mod") {
-    return <KeycapFace qmkId={qmkId} className="whitespace-nowrap" />;
-  }
-  const inner = dualRole(qmkId)?.tap ?? qmkId;
-  const active = MOD_ABBR.filter(({ m }) => info[m]);
+  const hold = behavior.kind === "modTap" || behavior.kind === "layerTap" ? behavior : null;
+  const masked = behavior.kind === "modCombo" && info?.type === "mod";
+  return {
+    hold,
+    mods: masked && info?.type === "mod"
+      ? { ctrl: info.ctrl, shift: info.shift, alt: info.alt, gui: info.gui, side: info.side }
+      : null,
+    inner: behavior.kind === "plain" ? qmkId : behavior.inner,
+  };
+}
+
+/**
+ * One tag on a field's role row, under its key button: either the whole second role of a real
+ * hold (`hold`, in its own accent so a genuine long-press never reads as a fire-together
+ * modifier) or a single modifier of a fire-together mask (`mod`). `onRemove` adds the ✕ that
+ * strips it — omitted for read-only renderings, which are otherwise identical.
+ */
+function RoleTag({
+  kind,
+  label,
+  onRemove,
+  removeLabel,
+}: {
+  kind: "hold" | "mod";
+  label: string;
+  onRemove?: () => void;
+  removeLabel?: string;
+}) {
   return (
-    <span className="inline-flex flex-nowrap items-center gap-0.5">
-      {active.map(({ m, title }, i) => (
-        <span key={m} className="inline-flex items-center gap-0.5">
-          {i > 0 && <Icon icon="mdi:plus" className="h-2.5 w-2.5 shrink-0 opacity-40" />}
-          <span className="badge badge-outline badge-sm shrink-0">{title}</span>
-        </span>
-      ))}
-      <Icon icon="mdi:plus" className="h-2.5 w-2.5 shrink-0 opacity-40" />
-      <KeycapFace qmkId={inner} className="whitespace-nowrap" />
+    <span
+      className={`badge badge-sm gap-1 ${onRemove ? "pr-1" : ""} ${
+        kind === "hold" ? "badge-secondary" : "badge-primary"
+      }`}
+    >
+      {kind === "hold" && <Icon icon="mdi:gesture-tap-hold" className="h-3 w-3" />}
+      {label}
+      {onRemove && (
+        <button type="button" className="opacity-70 hover:opacity-100" aria-label={removeLabel} onClick={onRemove}>
+          <Icon icon="mdi:close" className="h-3 w-3" />
+        </button>
+      )}
     </span>
+  );
+}
+
+/**
+ * Read-only twin of {@link ModifierFieldSlot}: the same "category / key" button over the same
+ * role tags, with every editing affordance dropped. Used wherever a field's value is shown
+ * rather than edited (the combo table's display rows), so a row keeps its shape when it flips
+ * between the two states instead of swapping in a differently-styled summary.
+ *
+ * `className` styles the key box and should match the one given to the editable slot; any other
+ * props land on it too, which is how a caller attaches its hover-card handlers.
+ */
+export function FieldValueDisplay({
+  qmkId,
+  className = FIELD_KEY_BOX,
+  ...boxProps
+}: { qmkId: string; className?: string } & HTMLAttributes<HTMLDivElement>) {
+  const { t } = useI18n();
+  const { hold, mods, inner } = decompose(qmkId);
+  const modTags = mods ? MOD_ABBR.filter(({ m }) => mods[m]) : [];
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className={className} {...boxProps}>
+        {qualifiedLabel(t, inner)}
+      </div>
+      {(hold || modTags.length > 0) && (
+        <div className="flex flex-wrap items-center gap-1">
+          {hold ? (
+            <RoleTag kind="hold" label={hold.role} />
+          ) : (
+            modTags.map(({ m, title }) => <RoleTag key={m} kind="mod" label={title} />)
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -176,8 +260,12 @@ export function FieldConfirmButton({ disabled, onClick }: { disabled: boolean; o
   );
 }
 
-/** A confirmed field: the same-line modifier+base-key summary ({@link InlineModifierFace}) plus
- *  trailing modify/delete buttons, replacing the picker once its value is confirmed. */
+/**
+ * A confirmed field: the read-only {@link FieldValueDisplay} — the very same key box and role
+ * tags the picker leaves behind — with modify/delete revealed on hover, replacing the picker
+ * once the value is confirmed. Sharing the display component is what keeps confirming a field
+ * from visibly changing it.
+ */
 export function ConfiguredFieldRow({
   qmkId,
   onEdit,
@@ -189,13 +277,11 @@ export function ConfiguredFieldRow({
 }) {
   const { t } = useI18n();
   return (
-    <div className="group/field relative flex min-h-9 items-center rounded-btn bg-base-100 px-3 py-1">
-      <span className="text-sm font-semibold">
-        <InlineModifierFace qmkId={qmkId} />
-      </span>
+    <div className="group/field relative">
+      <FieldValueDisplay qmkId={qmkId} />
       {/* Hover overlay: the whole field darkens and the edit/delete buttons fade in
           centered on top of it, instead of sitting off to the side at all times. */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1 rounded-btn bg-black/50 opacity-0 transition-opacity group-hover/field:pointer-events-auto group-hover/field:opacity-100 group-focus-within/field:pointer-events-auto group-focus-within/field:opacity-100">
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1 rounded-field bg-black/50 opacity-0 transition-opacity group-hover/field:pointer-events-auto group-hover/field:opacity-100 group-focus-within/field:pointer-events-auto group-focus-within/field:opacity-100">
         <button type="button" className="btn btn-ghost btn-xs px-1.5 text-white hover:bg-white/20 hover:text-white" title={t("edit")} onClick={onEdit}>
           <Icon icon="mdi:pencil" className="h-3.5 w-3.5" />
         </button>
@@ -219,7 +305,7 @@ export function ConfiguredFieldRow({
 export function ModifierFieldSlot({
   qmkId,
   onChange,
-  className,
+  className = FIELD_KEY_BOX,
   trailing,
 }: {
   qmkId: string;
@@ -231,7 +317,14 @@ export function ModifierFieldSlot({
   trailing?: React.ReactNode;
 }) {
   const { t } = useI18n();
-  const info = holdInfo(qmkId);
+  /**
+   * `hold` is a real hold (Mod-Tap `LCTL_T(KC_A)` / Layer-Tap `LT2(KC_A)`) picked straight from
+   * the Quantum category. Its wrapper can't be expressed by this field's fire-together mask, so
+   * while one is present the modifier chips give way to a read-only role tag and the key button
+   * edits the key *inside* the wrapper (via {@link withTap}) rather than replacing it — without
+   * that, picking an inner key would silently drop the hold.
+   */
+  const { hold, mods: maskedMods, inner } = decompose(qmkId);
   // Side has no encoding in the keycode while no modifier is active yet (a
   // zero mask collapses to the plain tap regardless of side — see
   // buildModCombo), so it can't be read back from `qmkId` at that point. Track
@@ -239,18 +332,22 @@ export function ModifierFieldSlot({
   // sticks once one is checked, instead of silently reverting to "L" every
   // render. Re-synced whenever `qmkId` changes to a value that *does* encode a
   // side, so external edits (loading a different entry) still win.
-  const [localSide, setLocalSide] = useState<"L" | "R">(info?.type === "mod" ? info.side : "L");
+  const [localSide, setLocalSide] = useState<"L" | "R">(maskedMods?.side ?? "L");
   useEffect(() => {
-    if (info?.type === "mod") setLocalSide(info.side);
-    // Only `qmkId` should re-trigger this — `info` is derived from it each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const next = decompose(qmkId).mods;
+    if (next) setLocalSide(next.side);
   }, [qmkId]);
-  const mods: ModState =
-    info?.type === "mod"
-      ? { ctrl: info.ctrl, shift: info.shift, alt: info.alt, gui: info.gui, side: info.side }
-      : { ...NO_MODS, side: localSide };
-  const inner = dualRole(qmkId)?.tap ?? qmkId;
+  const mods: ModState = maskedMods ?? { ...NO_MODS, side: localSide };
   const hasMods = mods.ctrl || mods.shift || mods.alt || mods.gui;
+
+  /** Apply a key picked from the catalogue, preserving whatever wrapper the field is holding.
+   *  Keycodes wider than 8 bits (macros, tap dance, layer switches) can't nest inside a mask or
+   *  a hold, so those replace the whole value instead of being folded into one. */
+  const pickKey = (id: string) => {
+    if (id === "KC_NO" || !isBasicQmkId(id)) return onChange(id);
+    if (hold) return onChange(withTap(qmkId, id));
+    return onChange(hasMods ? buildModCombo(mods, id) : id);
+  };
   const rowRef = useRef<HTMLDivElement>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
 
@@ -277,40 +374,49 @@ export function ModifierFieldSlot({
         <div className="min-w-0 flex-1">
           <KeySlot
             qmkId={inner}
-            onChange={(id) => onChange(hasMods ? buildModCombo(mods, id) : id)}
+            onChange={pickKey}
             entryFilter={regularKeyFilter}
             emptyLabel={t("fieldAddRegularKey")}
-            className={className ? `${className} w-full` : className}
+            className={className}
           />
         </div>
         {trailing}
       </div>
       <div ref={rowRef} className="flex flex-wrap items-center gap-1">
-        {MOD_ABBR.filter(({ m }) => mods[m]).map(({ m, title }) => (
-          <span key={m} className="badge badge-primary badge-sm gap-1 pr-1">
-            {title}
+        {/* A real hold owns the whole second role, so it replaces the chip row rather than
+            sitting alongside it — removing the badge unwraps the key back to its inner half. */}
+        {hold ? (
+          <RoleTag
+            kind="hold"
+            label={hold.role}
+            onRemove={() => onChange(hold.inner)}
+            removeLabel={`${t("fieldRemoveHold")}: ${hold.role}`}
+          />
+        ) : (
+          <>
+            {MOD_ABBR.filter(({ m }) => mods[m]).map(({ m, title }) => (
+              <RoleTag
+                key={m}
+                kind="mod"
+                label={title}
+                onRemove={() => apply({ ...mods, [m]: false })}
+                removeLabel={`${t("fieldRemoveModifier")}: ${title}`}
+              />
+            ))}
+            {/* Once at least one modifier is added, the tag collapses to a bare "+"
+                (title carries the label) so it reads as "add another" rather than
+                repeating the same full prompt next to the chips it already applies to. */}
             <button
               type="button"
-              className="opacity-70 hover:opacity-100"
-              aria-label={`${t("fieldRemoveModifier")}: ${title}`}
-              onClick={() => apply({ ...mods, [m]: false })}
+              className="badge badge-outline badge-sm cursor-pointer gap-1"
+              title={hasMods ? t("fieldAddModifier") : undefined}
+              onClick={openMenu}
             >
-              <Icon icon="mdi:close" className="h-3 w-3" />
+              <Icon icon="mdi:plus" className="h-3 w-3" />
+              {!hasMods && t("fieldAddModifier")}
             </button>
-          </span>
-        ))}
-        {/* Once at least one modifier is added, the tag collapses to a bare "+"
-            (title carries the label) so it reads as "add another" rather than
-            repeating the same full prompt next to the chips it already applies to. */}
-        <button
-          type="button"
-          className="badge badge-outline badge-sm cursor-pointer gap-1"
-          title={hasMods ? t("fieldAddModifier") : undefined}
-          onClick={openMenu}
-        >
-          <Icon icon="mdi:plus" className="h-3 w-3" />
-          {!hasMods && t("fieldAddModifier")}
-        </button>
+          </>
+        )}
       </div>
       {menuAnchor && (
         <ModifierMenu

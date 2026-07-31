@@ -764,6 +764,12 @@ const MESSAGES = {
   colorSaveCurrentLayer: { en: "Save current layer", zh: "保存当前层图片", ja: "現在のレイヤーを保存", fr: "Enregistrer le calque actuel" },
   colorSaveAllLayers: { en: "Save all layers", zh: "保存所有层图片", ja: "すべてのレイヤーを保存", fr: "Enregistrer tous les calques" },
   colorSaving: { en: "Saving…", zh: "保存中…", ja: "保存中…", fr: "Enregistrement…" },
+  personalizationSettings: {
+    en: "Personalization settings",
+    zh: "个性化配置",
+    ja: "パーソナライズ設定",
+    fr: "Réglages de personnalisation",
+  },
   colorEditKeymap: { en: "Configure key layout", zh: "配置按键布局", ja: "キーレイアウトを設定", fr: "Configurer la disposition des touches" },
   colorLayoutTitle: { en: "Layout options", zh: "布局选项", ja: "レイアウトオプション", fr: "Options de disposition" },
   fullscreenPreviewTitle: { en: "Fullscreen preview", zh: "全屏预览", ja: "全画面プレビュー", fr: "Aperçu plein écran" },
@@ -1021,6 +1027,10 @@ const MESSAGES = {
     fr: "Combos utilisés : {used}/{total}",
   },
   comboLegend: { en: "Combo {n}", zh: "组合键 {n}", ja: "コンボ {n}", fr: "Combo {n}" },
+  // ComboPanel table headers
+  comboColSlot: { en: "Slot", zh: "槽位", ja: "スロット", fr: "Emplacement" },
+  comboColTriggers: { en: "Trigger keys", zh: "触发按键", ja: "トリガーキー", fr: "Touches de déclenchement" },
+  comboColActions: { en: "Actions", zh: "操作", ja: "操作", fr: "Actions" },
   comboKeyN: { en: "Key {n}", zh: "按键 {n}", ja: "キー {n}", fr: "Touche {n}" },
   comboOutput: { en: "Output key", zh: "输出按键", ja: "出力キー", fr: "Touche de sortie" },
   comboHint: {
@@ -1121,6 +1131,7 @@ const MESSAGES = {
   fieldAddModifier: { en: "Add modifier", zh: "添加修饰键", ja: "修飾キーを追加", fr: "Ajouter un modificateur" },
   fieldAddRegularKey: { en: "Add", zh: "添加", ja: "追加", fr: "Ajouter" },
   fieldRemoveModifier: { en: "Remove modifier", zh: "移除修饰键", ja: "修飾キーを削除", fr: "Retirer le modificateur" },
+  fieldRemoveHold: { en: "Remove hold action", zh: "移除长按功能", ja: "長押し動作を削除", fr: "Retirer l'action de maintien" },
   fieldConfirm: { en: "Confirm", zh: "确认", ja: "確認", fr: "Confirmer" },
 
   // DeviceConnect
@@ -1702,23 +1713,68 @@ const MESSAGES = {
   keyInfoHold: { en: "Hold", zh: "长按", ja: "ホールド", fr: "Maintien" },
   keyInfoCombo: { en: "Together", zh: "同时", ja: "同時", fr: "Ensemble" },
   keyInfoLayerAction: { en: "Switch to layer {layer}", zh: "切换到层 {layer}", ja: "レイヤー {layer} に切り替え", fr: "Passer au calque {layer}" },
+  // Behaviour blurbs at the bottom of the card. Each interpolates the key's own
+  // operands (tap key / modifier / target layer) so the sentence describes *this*
+  // key concretely instead of the keycode family in the abstract.
   keyInfoComboHint: {
-    en: "Fires the modifier and key on a single press.",
-    zh: "单次按下会同时触发修饰键与按键。",
-    ja: "1 回押すだけで修飾キーとキーが同時に発動します。",
-    fr: "Déclenche le modificateur et la touche en une seule pression.",
+    en: "One press sends {mod} + {key} together, exactly as if you held {mod} and then tapped {key}. It has no separate tap action.",
+    zh: "按下一次就同时发送 {mod} + {key},效果等同于按住 {mod} 再敲 {key};它没有单独的点击动作。",
+    ja: "1 回押すだけで {mod} + {key} が同時に送信されます。{mod} を押しながら {key} を叩くのと同じで、単独のタップ動作はありません。",
+    fr: "Une seule pression envoie {mod} + {key} ensemble, exactement comme si vous mainteniez {mod} puis frappiez {key}. Elle n'a pas d'action de frappe distincte.",
   },
   keyInfoModTapHint: {
-    en: "Tap for the key, hold for the modifier.",
-    zh: "轻点触发按键,长按触发修饰键。",
-    ja: "タップでキー、ホールドで修飾キーを発動します。",
-    fr: "Frappe pour la touche, maintien pour le modificateur.",
+    en: "Tap it to send {key}. Hold it and it behaves as the {mod} modifier instead, so you can press other keys while holding to form a shortcut.",
+    zh: "轻点发送 {key};按住不放则当作 {mod} 修饰键使用,期间再按其它键就能组成快捷键。",
+    ja: "タップすると {key} を送信します。押し続けると {mod} 修飾キーとして働き、その間に他のキーを押してショートカットを作れます。",
+    fr: "Une frappe envoie {key}. Maintenue, elle agit comme le modificateur {mod} : vous pouvez alors presser d'autres touches pour former un raccourci.",
   },
   keyInfoLayerTapHint: {
-    en: "Tap for the key, hold to switch layer.",
-    zh: "轻点触发按键,长按切换层。",
-    ja: "タップでキー、ホールドでレイヤーを切り替えます。",
-    fr: "Frappe pour la touche, maintien pour changer de calque.",
+    en: "Tap it to send {key}. Hold it to activate layer {layer} for as long as it stays down — other keys then use their layer {layer} assignments — and releasing returns to the current layer.",
+    zh: "轻点发送 {key};按住期间激活第 {layer} 层,此时其它键输出的是它们在第 {layer} 层上的定义,松手立即回到当前层。",
+    ja: "タップすると {key} を送信します。押している間はレイヤー {layer} が有効になり、他のキーはレイヤー {layer} の割り当てで動作します。離すと現在のレイヤーに戻ります。",
+    fr: "Une frappe envoie {key}. Maintenue, elle active le calque {layer} tant qu'elle reste enfoncée — les autres touches utilisent alors leurs affectations du calque {layer} — et le relâchement revient au calque actuel.",
+  },
+  keyInfoLayerMOHint: {
+    en: "Activates layer {layer} only while this key is held down; releasing it returns to the layer you were on.",
+    zh: "只在按住这个键期间激活第 {layer} 层,松开后立刻回到原来的层。",
+    ja: "このキーを押している間だけレイヤー {layer} を有効にし、離すと元のレイヤーに戻ります。",
+    fr: "Active le calque {layer} uniquement pendant que cette touche est maintenue ; le relâchement revient au calque précédent.",
+  },
+  keyInfoLayerTGHint: {
+    en: "Each tap toggles layer {layer} on or off. Once on it stays on — even after you release the key — until you tap it again.",
+    zh: "每次点按在开/关之间切换第 {layer} 层;开启后即使松开也会一直保持,直到再次点按关闭。",
+    ja: "タップするたびにレイヤー {layer} のオン/オフが切り替わります。オンにするとキーを離しても、もう一度タップするまで有効なままです。",
+    fr: "Chaque frappe active ou désactive le calque {layer}. Une fois actif, il le reste — même après relâchement — jusqu'à une nouvelle frappe.",
+  },
+  keyInfoLayerTTHint: {
+    en: "Held, it activates layer {layer} like MO. Tapped repeatedly (5 times by default in QMK) it locks the layer on like TG; one more tap unlocks it.",
+    zh: "按住时像 MO 一样临时激活第 {layer} 层;连续快速点按到设定次数(QMK 默认 5 次)则像 TG 一样把该层锁定开启,再点按一次解除。",
+    ja: "押し続けると MO と同じようにレイヤー {layer} を一時的に有効化します。既定回数(QMK では 5 回)連続タップすると TG のようにレイヤーを固定し、もう 1 回タップで解除します。",
+    fr: "Maintenue, elle active le calque {layer} comme MO. Frappée plusieurs fois (5 par défaut dans QMK), elle verrouille le calque comme TG ; une frappe de plus le déverrouille.",
+  },
+  keyInfoLayerOSLHint: {
+    en: "Activates layer {layer} for the next key press only, then drops back automatically — no need to keep this key held.",
+    zh: "激活第 {layer} 层,但只对下一次按键生效,按完一个键后自动返回,不需要一直按住这个键。",
+    ja: "次の 1 回のキー入力にだけレイヤー {layer} を有効にし、その後自動的に戻ります。このキーを押し続ける必要はありません。",
+    fr: "Active le calque {layer} pour la prochaine frappe seulement, puis revient automatiquement — inutile de maintenir cette touche.",
+  },
+  keyInfoLayerTOHint: {
+    en: "Switches to layer {layer} and stays there, turning off every other layer above the base one. Another layer key is needed to leave it.",
+    zh: "切换到第 {layer} 层并保持,同时关闭基础层之上的其它所有层;要离开这一层需要再按对应的层切换键。",
+    ja: "レイヤー {layer} に切り替えてそのまま維持し、ベースレイヤーより上の他のレイヤーをすべてオフにします。抜けるには別のレイヤーキーが必要です。",
+    fr: "Passe au calque {layer} et y reste, désactivant tous les autres calques au-dessus du calque de base. Une autre touche de calque est nécessaire pour en sortir.",
+  },
+  keyInfoLayerDFHint: {
+    en: "Makes layer {layer} the new default (base) layer, the one active when no other layer is held; every temporary layer then stacks on top of it.",
+    zh: "把第 {layer} 层设为新的默认(基础)层,也就是没有激活其它层时所处的层;之后所有临时层都叠加在它之上。",
+    ja: "レイヤー {layer} を新しいデフォルト(ベース)レイヤー、つまり他のレイヤーが有効でないときのレイヤーにします。以降の一時レイヤーはその上に重なります。",
+    fr: "Fait du calque {layer} le nouveau calque par défaut (de base), celui actif quand aucun autre n'est maintenu ; les calques temporaires s'empilent ensuite par-dessus.",
+  },
+  keyInfoLayerPDFHint: {
+    en: "Makes layer {layer} the default (base) layer like DF, but also writes the choice to the keyboard's EEPROM so it survives a power cycle.",
+    zh: "与 DF 一样把第 {layer} 层设为默认(基础)层,但会把选择写入键盘 EEPROM,断电重插后依然生效。",
+    ja: "DF と同様にレイヤー {layer} をデフォルト(ベース)レイヤーにしますが、選択をキーボードの EEPROM に保存するため電源を入れ直しても保持されます。",
+    fr: "Fait du calque {layer} le calque par défaut (de base) comme DF, mais enregistre aussi ce choix dans l'EEPROM du clavier pour qu'il survive à une coupure d'alimentation.",
   },
 
   // Dual-role hold editor (shown when a cap's hold band is selected)

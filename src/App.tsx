@@ -380,6 +380,11 @@ function App() {
                           onExport={handleExport}
                           onImportFile={handleImportFile}
                           onOpenPersonalization={nav.handlePersonalize}
+                          // 个性化区的两个「保存层图片」按钮:导出当前层用的就是这里
+                          // 的层号,离屏板子跟随可见板子的自适应缩放。
+                          layer={layer}
+                          productName={productName}
+                          zoomOverride={autoFitZoom}
                         />
                       </div>
                     </section>
@@ -415,7 +420,7 @@ function App() {
                 <TapDancePanel keyboard={keyboard} suppressCardNames={nav.heroNameSuppressed} />
               )}
               {keyboard && nav.mode === "combo" && (
-                <ComboPanel keyboard={keyboard} suppressCardNames={nav.heroNameSuppressed} />
+                <ComboPanel keyboard={keyboard} />
               )}
               {keyboard && nav.mode === "rgb" && <RgbPanel keyboard={keyboard} />}
               {keyboard && nav.mode === "advanced" && (

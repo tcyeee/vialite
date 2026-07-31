@@ -10,7 +10,15 @@ import { createPortal } from "react-dom";
 import { KEYCODE_CATEGORIES, label as kcLabel, type KeycodeDef } from "../../../protocol/keycodes.ts";
 import { useI18n } from "../../../contexts/i18n.tsx";
 import type { Keyboard } from "../../../protocol/keyboard.ts";
-import { CATEGORY_DESC, CATEGORY_KEYS, CLEAR_LABELS, KEYCODE_HELP, deviceCategories } from "./keycodeMeta.ts";
+import {
+  CATEGORY_DESC,
+  CLEAR_LABELS,
+  KEYCODE_HELP,
+  deviceCategories,
+  catLabel as catLabelOf,
+  entryLabel as entryLabelOf,
+  qualifiedLabel,
+} from "./keycodeMeta.ts";
 import {
   buildMiddle,
   macroIndex,
@@ -237,14 +245,8 @@ export function KeycodeCascadeSelector({
   const heading = t("cascadeSelectorHeading");
   const placeholder = placeholderProp ?? t("cascadeSelectorPlaceholder");
 
-  const catLabel = (name: string) => (CATEGORY_KEYS[name] ? t(CATEGORY_KEYS[name]) : name);
-  // The two "clear" keycodes (KC_NO / KC_TRNS) get plain translated labels
-  // instead of their raw id / "▽" glyph, matching the picker.
-  const entryLabel = (entry: KeycodeDef) => {
-    const clear = CLEAR_LABELS[entry.qmkId];
-    if (clear) return t(clear.label);
-    return entry.label || entry.qmkId;
-  };
+  const catLabel = (name: string) => catLabelOf(t, name);
+  const entryLabel = (entry: KeycodeDef) => entryLabelOf(t, entry);
 
   const activeEntries = categories.find((c) => c.name === activeCat)?.entries ?? [];
   // The promoted clear keycodes belong to no category, so fall back to them for
@@ -303,11 +305,9 @@ export function KeycodeCascadeSelector({
   const pickedLabel = (() => {
     if (triggerLabel !== undefined) return triggerLabel;
     if (!pickedId) return placeholder;
-    for (const c of categories) {
-      const e = c.entries.find((x) => x.qmkId === pickedId);
-      if (e) return `${catLabel(c.name)} / ${entryLabel(e)}`;
-    }
-    return pickedId;
+    // Scoped to *this* picker's (possibly filtered) categories, so a trigger never names a
+    // category the popover doesn't offer.
+    return qualifiedLabel(t, pickedId, categories);
   })();
 
   const openMenu = () => {
