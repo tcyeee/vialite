@@ -1,7 +1,8 @@
 // The vial.json served by MockHidTransport (src/protocol/demo/mockHidTransport.ts) when the
-// user enters 功能预览 (feature preview) from the connect screen. A single made-up 65%-ish
-// board — QWERTY block, one rotary encoder, a layout-options group, VialRGB lighting — chosen
-// to exercise as much of the real UI as possible rather than to model any real product.
+// user enters 功能预览 (feature preview) from the connect screen. A single made-up 69-key board
+// (65% grid: split backspace, split left shift, an extra bottom-row layer key, knob in the
+// top-right column) — QWERTY block, one rotary encoder, a layout-options group, VialRGB lighting
+// — chosen to exercise as much of the real UI as possible rather than to model any real product.
 //
 // Physical geometry is authored as raw Keyboard Layout Editor rows (same shape kleSerial.ts
 // parses), with vial-gui's convention of hiding metadata in specific label lines: label line 0
@@ -35,14 +36,21 @@ function encoderPos(index: number, direction: 0 | 1): string {
 
 // prettier-ignore
 const KEYMAP: KleData = [
-  // Row 0: Esc, 1-0, -, =, Backspace(2u) | gap | Del | gap | encoder (both directions, same spot)
+  // Row 0: Esc, 1-0, -, =, Backspace(1u), Del(1u) | gap | encoder (both directions, same spot).
+  // The knob sits in the right-hand column, not outboard of it, so every row ends flush at 16.25u
+  // — hence the split (1u + 1u) backspace/delete pair instead of a 2u Backspace plus a Del column.
   [
     pos(0, 0), pos(0, 1), pos(0, 2), pos(0, 3), pos(0, 4), pos(0, 5), pos(0, 6), pos(0, 7),
     pos(0, 8), pos(0, 9), pos(0, 10), pos(0, 11), pos(0, 12),
-    { w: 2 }, pos(0, 13),
-    { x: 0.25 }, pos(0, 14),
-    { x: 0.5 }, encoderPos(0, 0),
+    pos(0, 13), pos(0, 14),
+    { x: 0.25 }, encoderPos(0, 0),
     { x: -1 }, encoderPos(0, 1),
+    // The knob's push switch: an ordinary matrix key drawn in the knob's own
+    // cell (its matrix address doesn't have to match its visual row — 2,14 is
+    // simply the free position this board had left). Real boards that wire the
+    // switch into the matrix author it exactly like this, and it's what lets the
+    // knob show a 按下 function at all — see knobGrouping.ts's press inference.
+    { x: -1 }, pos(2, 14),
   ],
   // Row 1: Tab(1.5u), Q-P, [, ], \(1.5u) | gap | PgUp
   [
@@ -60,23 +68,23 @@ const KEYMAP: KleData = [
     { w: 2.25 }, pos(2, 12),
     { x: 0.25 }, pos(2, 13),
   ],
-  // Row 3: LShift(2.25u), Z-/, RShift(1.75u) | gap | Up
+  // Row 3: LShift(1.25u) split off an extra 1u key, Z-/, RShift(1.75u) | gap | Up, End
   [
-    { w: 2.25 }, pos(3, 0),
-    pos(3, 1), pos(3, 2), pos(3, 3), pos(3, 4), pos(3, 5), pos(3, 6), pos(3, 7), pos(3, 8), pos(3, 9), pos(3, 10),
-    { w: 1.75 }, pos(3, 11),
-    { x: 0.25 }, pos(3, 12),
+    { w: 1.25 }, pos(3, 0),
+    pos(3, 1),
+    pos(3, 2), pos(3, 3), pos(3, 4), pos(3, 5), pos(3, 6), pos(3, 7), pos(3, 8), pos(3, 9), pos(3, 10), pos(3, 11),
+    { w: 1.75 }, pos(3, 12),
+    { x: 0.25 }, pos(3, 13), pos(3, 14),
   ],
-  // Row 4: LCtrl, [LGui|Fn layout-option key], LAlt, Space(6.25u), RAlt, Fn(MO1), RCtrl | gap | Left, Down, Right
+  // Row 4: LCtrl, [LGui|Fn layout-option key], LAlt, Space(6.25u), RAlt, Fn(MO1), Fn2(MO2)
+  //        | gap | Left, Down, Right — the arrow cluster lands under Up/End, right edge flush at 16.25u
   [
     { w: 1.25 }, pos(4, 0),
     { w: 1.25 }, posOpt(4, 1, 0, 0),
     { w: 1.25, x: -1.25 }, posOpt(4, 2, 0, 1),
     { w: 1.25 }, pos(4, 3),
     { w: 6.25 }, pos(4, 4),
-    { w: 1.25 }, pos(4, 5),
-    { w: 1.25 }, pos(4, 6),
-    { w: 1.25 }, pos(4, 7),
+    pos(4, 5), pos(4, 6), pos(4, 7),
     { x: 0.25 }, pos(4, 8), pos(4, 9), pos(4, 10),
   ],
 ];

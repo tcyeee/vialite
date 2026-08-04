@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../contexts/i18n.tsx";
 import { useToast } from "../contexts/toast.tsx";
 import { track } from "../lib/analytics.ts";
-import { placeLayout } from "../components/keymap/layout/layoutGeometry.ts";
+import { knobLayout } from "../components/keymap/layout/knobGrouping.ts";
 import type { KeyPart } from "../components/keymap/layout/KeyboardLayoutEditor.tsx";
 import type { Keyboard } from "../protocol/keyboard.ts";
 import { dualRole, withTap } from "../protocol/keycodes.ts";
@@ -18,15 +18,21 @@ export type Selected =
  * left-to-right — among the currently-visible caps, wrapping back to the first
  * after the last. Powers the "自动选取下一个" auto-advance. Keys within ~0.4 KLE
  * units of the same vertical position count as one row (staggered/keycap gaps).
+ *
+ * A knob's push switch is left out of the ordering entirely. Sweeping through a
+ * row of letters and suddenly landing *inside* a knob would be jarring, and the
+ * exclusion doubles as the guard for the opposite direction: a press key isn't
+ * in the list, so `findIndex` misses and assigning to one advances nowhere —
+ * which is what the knob panel wants (it keeps its own selection).
  */
 function nextKeyPosition(
   keyboard: Keyboard,
   row: number,
   col: number,
 ): { row: number; col: number } | null {
-  const placed = placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices);
+  const { placed, pressKeys } = knobLayout(keyboard);
   const ordered = placed.keys
-    .filter(({ key }) => !key.decal)
+    .filter((placedKey) => !placedKey.key.decal && !pressKeys.has(placedKey))
     .map(({ key, shiftX, shiftY }) => ({
       row: key.row,
       col: key.col,

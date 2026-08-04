@@ -1816,6 +1816,28 @@ const MESSAGES = {
     fr: "Fait du calque {layer} le calque par défaut (de base) comme DF, mais enregistre aussi ce choix dans l'EEPROM du clavier pour qu'il survive à une coupure d'alimentation.",
   },
 
+  // Knob panel (shown above quick-config when a knob is selected). Deliberately
+  // free of protocol vocabulary — no "encoder", no CW/CCW: to the user this is
+  // one control on the board that happens to have several functions.
+  knobTitle: { en: "Knob", zh: "旋钮", ja: "ノブ", fr: "Molette" },
+  knobIntro: {
+    en: "This position has several functions — pick one, then assign a key to it below.",
+    zh: "这个位置有多个功能——先选一个,再到下方给它指定按键。",
+    ja: "この位置には複数の機能があります——1 つ選んでから、下でキーを割り当ててください。",
+    fr: "Cette position a plusieurs fonctions — choisissez-en une, puis attribuez-lui une touche ci-dessous.",
+  },
+  knobCcw: { en: "Turn left", zh: "左旋", ja: "左に回す", fr: "Rotation gauche" },
+  knobCw: { en: "Turn right", zh: "右旋", ja: "右に回す", fr: "Rotation droite" },
+  knobPress: { en: "Press", zh: "按下", ja: "押し込み", fr: "Appui" },
+  // Neutral on purpose: the UI can't tell "this board doesn't wire the knob's
+  // switch into the matrix" apart from "we couldn't work out which key it is".
+  knobPressNone: {
+    en: "Not detected",
+    zh: "未检测到",
+    ja: "検出されません",
+    fr: "Non détecté",
+  },
+
   // Dual-role hold editor (shown when a cap's hold band is selected)
   holdEditorTitle: { en: "Hold action", zh: "长按动作", ja: "ホールド時の動作", fr: "Action de maintien" },
   holdEditorIntro: {

@@ -13,7 +13,8 @@ import { useSettledLive } from "../../common/useSettledLive.ts";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { KeycodeCascadeSelector } from "../picker/KeycodeCascadeSelector.tsx";
 import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
-import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
+import { hasSecondRect } from "./layoutGeometry.ts";
+import { useKnobLayout } from "./knobGrouping.ts";
 import {
   appearanceMetrics,
   fontPositionClass,
@@ -164,10 +165,8 @@ export function KeyboardLayoutPreview({
     setMenu({ x: e.clientX, y: e.clientY, target });
   };
 
-  const placed = useMemo(
-    () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
-    [keyboard, keyboard.layoutOptions],
-  );
+  // Same knob grouping as the interactive board, so the two stay pixel-identical.
+  const { placed, knobs, loose: looseEncoders, pressKeys } = useKnobLayout(keyboard);
   // The outermost cap's own edge already sits `plateMargin - inset` in from
   // the pitch-cell boundary (shapeStyle's `pad` shifts it out by `plateMargin`,
   // then its own `width`/`height` shrinks back in by `inset`) — so reaching
@@ -257,7 +256,9 @@ export function KeyboardLayoutPreview({
         } as CSSProperties}
       >
         {placed.keys
-          .filter(({ key }) => !key.decal)
+          // A knob's push switch belongs to the knob widget below — same
+          // exclusion the interactive board makes, so the two stay identical.
+          .filter((placedKey) => !placedKey.key.decal && !pressKeys.has(placedKey))
           .map(({ key, shiftX, shiftY }) => {
             const qmkId = keyboard.getKey(layer, key.row, key.col);
             const isSelected =
@@ -298,7 +299,34 @@ export function KeyboardLayoutPreview({
               </div>
             );
           })}
-        {placed.encoders.map(({ encoder, shiftX, shiftY }) => {
+        {knobs.map(({ index, ccw, press }) => {
+          const isSelected = menu?.target.kind === "encoder" && menu.target.index === index;
+          return (
+            <div
+              key={`knob${index}@${ccw.encoder.x},${ccw.encoder.y}`}
+              className={
+                "encoder encoder-knob" +
+                (press ? " encoder-knob-press" : "") +
+                (isSelected ? " selected" : "")
+              }
+              onContextMenu={(e) => openMenu(e, { kind: "encoder", index, direction: 0 })}
+              style={shapeStyle(ccw.encoder, ccw.shiftX, ccw.shiftY, PITCH, inset, plateMargin)}
+            >
+              <span className="knob-row">
+                <span className="encoder-dir">↺</span>
+              </span>
+              {press && (
+                <span className="knob-row knob-row-press">
+                  <KeycapFace qmkId={keyboard.getKey(layer, press.key.row, press.key.col)} />
+                </span>
+              )}
+              <span className="knob-row">
+                <span className="encoder-dir">↻</span>
+              </span>
+            </div>
+          );
+        })}
+        {looseEncoders.map(({ encoder, shiftX, shiftY }) => {
           const isSelected =
             menu?.target.kind === "encoder" &&
             menu.target.index === encoder.index &&

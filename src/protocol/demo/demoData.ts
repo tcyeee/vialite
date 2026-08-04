@@ -83,19 +83,25 @@ const LAYER0: Record<string, string> = {
   "2,11": "KC_QUOTE",
   "2,12": "KC_ENTER",
   "2,13": "KC_PGDOWN",
+  // The knob's push switch (drawn in the knob's cell, see demoDefinition.ts).
+  // Mute is what a volume knob's press does on practically every board.
+  "2,14": "KC_MUTE",
   "3,0": "KC_LSHIFT",
-  "3,1": "KC_Z",
-  "3,2": "KC_X",
-  "3,3": "KC_C",
-  "3,4": "KC_V",
-  "3,5": "KC_B",
-  "3,6": "KC_N",
-  "3,7": "KC_M",
-  "3,8": "KC_COMMA",
-  "3,9": "KC_DOT",
-  "3,10": "KC_SLASH",
-  "3,11": "KC_RSHIFT",
-  "3,12": "KC_UP",
+  // The 1u key split off the left shift — an ISO backslash, the usual filler for that slot.
+  "3,1": "KC_NONUS_BSLASH",
+  "3,2": "KC_Z",
+  "3,3": "KC_X",
+  "3,4": "KC_C",
+  "3,5": "KC_V",
+  "3,6": "KC_B",
+  "3,7": "KC_N",
+  "3,8": "KC_M",
+  "3,9": "KC_COMMA",
+  "3,10": "KC_DOT",
+  "3,11": "KC_SLASH",
+  "3,12": "KC_RSHIFT",
+  "3,13": "KC_UP",
+  "3,14": "KC_END",
   "4,0": "KC_LCTRL",
   // The layout-options alternates at (4,1)/(4,2): only one is ever visible (see
   // demoDefinition.ts's posOpt), but both need a binding since both are real matrix cells.
@@ -107,7 +113,9 @@ const LAYER0: Record<string, string> = {
   "4,4": "KC_SPACE",
   "4,5": "KC_RALT",
   "4,6": "MO(1)",
-  "4,7": "KC_RCTRL",
+  // The second bottom-row layer key (where a 65% would put RCtrl) — without it layer 2 would
+  // have no activation key at all.
+  "4,7": "MO(2)",
   "4,8": "KC_LEFT",
   "4,9": "KC_DOWN",
   "4,10": "KC_RIGHT",
@@ -131,25 +139,26 @@ const LAYER1: Record<string, string> = {
   "0,14": "KC_INSERT",
   "1,11": "M0",
   "1,12": "M1",
-  "3,1": "RGB_TOG",
-  "3,2": "RGB_MOD",
-  "3,3": "RGB_RMOD",
-  "3,4": "RGB_HUI",
-  "3,5": "RGB_HUD",
-  "3,6": "RGB_SAI",
-  "3,7": "RGB_SAD",
-  "3,8": "RGB_VAI",
-  "3,9": "RGB_VAD",
+  "3,2": "RGB_TOG",
+  "3,3": "RGB_MOD",
+  "3,4": "RGB_RMOD",
+  "3,5": "RGB_HUI",
+  "3,6": "RGB_HUD",
+  "3,7": "RGB_SAI",
+  "3,8": "RGB_SAD",
+  "3,9": "RGB_VAI",
+  "3,10": "RGB_VAD",
   "4,8": "KC_HOME",
   "4,10": "KC_END",
 };
 
-/** Lightly configured layer — a small transport-control cluster, everything else transparent. */
+/** Lightly configured layer (reached by the bottom row's MO(2)) — a small transport-control
+ *  cluster, everything else transparent. */
 const LAYER2: Record<string, string> = {
-  "3,4": "KC_MUTE",
-  "3,5": "KC_MPLY",
-  "3,6": "KC_MPRV",
-  "3,7": "KC_MNXT",
+  "3,5": "KC_MUTE",
+  "3,6": "KC_MPLY",
+  "3,7": "KC_MPRV",
+  "3,8": "KC_MNXT",
 };
 
 /** Deliberately left unconfigured — demonstrates the "not yet configured" layer badge. */

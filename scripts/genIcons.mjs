@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = join(root, "src");
 const MDI = join(root, "node_modules/@iconify-json/mdi/icons.json");
-const OUT = join(root, "src/mdiIcons.data.ts");
+const OUT = join(root, "src/lib/mdiIcons.data.ts");
 
 // --- 1. collect every mdi:<name> referenced in the source tree ------------------
 function walk(dir) {

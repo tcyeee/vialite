@@ -30,6 +30,7 @@ import type { Keyboard, PhysicalEncoder, PhysicalKey } from "../../protocol/keyb
 import { label as kcLabel } from "../../protocol/keycodes.ts";
 import { clusterHulls, offsetOutline, type Pt } from "../keymap/layout/caseOutline.ts";
 import { footprintsOf, hasSecondRect, placeLayout, rotatePoint } from "../keymap/layout/layoutGeometry.ts";
+import { knobLayout } from "../keymap/layout/knobGrouping.ts";
 import { DEFAULT_PREVIEW_3D_PARAMS, type Preview3DParams } from "./preview3dParams.ts";
 
 const UNIT = 1;
@@ -659,12 +660,17 @@ export function KeyboardLayout3D({
     // The previously hovered mesh is no longer in the scene.
     state.hovered = null;
 
-    const placed = placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices);
+    // Same knob grouping the 2D boards use, so this view agrees with them about
+    // what is one knob: stacked rotation directions become a single cylinder
+    // (two coincident ones would z-fight), and the push switch is drawn as that
+    // knob's face rather than as a cap of its own.
+    const { placed, knobs, loose: looseEncoders, pressKeys } = knobLayout(keyboard);
     const offsetX = placed.width / 2;
     const offsetZ = placed.height / 2;
 
-    for (const { key, shiftX, shiftY } of placed.keys) {
-      if (key.decal) {
+    for (const placedKey of placed.keys) {
+      const { key, shiftX, shiftY } = placedKey;
+      if (key.decal || pressKeys.has(placedKey)) {
         continue;
       }
       const qmkId = keyboard.getKey(layer, key.row, key.col);
@@ -674,7 +680,29 @@ export function KeyboardLayout3D({
       state.group.add(mesh);
       state.pickables.push(pickable);
     }
-    for (const { encoder, shiftX, shiftY } of placed.encoders) {
+    for (const { index, ccw, press } of knobs) {
+      // A cylinder carries one legend, so it shows what the knob's face does:
+      // its press binding where there is one, otherwise 左旋. The other bindings
+      // live in the 2D board's knob panel — this page is display-only.
+      const faceId = press
+        ? keyboard.getKey(layer, press.key.row, press.key.col)
+        : keyboard.getEncoder(layer, index, 0);
+      const mesh = buildEncoderMesh(
+        params,
+        res,
+        ccw.encoder,
+        ccw.shiftX,
+        ccw.shiftY,
+        offsetX,
+        offsetZ,
+        kcLabel(faceId),
+      );
+      const pickable = mesh as unknown as Pickable;
+      pickable.userData = { onActivate: () => onEncoderSelect(index, 0) };
+      state.group.add(mesh);
+      state.pickables.push(pickable);
+    }
+    for (const { encoder, shiftX, shiftY } of looseEncoders) {
       const qmkId = keyboard.getEncoder(layer, encoder.index, encoder.direction);
       const mesh = buildEncoderMesh(params, res, encoder, shiftX, shiftY, offsetX, offsetZ, kcLabel(qmkId));
       const pickable = mesh as unknown as Pickable;

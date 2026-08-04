@@ -1,6 +1,8 @@
 import { useEffect, useState, type SyntheticEvent } from "react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { DualRoleEditor } from "./components/keymap/picker/DualRoleEditor.tsx";
+import { KnobPanel, type KnobPart } from "./components/keymap/picker/KnobPanel.tsx";
+import { useKnobLayout } from "./components/keymap/layout/knobGrouping.ts";
 import { KeyboardLayoutEditor } from "./components/keymap/layout/KeyboardLayoutEditor.tsx";
 import { KeyboardLayout3D } from "./components/connect/KeyboardLayout3D.tsx";
 import { Preview3DDebugPanel } from "./components/connect/Preview3DDebugPanel.tsx";
@@ -103,6 +105,24 @@ function App() {
     handleExport,
     handleImportFile,
   } = useKeySelection({ keyboard, layer, productName, selected, setSelected });
+
+  // 旋钮面板的路由:选中态可能指向某个旋转方向(kind: "encoder"),也可能指向这个
+  // 旋钮的按下键——后者在协议里就是一个普通矩阵键,选中态的形状和任何键帽完全一样,
+  // 所以「当前选中的是不是某个旋钮的一部分」只能反查归组结果,不能看 selected 的
+  // 形状。反查不到就是普通按键,面板不出现。
+  const { knobs } = useKnobLayout(keyboard);
+  const selectedKnob =
+    selected == null
+      ? null
+      : (knobs.find((knob) =>
+          selected.kind === "encoder"
+            ? selected.index === knob.index
+            : knob.press != null &&
+              knob.press.key.row === selected.row &&
+              knob.press.key.col === selected.col,
+        ) ?? null);
+  const knobPart: KnobPart =
+    selected?.kind === "encoder" ? (selected.direction === 1 ? "cw" : "ccw") : "press";
 
   if (conn.status === "reconnecting") {
     return (
@@ -301,7 +321,18 @@ function App() {
                             );
                           }}
                           onEncoderSelect={(index, direction) =>
-                            setSelected({ kind: "encoder", index, direction })
+                            // Mirrors the cap behaviour above: clicking the same
+                            // thing again clears the selection. Clicking a knob
+                            // always arrives here as 左旋 (direction 0), so a knob
+                            // whose 右旋 is active resets to 左旋 on the first
+                            // click and deselects on the next.
+                            setSelected((prev) =>
+                              prev?.kind === "encoder" &&
+                              prev.index === index &&
+                              prev.direction === direction
+                                ? null
+                                : { kind: "encoder", index, direction },
+                            )
                           }
                           onContextAssign={handleContextAssign}
                         />
@@ -357,6 +388,44 @@ function App() {
                     // pointer-events-none:后者会让整块不参与命中测试,连滚轮都收不到,
                     // 于是未选中按键时快捷配置区就没法横向滚动了。
                     <section className="mt-6">
+                      {/* 选中旋钮时,快捷配置上方多出一块旋钮状态面板:它只负责
+                          展示这个旋钮的几个功能各自绑了什么、并把选中态在它们
+                          之间切换,真正的赋值仍然由下面的快捷配置完成(所以是
+                          「多一块」而不是「换一块」,和 DualRoleEditor 的互斥
+                          关系不同——那个是自带编辑器的)。 */}
+                      {selectedKnob && (
+                        <KnobPanel
+                          bindings={{
+                            ccw: keyboard.getEncoder(layer, selectedKnob.index, 0),
+                            cw: keyboard.getEncoder(layer, selectedKnob.index, 1),
+                            press: selectedKnob.press
+                              ? keyboard.getKey(
+                                  layer,
+                                  selectedKnob.press.key.row,
+                                  selectedKnob.press.key.col,
+                                )
+                              : null,
+                          }}
+                          active={knobPart}
+                          onSelect={(part) => {
+                            // 按下走普通键位选中态(它就是矩阵键),旋转走编码器
+                            // 选中态——两条写入路径本来就不同,这里只是把它们藏在
+                            // 同一个「选一个功能」的动作后面。
+                            if (part === "press") {
+                              const press = selectedKnob.press;
+                              if (press) {
+                                setSelected({ kind: "key", row: press.key.row, col: press.key.col });
+                              }
+                              return;
+                            }
+                            setSelected({
+                              kind: "encoder",
+                              index: selectedKnob.index,
+                              direction: part === "cw" ? 1 : 0,
+                            });
+                          }}
+                        />
+                      )}
                       <div
                         aria-disabled={!selected}
                         className={selected ? undefined : "select-none"}

@@ -42,7 +42,7 @@ const MATRIX = { rows: 5, cols: 15 };
 /** The (row,col) pair the on-screen unlock dialog tells the user to "hold" — LShift + RShift. */
 const DEMO_UNLOCK_KEYS = [
   { row: 3, col: 0 },
-  { row: 3, col: 11 },
+  { row: 3, col: 12 },
 ];
 const UNLOCK_STEPS = 4;
 
@@ -51,7 +51,7 @@ const MATRIX_DEMO_SEQUENCE: [number, number][] = [
   [2, 1],
   [2, 2],
   [2, 3],
-  [3, 4],
+  [3, 5],
   [2, 7],
   [2, 8],
   [2, 9],

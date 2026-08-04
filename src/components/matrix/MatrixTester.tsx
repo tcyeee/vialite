@@ -12,7 +12,8 @@ import { label } from "../../protocol/keycodes.ts";
 import { isLinkFatal } from "../../protocol/transport.ts";
 import { UnlockDialog } from "./UnlockDialog.tsx";
 import { track } from "../../lib/analytics.ts";
-import { hasSecondRect, placeLayout } from "../keymap/layout/layoutGeometry.ts";
+import { hasSecondRect } from "../keymap/layout/layoutGeometry.ts";
+import { useKnobLayout } from "../keymap/layout/knobGrouping.ts";
 import { shapeStyle } from "../keymap/layout/KeyboardLayoutPreview.tsx";
 
 const UNIT = 54; // same scale as KeyboardLayoutEditor
@@ -120,10 +121,7 @@ export function MatrixTester({ keyboard }: Props) {
   // Geometry pipeline (rotated keys, layout-option variants, ISO-Enter second
   // rects). Computed unconditionally so the auto-fit effect below can depend on
   // the board's natural width without tripping the rules-of-hooks ordering.
-  const placed = useMemo(
-    () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
-    [keyboard, keyboard.layoutOptions],
-  );
+  const { placed, knobs, loose: looseEncoders, pressKeys } = useKnobLayout(keyboard);
   const boardWidth = placed.width * UNIT + INSET;
   const boardHeight = placed.height * UNIT + INSET;
 
@@ -345,7 +343,11 @@ export function MatrixTester({ keyboard }: Props) {
               }}
             >
             {placed.keys
-              .filter(({ key }) => !key.decal)
+              // A knob's push switch reports as an ordinary matrix position, but
+              // its cap sits underneath the knob's circle — only the square's
+              // corners would peek out, so lighting *it* up reads as "nothing
+              // happened". The knob itself carries that state instead (below).
+              .filter((placedKey) => !placedKey.key.decal && !pressKeys.has(placedKey))
               .map(({ key, shiftX, shiftY }, i) => {
                 const pos = `${key.row},${key.col}`;
                 const state = pressed.has(pos) ? " pressed" : tested.has(pos) ? " tested" : "";
@@ -376,11 +378,28 @@ export function MatrixTester({ keyboard }: Props) {
                   </div>
                 );
               })}
-            {placed.encoders.map(({ encoder, shiftX, shiftY }) => (
+            {knobs.map(({ index, ccw, press }) => {
+              // Rotation can't be tested here — the matrix only reports switches
+              // — so a knob lights up purely for its push switch, when it has one.
+              const pos = press && `${press.key.row},${press.key.col}`;
+              const state = !pos ? "" : pressed.has(pos) ? " pressed" : tested.has(pos) ? " tested" : "";
+              const count = pos ? counts.get(pos) : undefined;
+              return (
+                <div
+                  key={`knob-${index}`}
+                  className={`encoder encoder-knob${state}`}
+                  title={pos ?? t("knobTitle")}
+                  style={shapeStyle(ccw.encoder, ccw.shiftX, ccw.shiftY, UNIT, INSET, 0)}
+                >
+                  {count !== undefined && <span className="matrix-key-count">{count}</span>}
+                </div>
+              );
+            })}
+            {looseEncoders.map(({ encoder, shiftX, shiftY }) => (
               <div
                 key={`encoder-${encoder.index}-${encoder.direction}`}
                 className="encoder"
-                title={`Encoder ${encoder.index}`}
+                title={t("knobTitle")}
                 style={shapeStyle(encoder, shiftX, shiftY, UNIT, INSET, 0)}
               />
             ))}

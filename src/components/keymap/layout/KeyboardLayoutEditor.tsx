@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Keyboard } from "../../../protocol/keyboard.ts";
 import { dualRole, type KeycodeDef } from "../../../protocol/keycodes.ts";
+import { useI18n } from "../../../contexts/i18n.tsx";
 import { usePreviewAppearance } from "../../../contexts/previewAppearance.tsx";
 import { useKeyDisplay } from "../../../contexts/keyDisplay.tsx";
 import { useTheme } from "../../../contexts/theme.tsx";
@@ -27,7 +28,8 @@ import {
   type PreviewStyle,
 } from "./KeyboardLayoutPreview.tsx";
 import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
-import { hasSecondRect, placeLayout } from "./layoutGeometry.ts";
+import { hasSecondRect } from "./layoutGeometry.ts";
+import { useKnobLayout } from "./knobGrouping.ts";
 
 /** Which half of a dual-role (tap/hold) cap a click targets. */
 export type KeyPart = "tap" | "hold";
@@ -83,6 +85,7 @@ export function KeyboardLayoutEditor({
   styleOverride,
   colorOverride,
 }: Props) {
+  const { t } = useI18n();
   // Physical appearance (size, spacing, case/plate) is shared with the 键盘配色
   // page via context, so tuning it there restyles this interactive board too.
   // Geometry runs through the same helpers as KeyboardLayoutPreview, so the two
@@ -197,12 +200,10 @@ export function KeyboardLayoutEditor({
     setMenu({ x: e.clientX, y: e.clientY, target });
   };
 
-  const placed = useMemo(
-    () => placeLayout(keyboard.keys, keyboard.encoders, keyboard.layoutChoices),
-    // Keyboard mutates in place; layoutOptions is the only geometry input that
-    // changes after the initial load.
-    [keyboard, keyboard.layoutOptions],
-  );
+  // Rotation directions stacked on the same spot are drawn as one knob (together
+  // with the push switch wired underneath it, when the board has one); anything
+  // else keeps rendering per-direction. See knobGrouping.ts for why.
+  const { placed, knobs, loose: looseEncoders, pressKeys } = useKnobLayout(keyboard);
   // See the matching comment in KeyboardLayoutPreview.tsx: reaching
   // `plateMargin` past the outermost cap's own edge takes `2 * plateMargin -
   // inset`, not `plateMargin` alone.
@@ -285,7 +286,9 @@ export function KeyboardLayoutEditor({
         } as CSSProperties}
       >
         {placed.keys
-          .filter(({ key }) => !key.decal)
+          // A knob's push switch is drawn inside the knob widget below, not as a
+          // cap of its own — see `pressKeys` in knobGrouping.ts.
+          .filter((placedKey) => !placedKey.key.decal && !pressKeys.has(placedKey))
           .map(({ key, shiftX, shiftY }) => {
             const qmkId = keyboard.getKey(layer, key.row, key.col);
             const isSelected =
@@ -356,7 +359,58 @@ export function KeyboardLayoutEditor({
               </Fragment>
             );
           })}
-        {placed.encoders.map(({ encoder, shiftX, shiftY }) => {
+        {knobs.map(({ index, ccw, press }) => {
+          // One widget for the whole knob: clicking it selects the knob (starting
+          // at 左旋) and the panel below routes between its functions, so all of
+          // them stay reachable even though they share a footprint.
+          const rotationSelected = selected?.kind === "encoder" && selected.index === index;
+          // The push switch is a plain matrix key, so selecting it produces a key
+          // selection — the knob still has to read as selected for it.
+          const pressSelected =
+            press != null &&
+            selected?.kind === "key" &&
+            selected.row === press.key.row &&
+            selected.col === press.key.col;
+          // Right-click follows whichever direction the panel currently has
+          // active, so "select 右旋 in the panel, then right-click the knob"
+          // targets 右旋 rather than silently falling back to 左旋.
+          const menuDirection = rotationSelected && selected.kind === "encoder" ? selected.direction : 0;
+          return (
+            <button
+              key={`knob${index}@${ccw.encoder.x},${ccw.encoder.y}`}
+              className={
+                "encoder encoder-knob" +
+                (press ? " encoder-knob-press" : "") +
+                (rotationSelected || pressSelected ? " selected" : "")
+              }
+              title={t("knobTitle")}
+              onClick={() => onEncoderSelect(index, 0)}
+              onContextMenu={(e) => openMenu(e, { kind: "encoder", index, direction: menuDirection })}
+              // No hover info card here, unlike a cap: the knob carries several
+              // bindings and the card takes a single keycode, so it could only
+              // ever describe one of them — the panel below shows them all.
+              style={shapeStyle(ccw.encoder, ccw.shiftX, ccw.shiftY, PITCH, inset, plateMargin)}
+            >
+              {/* 左旋 on top, 右旋 underneath, and — when the board wires one —
+                  the push switch between them at full cap size: the knob's face
+                  is what you press, the rim is what you turn. */}
+              <span className="knob-row">
+                <span className="encoder-dir">↺</span>
+                <KeycapFace qmkId={keyboard.getEncoder(layer, index, 0)} />
+              </span>
+              {press && (
+                <span className="knob-row knob-row-press">
+                  <KeycapFace qmkId={keyboard.getKey(layer, press.key.row, press.key.col)} />
+                </span>
+              )}
+              <span className="knob-row">
+                <span className="encoder-dir">↻</span>
+                <KeycapFace qmkId={keyboard.getEncoder(layer, index, 1)} />
+              </span>
+            </button>
+          );
+        })}
+        {looseEncoders.map(({ encoder, shiftX, shiftY }) => {
           const qmkId = keyboard.getEncoder(layer, encoder.index, encoder.direction);
           const isSelected =
             selected?.kind === "encoder" &&
@@ -366,7 +420,7 @@ export function KeyboardLayoutEditor({
             <button
               key={`e${encoder.index},${encoder.direction}@${encoder.x},${encoder.y}`}
               className={isSelected ? "encoder selected" : "encoder"}
-              title={`Encoder ${encoder.index} ${encoder.direction === 1 ? "CW" : "CCW"}`}
+              title={t(encoder.direction === 1 ? "knobCw" : "knobCcw")}
               onClick={() => onEncoderSelect(encoder.index, encoder.direction)}
               onContextMenu={(e) =>
                 openMenu(e, {

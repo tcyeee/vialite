@@ -1441,6 +1441,58 @@ input[type="number"].input,
   opacity: 0.6;
 }
 
+/* 合并旋钮:两个旋转方向落在同一位置时(见 knobGrouping.ts)不再画成两个互相
+   遮挡的圆——那样下面那个永远点不到——而是一个圆里上下两行,左旋一行、右旋一行,
+   各自显示当前绑定。两行要塞进 1u 的圆,所以字号与图标都比普通键帽小一档,并且
+   单行截断:完整键码名由下方的旋钮面板负责展示,这里只做「一眼扫过」的提示,
+   撑破圆形比截断更糟。其余外观(圆形、虚线描边、选中环、未选中置灰)全部沿用
+   `.encoder` 的既有规则,合并旋钮只是多挂了一个 `.encoder-knob` 修饰类。 */
+.keyboard-layout .encoder-knob {
+  gap: 1px;
+  font-size: calc(0.55rem * var(--key-font-scale, 1));
+  line-height: 1.1;
+  overflow: hidden;
+}
+
+.keyboard-layout .encoder-knob .knob-row {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+  /* 覆盖 `.encoder` 的 pre-line:旋钮行里没有需要保留的换行,而多行标签会把
+     两行结构挤成三四行。 */
+  white-space: nowrap;
+}
+
+.keyboard-layout .encoder-knob .encoder-dir {
+  font-size: calc(0.6rem * var(--key-font-scale, 1));
+  opacity: 0.55;
+}
+
+.keyboard-layout .encoder-knob .key-icon {
+  width: calc(0.9rem * var(--key-font-scale, 1));
+  height: calc(0.9rem * var(--key-font-scale, 1));
+}
+
+/* 按下功能所在的中间行:旋钮的「面」是按下、「圈」是旋转,所以按下用接近普通键帽
+   的字号占据圆心,两个旋转方向缩在上下两条边上。只有板子把旋钮轴向开关接进矩阵
+   时才会出现这一行(见 knobGrouping.ts 的 press 推断)。 */
+.keyboard-layout .encoder-knob-press {
+  gap: 0;
+}
+
+.keyboard-layout .encoder-knob .knob-row-press {
+  font-size: calc(0.7rem * var(--key-font-scale, 1));
+}
+
+.keyboard-layout .encoder-knob .knob-row-press .key-icon {
+  width: calc(1.15rem * var(--key-font-scale, 1));
+  height: calc(1.15rem * var(--key-font-scale, 1));
+}
+
 /* 线稿(wireframe) 风格：键帽/旋钮只描边、不填充 —— 4 态立体感枚举(PreviewStyle)
    之一。底板的描边、外壳的半透明填充在 KeyboardLayoutPreview.tsx/
    KeyboardLayoutEditor.tsx 里内联设置（颜色是用户可配的 caseColor/plateColor），
@@ -1527,6 +1579,20 @@ input[type="number"].input,
 }
 
 .matrix-key.tested {
+  background: #7fb37f;
+  border-color: #7fb37f;
+}
+
+/* 矩阵测试里的旋钮:旋转方向不经过按键矩阵,测不出来,所以旋钮只为「按下」亮灯
+   —— 它的轴向开关就是一个普通矩阵键。颜色跟 `.matrix-key` 的两个状态保持一致,
+   但要显式写一遍:`.keyboard-layout .encoder` 的圆形底色特异度比 `.matrix-key`
+   高,单靠给旋钮加 `.matrix-key` 类是压不住的。 */
+.matrix-tester .encoder.pressed {
+  background: #2a7f2a;
+  border-color: #2a7f2a;
+}
+
+.matrix-tester .encoder.tested {
   background: #7fb37f;
   border-color: #7fb37f;
 }
