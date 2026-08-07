@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { VIAL_PROTOCOL_ADVANCED_MACROS } from "../../protocol/constants.ts";
@@ -76,6 +76,7 @@ function MacroActionRow({
   onChange,
   onRemove,
   isDragging,
+  registerRow,
   onDragStartRow,
   onDragEndRow,
   onDragOverRow,
@@ -85,18 +86,34 @@ function MacroActionRow({
   onChange: (next: MacroAction) => void;
   onRemove: () => void;
   isDragging: boolean;
+  registerRow: (el: HTMLDivElement | null) => void;
   onDragStartRow: () => void;
   onDragEndRow: () => void;
-  onDragOverRow: (e: DragEvent) => void;
+  onDragOverRow: (e: DragEvent<HTMLDivElement>) => void;
   onDropRow: () => void;
 }) {
   const { t } = useI18n();
+  const rowRef = useRef<HTMLDivElement>(null);
 
+  // `draggable` sits on the handle (not the row) so the text/number inputs keep
+  // their native text selection, but the drag image is taken from the whole row
+  // — otherwise the browser snapshots just the ⠿ glyph and nothing appears to
+  // move. `effectAllowed`/`setData` are both required: without them Chrome shows
+  // the no-drop cursor for the entire drag and Firefox refuses to start one.
   const handle = (
     <span
-      className="cursor-grab select-none px-1 text-brand-on-surface-variant"
+      className="cursor-grab select-none px-1 text-brand-on-surface-variant active:cursor-grabbing"
       draggable
-      onDragStart={onDragStartRow}
+      onDragStart={(e) => {
+        const row = rowRef.current;
+        if (row) {
+          const rect = row.getBoundingClientRect();
+          e.dataTransfer.setDragImage(row, e.clientX - rect.left, e.clientY - rect.top);
+        }
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", "");
+        onDragStartRow();
+      }}
       onDragEnd={onDragEndRow}
       aria-label="drag"
     >
@@ -164,11 +181,20 @@ function MacroActionRow({
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-2 rounded-box border border-brand-outline/20 p-2 ${
-        isDragging ? "opacity-50" : ""
+      ref={(el) => {
+        rowRef.current = el;
+        registerRow(el);
+      }}
+      className={`flex flex-wrap items-center gap-2 rounded-box border border-brand-outline/20 p-2 transition-opacity ${
+        isDragging ? "opacity-40" : ""
       }`}
       onDragOver={onDragOverRow}
-      onDrop={onDropRow}
+      onDrop={(e) => {
+        // Cancels the default text drop, which would otherwise paste the
+        // dataTransfer payload into whichever input sits under the pointer.
+        e.preventDefault();
+        onDropRow();
+      }}
     >
       {handle}
       {body}
@@ -186,14 +212,72 @@ export function MacroPanel({ keyboard }: Props) {
   const [saving, setSaving] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  // `dragover` can fire several times per frame; React batches the state
+  // updates, so the handler reads the index from a ref to avoid reordering
+  // twice off the same stale value.
+  const dragIndexRef = useRef<number | null>(null);
   const [collapsed, setCollapsed] = usePersistedBoolean("vialite-macro-slots-collapsed");
   const stripRef = useRef<HTMLDivElement>(null);
+  // Row identity for the FLIP pass below. Rows are rendered from a plain array
+  // with no natural key: the action objects can't be used, since editing one
+  // replaces the object and would remount the row mid-keystroke. So ids are
+  // handed out positionally and permuted alongside a reorder — stable exactly
+  // where identity matters (a move) and regenerated when the list length
+  // changes (add / remove / revert / slot switch), where nothing is animated.
+  const rowIdsRef = useRef<{ slot: number; ids: number[] }>({ slot: -1, ids: [] });
+  const nextRowIdRef = useRef(0);
+  const rowElsRef = useRef(new Map<number, HTMLDivElement>());
+  const rowTopsRef = useRef(new Map<number, number>());
+  const rowAnimsRef = useRef(new Map<number, Animation>());
+  // Only a reorder should animate. Without this gate any layout shift that
+  // moves the rows as a group — the panel above them settling on first paint,
+  // a font landing, the slot grid reflowing — reads as "every row moved" and
+  // the whole list twitches.
+  const flipPendingRef = useRef(false);
 
   useEffect(() => {
     setEdited(keyboard.macros);
     setSavedMacros(keyboard.macros);
     setActive(0);
   }, [keyboard]);
+
+  // FLIP: a reorder drops every affected row into its new slot instantly, so
+  // replay the trip — each row is animated from where it just was back to zero.
+  // Runs on every render (rows are few, so the layout read is cheap) to keep
+  // the recorded positions current, but only animates when a reorder set the
+  // flag — see flipPendingRef.
+  useLayoutEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const animating = flipPendingRef.current && !reduceMotion;
+    flipPendingRef.current = false;
+    const tops = new Map<number, number>();
+    for (const [id, el] of rowElsRef.current) {
+      // offsetTop rather than getBoundingClientRect(), so scrolling the page
+      // between renders doesn't read as every row having moved. The list
+      // container is `relative`, making it the offsetParent, so these stay
+      // container-relative and ignore anything shifting above the panel.
+      const top = el.offsetTop;
+      tops.set(id, top);
+      const prev = rowTopsRef.current.get(id);
+      if (!animating || prev === undefined || Math.abs(prev - top) < 0.5) continue;
+      // WAAPI rather than a CSS transition: it needs no forced reflow to latch
+      // the start value, and it leaves the row's inline styles (and the
+      // Tailwind opacity transition) alone.
+      rowAnimsRef.current.get(id)?.cancel();
+      rowAnimsRef.current.set(
+        id,
+        el.animate(
+          [{ transform: `translateY(${prev - top}px)` }, { transform: "translateY(0)" }],
+          { duration: 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+        ),
+      );
+    }
+    // Rebuilt from the live rows, so ids belonging to removed rows drop out.
+    rowTopsRef.current = tops;
+    for (const id of rowAnimsRef.current.keys()) {
+      if (!tops.has(id)) rowAnimsRef.current.delete(id);
+    }
+  });
 
   // Keep the selected slot visible when the strip scrolls horizontally on
   // narrow screens (e.g. switching slots from the 3D keycap).
@@ -208,6 +292,11 @@ export function MacroPanel({ keyboard }: Props) {
 
   const supportsDelay = keyboard.vialProtocol >= VIAL_PROTOCOL_ADVANCED_MACROS;
   const actions = edited[active] ?? [];
+
+  if (rowIdsRef.current.slot !== active || rowIdsRef.current.ids.length !== actions.length) {
+    rowIdsRef.current = { slot: active, ids: actions.map(() => nextRowIdRef.current++) };
+  }
+  const rowIds = rowIdsRef.current.ids;
 
   let currentBuffer: Uint8Array | null = null;
   try {
@@ -238,11 +327,49 @@ export function MacroPanel({ keyboard }: Props) {
   const removeAction = (i: number) => updateActive(actions.filter((_, idx) => idx !== i));
   const updateAction = (i: number, next: MacroAction) => updateActive(actions.map((a, idx) => (idx === i ? next : a)));
   const moveActionTo = (from: number, to: number) => {
-    if (from === to || from < 0 || to < 0 || from >= actions.length || to >= actions.length) return;
-    const next = [...actions];
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
-    updateActive(next);
+    if (from !== to && from >= 0 && to >= 0 && from < rowIds.length && to < rowIds.length) {
+      // Keep row identity travelling with the action it labels, or the FLIP
+      // pass sees the rows as unmoved and nothing animates.
+      const [id] = rowIds.splice(from, 1);
+      rowIds.splice(to, 0, id);
+      flipPendingRef.current = true;
+    }
+    setEdited((prev) =>
+      prev.map((m, i) => {
+        if (i !== active) return m;
+        if (from === to || from < 0 || to < 0 || from >= m.length || to >= m.length) return m;
+        const next = [...m];
+        const [item] = next.splice(from, 1);
+        next.splice(to, 0, item);
+        return next;
+      }),
+    );
+  };
+
+  const setDrag = (index: number | null) => {
+    dragIndexRef.current = index;
+    setDragIndex(index);
+  };
+
+  // Reorder live as the pointer travels, rather than only on drop — that
+  // continuous shuffle *is* the drag animation. The midpoint check (only commit
+  // once the pointer passes the target row's centre, in the direction of
+  // travel) stops rows of differing heights from flickering back and forth.
+  const handleRowDragOver = (e: DragEvent<HTMLDivElement>, idx: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const from = dragIndexRef.current;
+    if (from === null || from === idx) return;
+    // Measure in layout space: the row may still be mid-FLIP, and a hit-box
+    // that slides along with the animation makes the reorder oscillate. The
+    // matrix' vertical translation backs the animation offset out of the rect.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const transform = getComputedStyle(e.currentTarget).transform;
+    const offsetY = transform && transform !== "none" ? new DOMMatrixReadOnly(transform).m42 : 0;
+    const midpoint = rect.top - offsetY + rect.height / 2;
+    if (idx > from ? e.clientY < midpoint : e.clientY > midpoint) return;
+    moveActionTo(from, idx);
+    setDrag(idx);
   };
 
   const commitSave = async () => {
@@ -359,24 +486,32 @@ export function MacroPanel({ keyboard }: Props) {
       </div>
       <div className="rounded-box border border-base-300 bg-base-100 p-6 min-h-90">
         <div key={active} className="tab-panel-appear flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
+          {/* `relative` is load-bearing: it makes this the rows' offsetParent
+              so the FLIP pass measures them against the list, not the page. */}
+          <div className="relative flex flex-col gap-2">
             {actions.length === 0 && (
               <p className="text-xs text-brand-on-surface-variant">{t("macroEmpty")}</p>
             )}
             {actions.map((action, idx) => (
               <MacroActionRow
-                key={idx}
+                key={rowIds[idx]}
                 action={action}
+                registerRow={(el) => {
+                  // Only the element map is touched here. React detaches this
+                  // callback (el === null) on every render because its identity
+                  // changes, so clearing the recorded position here would erase
+                  // the FLIP's "before" state right before it is read.
+                  const id = rowIds[idx];
+                  if (el) rowElsRef.current.set(id, el);
+                  else rowElsRef.current.delete(id);
+                }}
                 onChange={(next) => updateAction(idx, next)}
                 onRemove={() => removeAction(idx)}
                 isDragging={dragIndex === idx}
-                onDragStartRow={() => setDragIndex(idx)}
-                onDragEndRow={() => setDragIndex(null)}
-                onDragOverRow={(e) => e.preventDefault()}
-                onDropRow={() => {
-                  if (dragIndex !== null) moveActionTo(dragIndex, idx);
-                  setDragIndex(null);
-                }}
+                onDragStartRow={() => setDrag(idx)}
+                onDragEndRow={() => setDrag(null)}
+                onDragOverRow={(e) => handleRowDragOver(e, idx)}
+                onDropRow={() => setDrag(null)}
               />
             ))}
           </div>
