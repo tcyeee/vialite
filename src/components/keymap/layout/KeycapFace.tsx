@@ -197,7 +197,7 @@ export function KeycapFace({ qmkId, className = "key-label" }: { qmkId: string; 
 
   // Mouse-button caps (KC_BTN1…KC_BTN5) show the mouse icon followed by the button
   // number rather than the wider "Mouse Btn 1" text, matching the macro/tap-dance
-  // icon+number treatment and the 快捷配置 Mouse card's icon-over-number tiles.
+  // icon+number treatment and the 配置区域 鼠标按键页's icon-over-number tiles.
   const mouseBtn = /^KC_BTN(\d+)$/.exec(qmkId);
   if (mouseBtn) {
     return (

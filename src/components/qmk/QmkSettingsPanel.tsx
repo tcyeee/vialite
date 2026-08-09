@@ -9,6 +9,7 @@ import { MagicSettings } from "./MagicSettings.tsx";
 import { MouseKeySettings } from "./MouseKeySettings.tsx";
 import { OneShotSettings } from "./OneShotSettings.tsx";
 import { TapHoldSettings } from "./TapHoldSettings.tsx";
+import { QmkSettingsToc } from "./QmkSettingsToc.tsx";
 import { useWriteError } from "../../hooks/useWriteError.ts";
 
 interface Props {
@@ -345,6 +346,9 @@ export function QmkSettingsPanel({
   const onWriteError = useWriteError();
   const containerRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<Map<string, PendingQmkChange>>(new Map());
+  // Same list that's reported upward via onSectionsChange, kept here so the sidebar TOC can be
+  // rendered from it (see the DOM scan below).
+  const [sections, setSections] = useState<MessageKey[]>([]);
   const [leaveApplying, setLeaveApplying] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetApplying, setResetApplying] = useState(false);
@@ -358,14 +362,14 @@ export function QmkSettingsPanel({
 
   // Scan for whichever sections actually rendered (some hide themselves when the connected
   // keyboard doesn't expose their qsid) instead of re-deriving each section's own visibility rule.
+  // Runs on every render (no dep array) — both consumers bail out when the list is unchanged, so
+  // this settles instead of looping.
   useLayoutEffect(() => {
-    if (!onSectionsChange) {
-      return;
-    }
     const ids = Array.from(containerRef.current?.querySelectorAll<HTMLElement>("[data-qmk-toc]") ?? []).map(
       (el) => el.id as MessageKey,
     );
-    onSectionsChange(ids);
+    setSections((prev) => (prev.length === ids.length && prev.every((id, i) => id === ids[i]) ? prev : ids));
+    onSectionsChange?.(ids);
   });
 
   useEffect(() => {
@@ -430,35 +434,48 @@ export function QmkSettingsPanel({
 
   return (
     <QmkPendingContext.Provider value={{ pending, stage, discard, commit }}>
-      <div ref={containerRef} className="flex flex-col gap-10">
-        {!supported && (
-          <div role="alert" className="alert alert-warning">
-            <Icon icon="mdi:alert-outline" className="h-5 w-5 shrink-0" />
-            <span>{t("qmkSettingsUnsupported")}</span>
-          </div>
-        )}
+      {/* 左侧目录 + 右侧设置内容。目录只列出实际渲染出来的分区(见上面的 DOM 扫描),
+          所以键盘不支持某个 qsid 时,那一项也不会出现在目录里。 */}
+      <div className="flex items-start gap-8">
+        {/* 左侧栏吸顶铺满视口高度,「全部重置」用 mt-auto 顶到栏底;没有任何分区可列时
+            (键盘不支持 QMK Settings)不撑高,否则空荡荡的一栏会凭空给页面加出滚动条。 */}
         <div
-          className={supported ? "flex flex-col gap-10" : "flex flex-col gap-10 select-none opacity-40"}
-          inert={!supported}
-          aria-disabled={!supported}
+          className={`sticky top-6 flex w-48 shrink-0 flex-col ${
+            sections.length > 0 ? "h-[calc(100vh-3rem)]" : ""
+          }`}
         >
-          <MagicSettings keyboard={keyboard} />
-          <GraveEscapeSettings keyboard={keyboard} />
-          <TapHoldSettings keyboard={keyboard} />
-          <ComboSettings keyboard={keyboard} />
-          <OneShotSettings keyboard={keyboard} />
-          <MouseKeySettings keyboard={keyboard} />
+          {sections.length > 0 && <QmkSettingsToc sections={sections} />}
+          <div className="mt-auto pt-4">
+            <button
+              type="button"
+              className="btn btn-outline btn-sm w-full gap-1.5"
+              onClick={() => setResetConfirmOpen(true)}
+              disabled={!supported}
+            >
+              <Icon icon="mdi:restore" className="h-4 w-4" />
+              {t("resetAllShort")}
+            </button>
+          </div>
         </div>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            className="btn btn-outline btn-sm gap-1.5"
-            onClick={() => setResetConfirmOpen(true)}
-            disabled={!supported}
+        <div ref={containerRef} className="flex min-w-0 flex-1 flex-col gap-10">
+          {!supported && (
+            <div role="alert" className="alert alert-warning">
+              <Icon icon="mdi:alert-outline" className="h-5 w-5 shrink-0" />
+              <span>{t("qmkSettingsUnsupported")}</span>
+            </div>
+          )}
+          <div
+            className={supported ? "flex flex-col gap-10" : "flex flex-col gap-10 select-none opacity-40"}
+            inert={!supported}
+            aria-disabled={!supported}
           >
-            <Icon icon="mdi:restore" className="h-4 w-4" />
-            {t("resetAllSettings")}
-          </button>
+            <MagicSettings keyboard={keyboard} />
+            <GraveEscapeSettings keyboard={keyboard} />
+            <TapHoldSettings keyboard={keyboard} />
+            <ComboSettings keyboard={keyboard} />
+            <OneShotSettings keyboard={keyboard} />
+            <MouseKeySettings keyboard={keyboard} />
+          </div>
         </div>
       </div>
       {resetConfirmOpen && (

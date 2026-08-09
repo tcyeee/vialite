@@ -2,7 +2,6 @@ import { useRef } from "react";
 import { Icon } from "@iconify/react";
 import { useI18n } from "../../../contexts/i18n.tsx";
 import { SettingsRow } from "../../qmk/QmkSettingsPanel.tsx";
-import { ALWAYS_ENABLED_ATTR } from "./quickConfigData.ts";
 
 interface Props {
   /** "自动选取下一个": whether assigning a key auto-advances the selection. */
@@ -15,10 +14,8 @@ interface Props {
 }
 
 /**
- * Basic tab's "配置设置" block (自动选取下一个 / 导入导出). Panel-level settings,
- * unrelated to whether a key is currently selected, so it carries
- * {@link ALWAYS_ENABLED_ATTR} and is never dimmed/disabled by the parent
- * `QuickConfigPanel` the way the keycode cards are.
+ * 配置区域「配置」页的正文(自动选取下一个 / 导入导出)。这是面板级设置,和选没选中
+ * 按键无关,所以 `ConfigPanel` 给它标了 `alwaysEnabled`,置灰时也照常可用。
  */
 export function ConfigSettingsSection({
   autoAdvance,
@@ -31,7 +28,7 @@ export function ConfigSettingsSection({
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <section className="flex shrink-0 flex-col items-start" {...{ [ALWAYS_ENABLED_ATTR]: "" }}>
+    <section className="flex shrink-0 flex-col items-start">
       <h4 className="mb-2 text-sm font-semibold opacity-70">{t("groupConfigSettings")}</h4>
       {/* Same grouped-`list` look as the 个性化 / 网站设置 pages, so a setting
           reads identically wherever it surfaces. Deliberately narrow (not

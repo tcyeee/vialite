@@ -19,6 +19,12 @@ export type PageMode =
   | "siteConfig";
 
 /**
+ * 跳转滚动位置后再重放几帧,等新页面的高度定下来 —— 见 `jumpScroll` 里的说明。三帧覆盖
+ * 「effect 量宽度 → setState → 重新渲染 → 布局」这一串,再多也只是白跑。
+ */
+const SCROLL_SETTLE_FRAMES = 3;
+
+/**
  * Whether a navigation attempt away from Advanced Settings should be intercepted by the
  * "unsaved changes" dialog instead of switching immediately. Extracted from `navigate()`
  * below purely so this one branchy decision can be unit-tested without rendering anything.
@@ -31,9 +37,35 @@ export function shouldInterceptNavigation(
   return mode === "advanced" && next !== "advanced" && qmkPendingCount > 0;
 }
 
+interface NavigateOptions {
+  /**
+   * Marks this navigation as one leg of a round trip: the target page's corner button turns
+   * into a back arrow that returns *here* (see `returnTo` / `closeConfigEditor`), instead of
+   * the usual close-to-wherever-we-came-from.
+   */
+  returnTo?: PageMode;
+  /**
+   * Keep the currently selected key/encoder instead of clearing it (see `onNavigated`). Set
+   * for round trips, where the user is expected to come back and carry on with the same key.
+   */
+  keepSelection?: boolean;
+}
+
+interface SlideOptions extends NavigateOptions {
+  /**
+   * Scroll offset (px) to jump to as part of the same View Transition update, so the incoming
+   * page is snapshotted at that position rather than sliding in and then jumping. Used by the
+   * round trip below: 0 on the way in, the remembered offset on the way back.
+   */
+  scrollTo?: number;
+}
+
 interface UsePageNavigationOptions {
-  /** Called right after `mode` actually changes (not when a navigation gets intercepted). */
-  onNavigated?: () => void;
+  /**
+   * Called right after `mode` actually changes (not when a navigation gets intercepted).
+   * `keepSelection` forwards {@link NavigateOptions.keepSelection}.
+   */
+  onNavigated?: (info: { keepSelection: boolean }) => void;
 }
 
 /**
@@ -65,6 +97,13 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
   // 同时,下方配置区跑一段「旧的下滑淡出、新的上滑淡入」的接力动画,而不是跟
   // 着 root 一起硬交叉淡化。从首页进来时保持 null,行为不变。
   const [configSwapFrom, setConfigSwapFrom] = useState<ConfigSwapSide | null>(null);
+  // 非 null 时,当前页是某次「往返导航」的去程终点(目前只有 配置区域「自定义按键」
+  // 三张卡片的「编辑」入口:键盘配置 → 宏 / Tap Dance / 组合),值是回程要落回的页面。
+  // 共享页壳据此把右上角的关闭叉换成返回箭头(见 App.tsx)。任何其它导航都会把它清空
+  // ——离开去程终点就不再是「回得去」的状态了。
+  const [returnTo, setReturnTo] = useState<PageMode | null>(null);
+  // 去程离开时页面的滚动位置,回程原样恢复(见 closeConfigEditor)。
+  const returnScrollRef = useRef(0);
   const [qmkSections, setQmkSections] = useState<MessageKey[]>([]);
   const [qmkPendingCount, setQmkPendingCount] = useState(0);
   const [qmkLeaveRequested, setQmkLeaveRequested] = useState(false);
@@ -96,7 +135,7 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
   // Tries to switch page mode, but detours through QmkSettingsPanel's "unsaved changes" dialog
   // first when leaving Advanced Settings with edits still pending.
   const navigate = useCallback(
-    (next: PageMode) => {
+    (next: PageMode, opts?: NavigateOptions) => {
       if (shouldInterceptNavigation(mode, next, qmkPendingCount)) {
         qmkPendingNavigationRef.current = next;
         setQmkLeaveRequested(true);
@@ -105,9 +144,44 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
       track(`view/${next}`);
       if (next !== mode) previousModeRef.current = mode;
       setMode(next);
-      onNavigated?.();
+      setReturnTo(opts?.returnTo ?? null);
+      onNavigated?.({ keepSelection: opts?.keepSelection ?? false });
     },
     [mode, qmkPendingCount, onNavigated],
+  );
+
+  /**
+   * Jump the page scroll with no smoothing, as part of whatever update is currently running.
+   * Goes through Lenis when it's in charge (a raw `window.scrollTo` would be overwritten by
+   * its next frame), and re-measures first: the page that owns this scroll range has just
+   * been swapped, so Lenis still holds the previous page's `limit` and would clamp the jump.
+   *
+   * 跳完之后还要再补几帧同样的定位:新页面的高度在 commit 那一刻还没定下来。键盘配置页的
+   * 预览区靠 `useAutoFitZoom`(layout/autoFitSize.ts)量容器宽度决定缩放,而那是 paint 之后
+   * 的 effect + ResizeObserver,重新挂载时第一帧 `availableWidth` 还是 null、板子先按备用
+   * 缩放级别画一遍,下一帧才变成自适应尺寸。文档高度那时才变,浏览器会把真实滚动位置夹回
+   * 去,而 Lenis 仍以为自己停在 y —— 从编辑页返回、原本停在页面底部的用户会落到别处,下一
+   * 次滚轮还会跳一下。重新 resize + 定位到同一个 y 就把两边对齐了。
+   */
+  const jumpScroll = useCallback(
+    (y: number) => {
+      const apply = () => {
+        if (lenis) {
+          lenis.resize();
+          lenis.scrollTo(y, { immediate: true, force: true });
+        } else {
+          window.scrollTo(0, y);
+        }
+      };
+      apply();
+      let frames = 0;
+      const settle = () => {
+        apply();
+        if (++frames < SCROLL_SETTLE_FRAMES) requestAnimationFrame(settle);
+      };
+      requestAnimationFrame(settle);
+    },
+    [lenis],
   );
 
   // NewHomePage's "个性化" button: like useFullscreenPreview's open/close, runs
@@ -194,21 +268,27 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
   // when navigating away from the current page, "push-back" when returning
   // (the exact mirror).
   const navigateSlide = useCallback(
-    (next: PageMode, direction: "push" | "push-back") => {
+    (next: PageMode, direction: "push" | "push-back", opts?: SlideOptions) => {
+      // `flushSync` first so the DOM is committed before the scroll jump reads/sets layout,
+      // and before the transition snapshots the result.
+      const update = () => {
+        flushSync(() => navigate(next, opts));
+        if (opts?.scrollTo !== undefined) jumpScroll(opts.scrollTo);
+      };
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (reduceMotion) {
-        navigate(next);
+        update();
         return;
       }
       flushSync(() => setHeroNameSuppressed(true));
       document.documentElement.dataset.pageAnim = direction;
-      const transition = startViewTransition(() => flushSync(() => navigate(next)));
+      const transition = startViewTransition(update);
       void transition.finished.finally(() => {
         delete document.documentElement.dataset.pageAnim;
         setHeroNameSuppressed(false);
       });
     },
-    [navigate],
+    [navigate, jumpScroll],
   );
 
   // Returns to whatever `mode` was immediately before the current one (see
@@ -221,6 +301,33 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
     navigateSlide(previousModeRef.current, "push-back");
   }, [navigateSlide]);
 
+  /**
+   * 配置区域「自定义按键」页里三张卡片的「编辑」入口(宏 / Tap Dance / 组合)。和菜单里
+   * 那些页不同,这是一次*往返*:编辑页在卡片这一页的下方,所以去程走 "push"(键盘配置页
+   * 整个上滑让开,编辑页从下方顶上来),编辑页右上角的角标按钮变成返回箭头,回程走
+   * "push-back" 原路下滑把键盘配置页送回来。
+   *
+   * 回来时那一页要「和离开时一样」:选中的按键不清空(`keepSelection`),配置区域停在哪个
+   * 标签页由 App.tsx 存着(所以不随卸载丢失),滚动位置在这里记下、回程原样恢复。去程则
+   * 落到编辑页顶部,而不是继承键盘配置页那个滚过大半屏的位置。
+   */
+  const openConfigEditor = useCallback(
+    (next: PageMode) => {
+      returnScrollRef.current = lenis?.scroll ?? window.scrollY;
+      navigateSlide(next, "push", { returnTo: mode, keepSelection: true, scrollTo: 0 });
+    },
+    [lenis, mode, navigateSlide],
+  );
+
+  /** 上面那次往返的回程,由共享页壳右上角的返回箭头触发(见 App.tsx)。 */
+  const closeConfigEditor = useCallback(() => {
+    if (returnTo === null) return;
+    navigateSlide(returnTo, "push-back", {
+      keepSelection: true,
+      scrollTo: returnScrollRef.current,
+    });
+  }, [navigateSlide, returnTo]);
+
   const handleQmkLeaveResolved = useCallback(
     (shouldLeave: boolean) => {
       setQmkLeaveRequested(false);
@@ -231,7 +338,8 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
         // Only ever reached while leaving "advanced" — see shouldInterceptNavigation.
         previousModeRef.current = "advanced";
         setMode(next);
-        onNavigated?.();
+        setReturnTo(null);
+        onNavigated?.({ keepSelection: false });
       }
     },
     [onNavigated],
@@ -286,6 +394,7 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
   const resetForConnect = useCallback(() => {
     setMode("newHome");
     previousModeRef.current = "newHome";
+    setReturnTo(null);
     setQmkPendingCount(0);
     setQmkLeaveRequested(false);
     qmkPendingNavigationRef.current = null;
@@ -294,6 +403,7 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
   // Called from useConnectionTransition's onDetached, at the point finishDisconnect used to
   // run these resets inline.
   const resetForDisconnect = useCallback(() => {
+    setReturnTo(null);
     setQmkSections([]);
     setQmkPendingCount(0);
     setQmkLeaveRequested(false);
@@ -305,6 +415,7 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
     heroNavAnimating,
     heroNameSuppressed,
     configSwapFrom,
+    returnTo,
     qmkSections,
     qmkPendingCount,
     qmkLeaveRequested,
@@ -312,6 +423,8 @@ export function usePageNavigation({ onNavigated }: UsePageNavigationOptions = {}
     navigate,
     navigateSlide,
     navigateBack,
+    openConfigEditor,
+    closeConfigEditor,
     handlePersonalize,
     handleGoToKeymap,
     handleBackToHome,

@@ -22,7 +22,7 @@ interface Props {
  * The keymap page's 个性化 button row — 配置键盘颜色 / 导出当前层图片 /
  * 导出所有层图片 — laid out horizontally between the keyboard preview and the
  * config area below it. None of it depends on a key being selected, so it sits
- * outside `QuickConfigPanel`'s dim/swallow wrapper (but still inside
+ * outside `ConfigPanel`'s dim/swallow wrapper (but still inside
  * `[data-key-config]`, so clicking a button doesn't clear the selection).
  */
 export function PersonalizationSection({

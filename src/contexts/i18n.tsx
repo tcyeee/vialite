@@ -648,6 +648,8 @@ const MESSAGES = {
   unitPx: { en: "px", zh: "像素", ja: "ピクセル", fr: "px" },
   unitSteps: { en: "steps", zh: "步", ja: "ステップ", fr: "pas" },
   unitTaps: { en: "taps", zh: "次", ja: "回", fr: "frappes" },
+  // Short form for the sidebar button; `resetAllSettings` stays the (descriptive) dialog title.
+  resetAllShort: { en: "Reset all", zh: "全部重置", ja: "すべてリセット", fr: "Tout réinitialiser" },
   resetAllSettings: {
     en: "Reset all QMK settings",
     zh: "重置所有QMK设置",
@@ -918,6 +920,7 @@ const MESSAGES = {
   navNewHome: { en: "New Home", zh: "新版首页", ja: "新しいホーム", fr: "Nouvel accueil" },
   navExitNewHome: { en: "Exit New Home", zh: "退出新版首页", ja: "新しいホームを終了", fr: "Quitter le nouvel accueil" },
   navBackToNewHome: { en: "Back to New Home", zh: "返回新版首页", ja: "新しいホームに戻る", fr: "Retour au nouvel accueil" },
+  navBackToKeymap: { en: "Back to key config", zh: "返回按键配置", ja: "キー設定に戻る", fr: "Retour à la config des touches" },
   navExitSiteConfig: { en: "Exit Website Settings", zh: "退出网站配置", ja: "サイト設定を終了", fr: "Quitter les réglages du site" },
   navSiteInfo: { en: "About", zh: "网站信息", ja: "このサイトについて", fr: "À propos" },
   comingSoon: { en: "Coming soon", zh: "即将推出", ja: "近日公開", fr: "Bientôt disponible" },
@@ -1086,6 +1089,7 @@ const MESSAGES = {
     ja: "このキーボードのファームウェアは QMK 設定を公開していません。ベンダーが Vial 対応のコンパイル済みファームウェアのみを配布し、QMK 設定を構成(または公開)していない場合によく見られます。このキーボードではこのページを利用できません。",
     fr: "Le firmware de ce clavier n'expose pas les réglages QMK — un cas fréquent lorsque le fabricant ne fournit qu'un firmware compilé compatible Vial, sans configurer (ni publier) de réglages QMK. Cette page n'est pas disponible sur ce clavier.",
   },
+  qmkTocTitle: { en: "Sections", zh: "设置目录", ja: "目次", fr: "Sections" },
   rgbEffect: { en: "Effect", zh: "灯光效果", ja: "エフェクト", fr: "Effet" },
   rgbEffectDesc: {
     en: "{n} effect(s) available on this keyboard",
@@ -1225,20 +1229,13 @@ const MESSAGES = {
   layerShowUsed: { en: "Show used only", zh: "只看已用", ja: "使用中のみ表示", fr: "Afficher seulement les utilisés" },
   layerShowAll: { en: "Show all layers", zh: "显示全部", ja: "すべてのレイヤーを表示", fr: "Afficher tous les calques" },
 
-  // Quick config
-  quickConfigTitle: { en: "Quick Config", zh: "快捷配置", ja: "クイック設定", fr: "Configuration rapide" },
-  quickConfigHint: {
-    en: "Select a key above, then click a key below to assign it.",
-    zh: "先在上方选中一个键位,再点击下方键盘为其赋值。",
-    ja: "上でキーを選択してから、下のキーをクリックして割り当ててください。",
-    fr: "Sélectionnez une touche ci-dessus, puis cliquez sur une touche ci-dessous pour l'assigner.",
-  },
-  quickConfigNoSelection: { en: "No key selected", zh: "未选中键位", ja: "キーが選択されていません", fr: "Aucune touche sélectionnée" },
+  // 配置区域
+  // 未选中按键时点配置区域里的键码,弹这句提示(不再置灰拦截点击)。
   selectKeyFirst: {
-    en: "Please select the key you want to change",
-    zh: "请选中需要修改的按键",
-    ja: "変更したいキーを選択してください",
-    fr: "Veuillez sélectionner la touche à modifier",
+    en: "Please select the key you want to configure",
+    zh: "请选择需要配置的按键",
+    ja: "設定したいキーを選択してください",
+    fr: "Veuillez sélectionner la touche à configurer",
   },
   advancedPicker: { en: "Advanced…", zh: "高级…", ja: "詳細設定…", fr: "Avancé…" },
 
@@ -1501,9 +1498,18 @@ const MESSAGES = {
   specialAny: { en: "Any Key", zh: "任意按键", ja: "任意のキー", fr: "N'importe quelle touche" },
 
   // Sub-groups within the "Function" tab
-  groupFnKeys: { en: "F13~F24", zh: "F13~F24", ja: "F13~F24", fr: "F13~F24" },
+  // 卡片里只有 F13~F24(F1~F12 在 基础按键 那台模拟键盘上),标题带上范围,免得
+  // 用户点开 "Fn 键" 找 F5 却找不到。
+  groupFnKeys: {
+    en: "Fn Keys (F13–F24)",
+    zh: "Fn 键(F13~F24)",
+    ja: "Fn キー(F13〜F24)",
+    fr: "Touches Fn (F13–F24)",
+  },
   groupMouse: { en: "Mouse", zh: "鼠标按键", ja: "マウス", fr: "Souris" },
   groupMedia: { en: "Media", zh: "媒体按键", ja: "メディア", fr: "Média" },
+  // 配置区域里鼠标与灯光合成一个标签页(两张卡横排)。
+  groupMouseLighting: { en: "Mouse & Lighting", zh: "鼠标与灯光", ja: "マウスとライティング", fr: "Souris et éclairage" },
   groupLayerKeys: { en: "Layer", zh: "层按键", ja: "レイヤー", fr: "Calque" },
 
   // The expanded 层按键 card: pick a layer-switch type, then a target layer number.
@@ -1517,27 +1523,60 @@ const MESSAGES = {
   groupMouseButtons: { en: "Buttons", zh: "按键", ja: "ボタン", fr: "Boutons" },
   groupMouseSpeed: { en: "Speed", zh: "速度", ja: "速度", fr: "Vitesse" },
 
+  // 配置区域里「自定义按键」那一页(宏 / Tap Dance / 组合 三张卡片)的标签名。
+  groupCustomKeys: {
+    en: "Custom Keys",
+    zh: "自定义按键",
+    ja: "カスタムキー",
+    fr: "Touches personnalisées",
+  },
   // Sub-groups within the merged "Macros / Tap Dance" tab
   groupMacros: { en: "Macros", zh: "宏", ja: "マクロ", fr: "Macros" },
   groupTapDance: { en: "Tap Dance", zh: "Tap Dance", ja: "Tap Dance", fr: "Tap Dance" },
   groupMultiFunction: { en: "Key Overlay", zh: "按键叠加", ja: "キーオーバーレイ", fr: "Superposition de touche" },
-  multiFuncModified: {
-    en: "Modifier",
-    zh: "修饰键",
-    ja: "修飾キー",
-    fr: "Modificateur",
+  // 按键叠加页的三张卡片:单击叠加修饰键 / 长按叠加修饰键 / 长按叠加层按键。
+  multiFuncTapMod: {
+    en: "Modifier on Tap",
+    zh: "叠加单击修饰键",
+    ja: "単押しに修飾キーを重ねる",
+    fr: "Modificateur à l'appui",
   },
-  multiFuncTapHold: {
-    en: "Hold for layer or modifier",
-    zh: "长按激活层或者修饰键",
-    ja: "長押しでレイヤーまたは修飾キーを発動",
-    fr: "Maintenir pour un calque ou un modificateur",
+  multiFuncHoldMod: {
+    en: "Modifier on Hold",
+    zh: "叠加长按修饰键",
+    ja: "長押しに修飾キーを重ねる",
+    fr: "Modificateur au maintien",
   },
-  multiFuncIntro: {
-    en: "Add functions on top of a base key",
-    zh: "为基础按键叠加功能",
-    ja: "基本キーに機能を追加する",
-    fr: "Ajouter des fonctions à une touche de base",
+  multiFuncHoldLayer: {
+    en: "Layer on Hold",
+    zh: "叠加长按层按键",
+    ja: "長押しにレイヤーを重ねる",
+    fr: "Calque au maintien",
+  },
+  multiFuncTapModDesc: {
+    en: "One press sends the modifier together with the base key, like Ctrl+C.",
+    zh: "单击时把修饰键和基础按键一起发出，例如 Ctrl+C",
+    ja: "一度押すと修飾キーと基本キーが同時に送られます（例：Ctrl+C）。",
+    fr: "Une pression envoie le modificateur avec la touche de base, comme Ctrl+C.",
+  },
+  multiFuncHoldModDesc: {
+    en: "Tap sends the base key; hold turns it into a modifier.",
+    zh: "轻触发送基础按键，长按时当作修饰键使用",
+    ja: "軽く押すと基本キー、長押しすると修飾キーになります。",
+    fr: "Un appui bref envoie la touche de base ; un maintien la transforme en modificateur.",
+  },
+  multiFuncHoldLayerDesc: {
+    en: "Tap sends the base key; hold switches to another layer.",
+    zh: "轻触发送基础按键，长按时切换到指定层",
+    ja: "軽く押すと基本キー、長押しすると指定のレイヤーに切り替わります。",
+    fr: "Un appui bref envoie la touche de base ; un maintien bascule vers un calque.",
+  },
+  // 三张卡片正文里那块按钮的说明:点一下就把框架写进当前选中的键。
+  multiFuncApply: {
+    en: "Apply to the selected key",
+    zh: "应用到选中的按键",
+    ja: "選択中のキーに適用",
+    fr: "Appliquer à la touche sélectionnée",
   },
   detailSettings: { en: "Detailed settings", zh: "详细设置", ja: "詳細設定", fr: "Réglages détaillés" },
 

@@ -124,7 +124,7 @@ export function KeyboardColorPanel({
   // Arriving via NewHomePage's hero "个性化" button should land directly on
   // this page's fullscreen 个性化 settings (StyleConfig.tsx), not the compact
   // preview underneath it — see useFullscreenPreview's initialFullscreen doc.
-  // Reached via QuickConfigPanel's "配置预览样式" row instead, heroArriving is
+  // Reached via 个性化 instead, heroArriving is
   // false and the compact page shows as before.
   const fsPreview = useFullscreenPreview(heroArriving);
   // Appearance settings are shared with the main keymap board via context, so

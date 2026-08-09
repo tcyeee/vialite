@@ -11,7 +11,7 @@ interface Props {
   layerEntries: KeycodeDef[];
   /** Layers the connected keyboard exposes — the 层编号 square count. */
   layerCount: number;
-  /** Assign the resolved keycode (routed through QuickConfigPanel's pick handler). */
+  /** Assign the resolved keycode (routed through ConfigPanel's pick handler). */
   onPick: (entry: KeycodeDef) => void;
 }
 

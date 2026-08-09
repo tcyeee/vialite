@@ -36,6 +36,12 @@ export interface CornerCloseButtonProps {
    * than conditional rendering).
    */
   active: boolean;
+  /**
+   * Iconify id drawn in the middle. Defaults to a close cross; pages that are
+   * one step of a round trip rather than a dead end pass a back arrow instead
+   * (see App.tsx's 配置区域 → 宏/Tap Dance/组合 编辑页 round trip).
+   */
+  icon?: string;
 }
 
 /**
@@ -46,7 +52,7 @@ export interface CornerCloseButtonProps {
  * in `StyleConfig.tsx` for the original context this was pulled out of.
  */
 export const CornerCloseButton = forwardRef<HTMLButtonElement, CornerCloseButtonProps>(
-  function CornerCloseButton({ onClick, label, active }, ref) {
+  function CornerCloseButton({ onClick, label, active, icon = "mdi:close" }, ref) {
     const [hover, setHover] = useState(false);
     const [magnet, setMagnet] = useState({ x: 0, y: 0 });
 
@@ -95,7 +101,7 @@ export const CornerCloseButton = forwardRef<HTMLButtonElement, CornerCloseButton
           transform: `translate(${-magnet.x}px, ${magnet.y}px) scale(${hover ? HOVER_SCALE : 1})`,
         }}
       >
-        <Icon icon="mdi:close" className="h-10 w-10" />
+        <Icon icon={icon} className="h-10 w-10" />
       </button>
     );
   },

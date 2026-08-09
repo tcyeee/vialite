@@ -51,7 +51,7 @@ export const TAPDANCE_ICON: CapIcon = { icon: "mdi:animation", scale: 0.9 };
 /**
  * Mouse-button cap glyph (KC_BTN1…KC_BTN5): the mouse icon shown before the button
  * number, in place of the bare "Mouse Btn 1" text — the same `mdi:mouse-outline`
- * glyph the 快捷配置 Mouse card and QMK mouse-key settings already use, so the
+ * glyph the 配置区域 鼠标按键页 and QMK mouse-key settings already use, so the
  * pointer keys read consistently across the app. Badges the number like MACRO_ICON.
  */
 export const MOUSE_ICON: CapIcon = { icon: "mdi:mouse-outline", scale: 0.82 };

@@ -5,15 +5,14 @@
 //  - the circular clip-path "reveal" View Transition theme.tsx uses for the
 //    light/dark switch (same technique, separate CSS vars/data-attr so the two
 //    can't clobber each other if both somehow fire back-to-back);
-//  - the per-element `view-transition-name` shared-element morph
-//    ExpandableCardColumn.tsx uses for its card expand/collapse, so the board
+//  - a per-element `view-transition-name` shared-element morph, so the board
 //    itself smoothly grows from its in-page spot to the centered fullscreen
 //    spot (and shrinks back on exit) instead of just cross-fading.
 //
 // The name is only ever applied to whichever of {compact board, overlay board}
-// is currently mounted, and only for the duration of the transition — see
-// ExpandableCardColumn's `animating` for why a persistently-named element is
-// avoided (it would get pulled into *every* unrelated transition's top layer).
+// is currently mounted, and only for the duration of the transition: a
+// persistently-named element would get pulled into *every* unrelated
+// transition's top layer.
 //
 // The open/close view-transition state machine lives in useFullscreenPreview.ts,
 // the pull-to-exit curtain gesture in usePullToExitCurtain.ts, and the pure

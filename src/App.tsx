@@ -1,4 +1,4 @@
-import { useEffect, useState, type SyntheticEvent } from "react";
+import { useEffect, useState } from "react";
 import { ComboPanel } from "./components/combo/ComboPanel.tsx";
 import { DualRoleEditor } from "./components/keymap/picker/DualRoleEditor.tsx";
 import { KnobPanel, type KnobPart } from "./components/keymap/picker/KnobPanel.tsx";
@@ -15,10 +15,7 @@ import { useAutoFitZoom } from "./components/keymap/layout/autoFitSize.ts";
 import { CornerCloseButton } from "./components/common/CornerCloseButton.tsx";
 import { HelpIcon } from "./components/common/HelpIcon.tsx";
 import { configSwapName, KEYBOARD_HERO_NAME } from "./components/common/viewTransition.ts";
-import {
-  ALWAYS_ENABLED_ATTR,
-  QuickConfigPanel,
-} from "./components/keymap/quickConfig/QuickConfigPanel.tsx";
+import { ConfigPanel } from "./components/keymap/ConfigPanel.tsx";
 import { LayerTabBar } from "./components/keymap/LayerTabs.tsx";
 import { PersonalizationSection } from "./components/keymap/PersonalizationSection.tsx";
 import { MacroPanel } from "./components/macro/MacroPanel.tsx";
@@ -36,19 +33,6 @@ import { useConnectionTransition } from "./hooks/useConnectionTransition.ts";
 import { usePageNavigation } from "./hooks/usePageNavigation.ts";
 import { useKeySelection, type Selected } from "./hooks/useKeySelection.ts";
 
-/**
- * 未选中按键时挂在快捷配置外层的激活类事件拦截器,用来替代 pointer-events-none
- * (那会连滚轮一起吞掉,见调用处注释)。标了 {@link ALWAYS_ENABLED_ATTR} 的子树
- * ——目前是「配置设置」那组开关——不受影响:它们是面板级设置,和选没选中按键无关。
- */
-function swallowEvent(e: SyntheticEvent) {
-  if ((e.target as Element | null)?.closest?.(`[${ALWAYS_ENABLED_ATTR}]`)) return;
-  e.stopPropagation();
-  // 只对 click 调 preventDefault:在 pointerdown/keydown 上调用会连带取消浏览器的
-  // 默认滚动手势(触摸拖动、空格翻页),而这里要禁掉的只是「激活」。
-  if (e.type === "click") e.preventDefault();
-}
-
 function App() {
   const { t } = useI18n();
   const [layer, setLayer] = useState(0);
@@ -58,7 +42,15 @@ function App() {
   // unsaved-changes gate) — see src/hooks/usePageNavigation.ts. `onNavigated` clears the
   // key/encoder selection whenever the page mode actually changes, mirroring what `navigate`
   // and `handleQmkLeaveResolved` used to do inline before this state lived in its own hook.
-  const nav = usePageNavigation({ onNavigated: () => setSelected(null) });
+  const nav = usePageNavigation({
+    onNavigated: ({ keepSelection }) => {
+      if (!keepSelection) setSelected(null);
+    },
+  });
+  // 配置区域停在哪个标签页。放在这里(而不是 ConfigPanel 内部)是为了熬过卸载:
+  // 卡片上的「编辑」会整页跳到宏 / Tap Dance / 组合 的编辑页,回来时这一页该和
+  // 离开时一样(见 usePageNavigation 的 openConfigEditor)。
+  const [configTab, setConfigTab] = useState("basic");
   // WebHID connect/disconnect lifecycle + its zoom-rise/darken-reveal transition — see
   // src/hooks/useConnectionTransition.ts. `onAttached`/`onDetached` run the navigation-state
   // resets that `attachTransport`/`finishDisconnect` used to do inline, at the same points.
@@ -104,7 +96,14 @@ function App() {
     handleContextAssign,
     handleExport,
     handleImportFile,
-  } = useKeySelection({ keyboard, layer, productName, selected, setSelected });
+  } = useKeySelection({
+    keyboard,
+    layer,
+    productName,
+    selected,
+    setSelected,
+    clearOnOutsideClick: nav.mode === "keymap",
+  });
 
   // 旋钮面板的路由:选中态可能指向某个旋转方向(kind: "encoder"),也可能指向这个
   // 旋钮的按下键——后者在协议里就是一个普通矩阵键,选中态的形状和任何键帽完全一样,
@@ -156,8 +155,14 @@ function App() {
               ? `fixed inset-0 ${disconnecting ? "z-30" : "z-50"} overflow-y-auto bg-[#E9E6E6] dark:bg-black/30 dark:backdrop-blur-md`
               : "min-h-screen bg-[#E9E6E6] dark:bg-brand-background"
           }
-          style={
-            inTransition
+          style={{
+            // 宽度下限只给键盘配置页:配置区域那台 104 键模拟键盘和一排文件夹标签压不下去
+            // (见 index.css 的 --app-min-width)。挂在这个画背景的容器上,而不是
+            // body/#root —— 横向滚动时它自己把背景铺满,同时首页、网站配置、连接页
+            // 保持自适应,那些页上按视口定位的 fixed 图层(角标按钮、连接遮罩)也就
+            // 不会因为整页横向滚动而和内容错位。
+            ...(nav.mode === "keymap" ? { minWidth: "var(--app-min-width)" } : null),
+            ...(inTransition
               ? {
                   // Disconnect never moves the config page itself — it just sits still
                   // under the black curtain while the waiting page slides down over it.
@@ -165,8 +170,8 @@ function App() {
                   transition:
                     conn.transition === "rise" ? "transform 520ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
                 }
-              : undefined
-          }
+              : null),
+          }}
         >
           {nav.mode === "newHome" && keyboard ? (
             <NewHomePage
@@ -186,15 +191,22 @@ function App() {
           {/* Shared page shell for every mode besides 首页/网站配置: just a
               CornerCloseButton back to NewHomePage. No top Navbar, no left
               sidebar — NewHomePage's own menu (and the deep links off
-              individual panels, e.g. QuickConfigPanel's "详细设置") are the
+              individual panels, e.g. 配置区域的 "详细设置") are the
               only way into these pages. 键盘配置 reverses its hero-morph entry;
               个性化 handles its own animated back internally (this button is a
               plain fallback for its non-fullscreen view); every other mode
-              gets the mirrored "push-back" slide. */}
+              slides back down.
+
+              一个例外:从 配置区域「自定义按键」的卡片「编辑」跳进来时
+              (nav.returnTo 非 null),这不是「关掉这一页」而是一次往返的回程
+              ——图标换成返回箭头,点它向上平移退回按键配置页,并保持它离开时的
+              样子(见 usePageNavigation 的 openConfigEditor/closeConfigEditor)。*/}
           <CornerCloseButton
             ref={nav.cornerCloseRef}
             onClick={() => {
-              if (nav.mode === "keymap") {
+              if (nav.returnTo !== null) {
+                nav.closeConfigEditor();
+              } else if (nav.mode === "keymap") {
                 nav.handleBackToHome(nav.cornerCloseRef.current);
               } else if (nav.mode === "color") {
                 nav.navigate("newHome");
@@ -202,9 +214,11 @@ function App() {
                 nav.navigateBack();
               }
             }}
-            label={t("navBackToNewHome")}
+            icon={nav.returnTo !== null ? "mdi:arrow-left" : "mdi:close"}
+            label={nav.returnTo !== null ? t("navBackToKeymap") : t("navBackToNewHome")}
             active
           />
+      {/* 页面最小宽度挂在上面那个画背景的容器上(只在键盘配置页,见那里的注释),这里只留内边距。 */}
       <div className="p-4 md:p-6">
         <div className="mx-auto max-w-[1600px]">
             <main className="min-w-0 p-6 md:p-8">
@@ -269,14 +283,13 @@ function App() {
                       gap-[30px] 对齐,统一两处页面置顶区与下方内容的间隔。
                       `top-0` 贴齐视口顶部(此处上方已无 Navbar);背景改用
                       .keyboard-preview-sticky 的渐变(见 index.css)——底部
-                      24px 由不透明渐变为透明,让下方快捷配置区内容随滚动柔和
+                      24px 由不透明渐变为透明,让下方配置区域的内容随滚动柔和
                       显现,而不是在容器边缘硬切,与 个性化 全屏页
                       BOARD_FADE_ZONE_HEIGHT 同款。 */}
                   <div
-                    // Marks the keyboard preview so an expanded quick-config
-                    // card below stays open when a key here is clicked — the
-                    // click still re-selects the cap, it just doesn't collapse
-                    // the card (see ExpandableCardColumn's outside-click close).
+                    // 标记键盘预览区:点这里只是改选键帽,不该被当成「点到了
+                    // 配置区域之外」而清空选中态(见 useKeySelection 的 pointerdown
+                    // 监听)。
                     data-keyboard-preview
                     ref={boardViewportRef}
                     className="keyboard-preview-sticky sticky top-0 z-10 -mx-4 mb-1.5 -mt-2 overflow-x-auto px-4 pb-6 pt-2"
@@ -354,7 +367,7 @@ function App() {
                   <div data-key-config>
                   {/* 个性化:预览与配置区之间的一行横向按钮(配置键盘颜色 / 导出
                       当前层图片 / 导出所有层图片)。放在 data-key-config 内,点它
-                      不会清空当前选中的按键;放在快捷配置的置灰包裹层之外,未选中
+                      不会清空当前选中的按键;放在配置区域的置灰包裹层之外,未选中
                       按键时照样可用。 */}
                   <PersonalizationSection
                     keyboard={keyboard}
@@ -380,17 +393,13 @@ function App() {
                       onWrite={handleHoldWrite}
                     />
                   ) : (
-                    // 快捷配置始终显示;未选中按键时整体置灰且不可交互(提示浮在
-                    // 模拟键盘上)。置灰在面板内部按块处理,以便提示徽标保持不透明
-                    // ——祖先若用 opacity 会连带把徽标一起变透明。
-                    //
-                    // 「不可交互」只拦截激活类事件(点击 / 按下 / 键盘),不用
-                    // pointer-events-none:后者会让整块不参与命中测试,连滚轮都收不到,
-                    // 于是未选中按键时快捷配置区就没法横向滚动了。
+                    // 配置区域始终显示,且未选中按键时照样可以点:点了哪个键码不
+                    // 重要,先让用户看到自己想要的那一格在哪儿。真正落到写入
+                    // (handleAssign)时没有选中键,才弹「请选择需要配置的按键」。
                     <section className="mt-6">
-                      {/* 选中旋钮时,快捷配置上方多出一块旋钮状态面板:它只负责
+                      {/* 选中旋钮时,配置区域上方多出一块旋钮状态面板:它只负责
                           展示这个旋钮的几个功能各自绑了什么、并把选中态在它们
-                          之间切换,真正的赋值仍然由下面的快捷配置完成(所以是
+                          之间切换,真正的赋值仍然由下面的配置区域完成(所以是
                           「多一块」而不是「换一块」,和 DualRoleEditor 的互斥
                           关系不同——那个是自带编辑器的)。 */}
                       {selectedKnob && (
@@ -426,43 +435,34 @@ function App() {
                           }}
                         />
                       )}
-                      <div
-                        aria-disabled={!selected}
-                        className={selected ? undefined : "select-none"}
-                        {...(selected
-                          ? {}
-                          : {
-                              onClickCapture: swallowEvent,
-                              onPointerDownCapture: swallowEvent,
-                              onMouseDownCapture: swallowEvent,
-                              onKeyDownCapture: swallowEvent,
-                            })}
-                      >
-                        <QuickConfigPanel
-                          onPick={handleAssign}
-                          keyboard={keyboard}
-                          onNavigate={nav.navigate}
-                          onOpenQmkSection={nav.openQmkSection}
-                          autoAdvance={autoAdvance}
-                          onAutoAdvanceChange={setAutoAdvance}
-                          disabled={!selected}
-                          // 选中双功能键的上半区(tap)时,只允许基础键码:除「功能」
-                          // 列前三张卡片外的所有卡片置灰不可交互。
-                          dualRoleTap={selected?.kind === "key" && selected.part === "tap"}
-                          // 按键叠加(多功能)据此判断:选中键当前是基础键码时把它
-                          // 叠进新框架的 tap 半区,否则(非基础键 / 未选中)清空重来。
-                          currentQmkId={
-                            selected?.kind === "key"
-                              ? keyboard.getKey(layer, selected.row, selected.col)
-                              : selected?.kind === "encoder"
-                                ? keyboard.getEncoder(layer, selected.index, selected.direction)
-                                : null
-                          }
-                          importing={importing}
-                          onExport={handleExport}
-                          onImportFile={handleImportFile}
-                        />
-                      </div>
+                      <ConfigPanel
+                        onPick={handleAssign}
+                        keyboard={keyboard}
+                        // 卡片上的「编辑」:向下平移进编辑页,那边的角标按钮变成
+                        // 返回箭头,回来时这一页(选中的键、下面这个标签页、滚动
+                        // 位置)保持原样。
+                        onNavigate={nav.openConfigEditor}
+                        activeTab={configTab}
+                        onActiveTabChange={setConfigTab}
+                        onOpenQmkSection={nav.openQmkSection}
+                        autoAdvance={autoAdvance}
+                        onAutoAdvanceChange={setAutoAdvance}
+                        // 选中双功能键的上半区(tap)时,只允许基础键码:除「功能」
+                        // 列前三张卡片外的所有卡片置灰不可交互。
+                        dualRoleTap={selected?.kind === "key" && selected.part === "tap"}
+                        // 按键叠加(多功能)据此判断:选中键当前是基础键码时把它
+                        // 叠进新框架的 tap 半区,否则(非基础键 / 未选中)清空重来。
+                        currentQmkId={
+                          selected?.kind === "key"
+                            ? keyboard.getKey(layer, selected.row, selected.col)
+                            : selected?.kind === "encoder"
+                              ? keyboard.getEncoder(layer, selected.index, selected.direction)
+                              : null
+                        }
+                        importing={importing}
+                        onExport={handleExport}
+                        onImportFile={handleImportFile}
+                      />
                     </section>
                   )}
                   </div>

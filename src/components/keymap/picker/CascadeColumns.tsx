@@ -11,7 +11,7 @@ const CLEAR_ICONS: Record<string, string> = {
   KC_TRNS: "mdi:arrow-down-circle-outline",
 };
 
-/** 复制 / 粘贴 rows shown above the clear actions. */
+/** 复制 / 粘贴 rows shown below the clear actions. */
 export interface ClipboardActions {
   /** Label of the keycode currently on the clipboard, or null if it's empty
    *  (which greys out 粘贴). */
@@ -100,6 +100,30 @@ export function CascadeColumns({
         data-lenis-prevent
         className="menu menu-sm max-h-72 w-36 flex-nowrap overflow-y-auto border-r border-base-content/10 p-1"
       >
+        {/* 清空 / 穿透: committed straight from the first level (they need no
+            drill-in), pinned at the very top and separated by a rule so they
+            read as actions rather than another category. */}
+        {clearEntries.map((entry) => (
+          <li key={entry.qmkId}>
+            <button
+              type="button"
+              className={`justify-start ${pinnedItem === entry.qmkId ? "menu-active" : ""}`}
+              title={entry.qmkId}
+              onMouseEnter={() => onHoverClear(entry.qmkId)}
+              onClick={() => commit(entry)}
+            >
+              <Icon
+                icon={CLEAR_ICONS[entry.qmkId] ?? CATEGORY_ICON_FALLBACK}
+                className="h-4 w-4 shrink-0 opacity-70"
+                aria-hidden="true"
+              />
+              <span className="truncate">{entryLabel(entry)}</span>
+            </button>
+          </li>
+        ))}
+        {clearEntries.length > 0 && (
+          <li className="pointer-events-none my-1 border-t border-base-content/10" />
+        )}
         {/* 复制 / 粘贴: clipboard actions on the keycode this picker is editing, so
             they sit above the keycode list with their own rule. 粘贴 names what it
             would paste, and greys out until something has been copied. */}
@@ -140,30 +164,6 @@ export function CascadeColumns({
           </button>
         </li>
         <li className="pointer-events-none my-1 border-t border-base-content/10" />
-        {/* 清空 / 穿透: committed straight from the first level (they need no
-            drill-in), separated from the categories below by a rule so they
-            read as actions rather than another category. */}
-        {clearEntries.map((entry) => (
-          <li key={entry.qmkId}>
-            <button
-              type="button"
-              className={`justify-start ${pinnedItem === entry.qmkId ? "menu-active" : ""}`}
-              title={entry.qmkId}
-              onMouseEnter={() => onHoverClear(entry.qmkId)}
-              onClick={() => commit(entry)}
-            >
-              <Icon
-                icon={CLEAR_ICONS[entry.qmkId] ?? CATEGORY_ICON_FALLBACK}
-                className="h-4 w-4 shrink-0 opacity-70"
-                aria-hidden="true"
-              />
-              <span className="truncate">{entryLabel(entry)}</span>
-            </button>
-          </li>
-        ))}
-        {clearEntries.length > 0 && (
-          <li className="pointer-events-none my-1 border-t border-base-content/10" />
-        )}
         {categories.map((c) => (
           <li key={c.name}>
             <button

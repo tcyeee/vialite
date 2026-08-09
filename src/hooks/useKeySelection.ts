@@ -62,6 +62,13 @@ interface UseKeySelectionOptions {
    */
   selected: Selected | null;
   setSelected: (value: Selected | null | ((prev: Selected | null) => Selected | null)) => void;
+  /**
+   * 是否启用「点到区域外就取消选中」(见下面的 pointerdown 监听)。只有键盘配置页在
+   * 屏幕上时才成立:从卡片的「编辑」跳到宏 / Tap Dance / 组合 的编辑页后,选中态是
+   * 特意留着等用户回来的(见 usePageNavigation 的 openConfigEditor),那边页面上根本
+   * 没有键盘预览和配置区,任何一次点击都会命中「区域外」而把它清掉。
+   */
+  clearOnOutsideClick: boolean;
 }
 
 /**
@@ -78,17 +85,18 @@ export function useKeySelection({
   productName,
   selected,
   setSelected,
+  clearOnOutsideClick,
 }: UseKeySelectionOptions) {
   const { t } = useI18n();
   const { showToast } = useToast();
   const onWriteError = useWriteError("writeKeyFailed");
-  // 点击键盘预览与按键配置区(快捷配置 / 双功能编辑器)之外的任何地方都取消选中,
+  // 点击键盘预览与按键配置区(配置区域 / 双功能编辑器)之外的任何地方都取消选中,
   // 这样选中态不会在用户已经把注意力移开后继续挂着。用文档级监听而不是背景遮罩,
   // 页面其余部分才能照常点击;两个区域各自带 data- 标记,便于命中测试区分内外。
-  // 快捷配置里的浮层提示都是 pointer-events-none,不会成为 pointerdown 的目标,
+  // 配置区域里的浮层提示都是 pointer-events-none,不会成为 pointerdown 的目标,
   // 无需额外标记。
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || !clearOnOutsideClick) return;
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target instanceof Element ? e.target : null;
       if (target?.closest("[data-keyboard-preview], [data-key-config]")) return;
@@ -96,7 +104,7 @@ export function useKeySelection({
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [selected]);
+  }, [selected, clearOnOutsideClick]);
   // When on, assigning a key advances the selection to the next key (reading
   // order) so a run of keys can be configured without re-clicking each cap.
   const [autoAdvance, setAutoAdvance] = useState(true);
@@ -119,7 +127,13 @@ export function useKeySelection({
   // same key from the quick-config board below.
   const handleAssign = useCallback(
     async (qmkId: string) => {
-      if (!keyboard || !selected) {
+      if (!keyboard) {
+        return;
+      }
+      // 配置区域没选中按键时也照常可点(方便先翻找键码),但真要写入时得知道写去
+      // 哪儿 —— 这里补一句提示,而不是让点击悄无声息地什么都不发生。
+      if (!selected) {
+        showToast(t("selectKeyFirst"), "info");
         return;
       }
       let ok = false;
@@ -158,7 +172,7 @@ export function useKeySelection({
         }
       }
     },
-    [keyboard, selected, layer, onWriteError, autoAdvance, markModified],
+    [keyboard, selected, layer, onWriteError, autoAdvance, markModified, showToast, t],
   );
 
   // Dual-role hold editor writes a fully-rebuilt keycode (Mod-Tap / Layer-Tap /

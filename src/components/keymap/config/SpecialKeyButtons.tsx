@@ -4,15 +4,14 @@ import { deserialize, serialize } from "../../../protocol/keycodes.ts";
 
 interface Props {
   onPick: (qmkId: string) => void;
-  /** 未选中按键时置 true:同 BasicKeyboardGrid 一样置灰。 */
-  disabled?: boolean;
 }
 
 /**
- * 清空 / 穿透 / 任意按键三个快捷按钮,紧跟在基础按键(BasicKeyboardGrid)之后,
- * 纵向排布。"任意按键" 弹出一个自由输入框,解析后归一化为 qmk_id 再赋值。
+ * 清空 / 穿透 / 任意按键三个快捷按钮,在基础按键(BasicKeyboardGrid)下方单开一行,
+ * 三个按钮横向排布(无外框)。"任意按键" 弹出一个自由输入框,解析后归一化为 qmk_id
+ * 再赋值。
  */
-export function SpecialKeyButtons({ onPick, disabled = false }: Props) {
+export function SpecialKeyButtons({ onPick }: Props) {
   const { t } = useI18n();
   const [anyOpen, setAnyOpen] = useState(false);
   const [anyValue, setAnyValue] = useState("");
@@ -37,9 +36,9 @@ export function SpecialKeyButtons({ onPick, disabled = false }: Props) {
   };
 
   return (
-    <div className={`flex flex-col items-start${disabled ? " opacity-40" : ""}`}>
+    <div className="flex flex-col items-start">
       <h4 className="mb-2 text-sm font-semibold opacity-70">{t("specialKeys")}</h4>
-      <div className="flex flex-col gap-2 rounded-lg border border-base-content/30 p-3">
+      <div className="flex flex-row flex-wrap items-center gap-2">
         <button
           className="btn btn-sm btn-outline"
           title={t("clearNoTitle")}

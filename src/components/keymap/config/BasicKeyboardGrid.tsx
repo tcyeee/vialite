@@ -10,7 +10,7 @@ import { useI18n } from "../../../contexts/i18n.tsx";
  * Keys are placed on a unit grid (`U` rem per 1u key) via absolute positioning,
  * the way physical-layout editors work, so the staggered rows line up exactly.
  * Each button carries only its `KC_` id; picking is handled by the parent
- * (QuickConfigPanel) so it shares the same masked-template / auto-advance flow as the
+ * (ConfigPanel) so it shares the same masked-template / auto-advance flow as the
  * rest of the palette.
  */
 
@@ -119,11 +119,9 @@ const ROWS = 6.25;
 
 interface Props {
   onPick: (qmkId: string) => void;
-  /** 未选中按键时置 true:在模拟键盘上浮出「请先选择按键」提示。 */
-  disabled?: boolean;
 }
 
-export function BasicKeyboardGrid({ onPick, disabled = false }: Props) {
+export function BasicKeyboardGrid({ onPick }: Props) {
   const { t } = useI18n();
 
   return (
@@ -132,9 +130,7 @@ export function BasicKeyboardGrid({ onPick, disabled = false }: Props) {
       <div className="scrollbar-hide overflow-x-auto pb-2">
         <div className="relative w-fit rounded-lg border border-base-content/30 bg-base-200 p-2">
           <div
-            // 置灰只作用于按键本身,提示徽标作为兄弟节点渲染在外层(见下),
-            // 避免 opacity 祖先把徽标一起变透明。
-            className={`relative${disabled ? " opacity-40" : ""}`}
+            className="relative"
             style={{ width: `${COLS * U}rem`, height: `${ROWS * U}rem` }}
           >
             {keys.map((k) => {
@@ -159,15 +155,6 @@ export function BasicKeyboardGrid({ onPick, disabled = false }: Props) {
               );
             })}
           </div>
-          {disabled && (
-            // 未选中按键时,提示浮在模拟键盘正中央;作为置灰层的兄弟节点渲染,
-            // 保持完全不透明。
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-primary-content shadow-lg">
-                {t("selectKeyFirst")}
-              </span>
-            </div>
-          )}
         </div>
       </div>
     </div>

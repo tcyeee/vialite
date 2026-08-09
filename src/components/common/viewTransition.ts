@@ -20,7 +20,7 @@ export const KEYBOARD_HERO_NAME = "keyboard-hero";
 /**
  * 键盘配置 ↔ 个性化 互切时,键盘预览*下方*那块配置区各自的
  * `view-transition-name`。刻意用两个不同的名字而不是共用一个:共用会让浏览器
- * 把两块区域配成同一个 image-pair 去插值形变,而这两块的高度差很大(快捷配置
+ * 把两块区域配成同一个 image-pair 去插值形变,而这两块的高度差很大(配置区域
  * 一大片 vs 个性化的瀑布流设置),形变出来是拉伸变形的。分成「只在离场那侧存在
  * old」和「只在入场那侧存在 new」两个组之后,每组只有一张快照,各自跑各自的
  * 位移动画(见 index.css 里的 config-area-slide-out/in)。
