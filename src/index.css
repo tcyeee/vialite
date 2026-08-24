@@ -1487,20 +1487,11 @@ input[type="number"].input,
   height: calc(0.9rem * var(--key-font-scale, 1));
 }
 
-/* 按下功能所在的中间行:旋钮的「面」是按下、「圈」是旋转,所以按下用接近普通键帽
-   的字号占据圆心,两个旋转方向缩在上下两条边上。只有板子把旋钮轴向开关接进矩阵
-   时才会出现这一行(见 knobGrouping.ts 的 press 推断)。 */
+/* 按下功能所在的中间行:与左旋/右旋两行共用同一套字号(见上方
+   `.encoder-knob`/`.encoder-knob .key-icon`),三行文字/图标大小保持一致。只有
+   板子把旋钮轴向开关接进矩阵时才会出现这一行(见 knobGrouping.ts 的 press 推断)。 */
 .keyboard-layout .encoder-knob-press {
   gap: 0;
-}
-
-.keyboard-layout .encoder-knob .knob-row-press {
-  font-size: calc(0.7rem * var(--key-font-scale, 1));
-}
-
-.keyboard-layout .encoder-knob .knob-row-press .key-icon {
-  width: calc(1.15rem * var(--key-font-scale, 1));
-  height: calc(1.15rem * var(--key-font-scale, 1));
 }
 
 /* 线稿(wireframe) 风格：键帽/旋钮只描边、不填充 —— 4 态立体感枚举(PreviewStyle)

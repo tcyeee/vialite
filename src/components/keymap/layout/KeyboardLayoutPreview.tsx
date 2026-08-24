@@ -1,3 +1,4 @@
+import { Icon } from "@iconify/react";
 import {
   useMemo,
   useState,
@@ -314,19 +315,23 @@ export function KeyboardLayoutPreview({
             >
               <span className="knob-row">
                 <span className="encoder-dir">↺</span>
+                <KeycapFace qmkId={keyboard.getEncoder(layer, index, 0)} />
               </span>
               {press && (
                 <span className="knob-row knob-row-press">
+                  <Icon icon="mdi:gesture-tap-button" className="encoder-dir" aria-hidden="true" />
                   <KeycapFace qmkId={keyboard.getKey(layer, press.key.row, press.key.col)} />
                 </span>
               )}
               <span className="knob-row">
                 <span className="encoder-dir">↻</span>
+                <KeycapFace qmkId={keyboard.getEncoder(layer, index, 1)} />
               </span>
             </div>
           );
         })}
         {looseEncoders.map(({ encoder, shiftX, shiftY }) => {
+          const qmkId = keyboard.getEncoder(layer, encoder.index, encoder.direction);
           const isSelected =
             menu?.target.kind === "encoder" &&
             menu.target.index === encoder.index &&
@@ -345,6 +350,7 @@ export function KeyboardLayoutPreview({
               style={shapeStyle(encoder, shiftX, shiftY, PITCH, inset, plateMargin)}
             >
               <span className="encoder-dir">{encoder.direction === 1 ? "↻" : "↺"}</span>
+              <KeycapFace qmkId={qmkId} />
             </div>
           );
         })}
