@@ -1,3 +1,4 @@
+import { Icon } from "@iconify/react";
 import {
   Fragment,
   useEffect,
@@ -400,6 +401,7 @@ export function KeyboardLayoutEditor({
               </span>
               {press && (
                 <span className="knob-row knob-row-press">
+                  <Icon icon="mdi:gesture-tap-button" className="encoder-dir" aria-hidden="true" />
                   <KeycapFace qmkId={keyboard.getKey(layer, press.key.row, press.key.col)} />
                 </span>
               )}
