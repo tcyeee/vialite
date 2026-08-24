@@ -13,6 +13,7 @@ import {
   serialize as kcSerialize,
   setCustomKeycodes,
   setKeycodeVersion,
+  setMacroCount,
   setTapDanceCount,
   type CustomKeycode,
 } from "./keycodes.ts";
@@ -908,6 +909,7 @@ export class Keyboard {
   private async reloadMacros(): Promise<void> {
     const countData = await this.transport.send(new Uint8Array([C.CMD_VIA_MACRO_GET_COUNT]), 20);
     this.macroCount = countData[1];
+    setMacroCount(this.macroCount);
 
     const sizeData = await this.transport.send(new Uint8Array([C.CMD_VIA_MACRO_GET_BUFFER_SIZE]), 20);
     this.macroMemory = new DataView(sizeData.buffer, sizeData.byteOffset, sizeData.byteLength).getUint16(1, false);
