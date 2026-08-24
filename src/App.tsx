@@ -214,7 +214,7 @@ function App() {
                 nav.navigateBack();
               }
             }}
-            icon={nav.returnTo !== null ? "mdi:arrow-left" : "mdi:close"}
+            icon={nav.returnTo !== null ? "mdi:arrow-up" : "mdi:close"}
             label={nav.returnTo !== null ? t("navBackToKeymap") : t("navBackToNewHome")}
             active
           />
