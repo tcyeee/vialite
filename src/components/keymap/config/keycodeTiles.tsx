@@ -157,7 +157,7 @@ export function SlotTileGrid({
           title={entry.title ?? entry.qmkId}
           onClick={() => onPick(entry)}
         >
-          {j + 1}
+          {j}
           {configured?.[j] && (
             <span
               className="absolute top-1 right-1 size-1.5 rounded-full bg-white"
