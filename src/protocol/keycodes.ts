@@ -1072,15 +1072,14 @@ export const KEYCODES_QUANTUM: KeycodeDef[] = [
   ]),
 ];
 
-function macroKeycodes(): KeycodeDef[] {
-  const defs: KeycodeDef[] = [];
-  for (let x = 0; x < 16; x++) {
-    defs.push({ qmkId: `M${x}`, label: `M${x}` });
-  }
-  return defs;
-}
-
-export const KEYCODES_MACRO: KeycodeDef[] = macroKeycodes();
+/**
+ * The connected device's macro slots, M0..M(macroCount-1) — populated by
+ * `setMacroCount` once `Keyboard.reload()` knows the device's macro count
+ * (see `reloadMacros`), same live-binding pattern as `setTapDanceCount`
+ * below. Empty (and the "Macros" category empty) until then, rather than a
+ * fixed 16 that would drift from whatever the device actually reports.
+ */
+export const KEYCODES_MACRO: KeycodeDef[] = [];
 
 export const KEYCODES_LIGHTING: KeycodeDef[] = table([
   ["BL_TOGG", "BL\nToggle"],
@@ -1705,6 +1704,19 @@ export function setTapDanceCount(count: number): void {
     const qmkId = `TD(${i})`;
     deviceLabelByQmkId.set(qmkId, `TD${i}`);
     tapDanceDefsCache.push({ qmkId, label: `TD${i}` });
+  }
+}
+
+/**
+ * Registers how many macro slots the device exposes, as M0..M(count-1).
+ * Mutates {@link KEYCODES_MACRO} in place (rather than reassigning it) so the
+ * "Macros" entry already captured into `KEYCODE_CATEGORIES` at module load
+ * keeps seeing the live list.
+ */
+export function setMacroCount(count: number): void {
+  KEYCODES_MACRO.length = 0;
+  for (let x = 0; x < count; x++) {
+    KEYCODES_MACRO.push({ qmkId: `M${x}`, label: `M${x}` });
   }
 }
 
