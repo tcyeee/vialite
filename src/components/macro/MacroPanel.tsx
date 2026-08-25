@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { useI18n } from "../../contexts/i18n.tsx";
 import { VIAL_PROTOCOL_ADVANCED_MACROS } from "../../protocol/constants.ts";
 import type { Keyboard, MacroAction } from "../../protocol/keyboard.ts";
-import { serializeMacro, serializeMacros } from "../../protocol/macro.ts";
+import { MAX_MACRO_DELAY_MS, serializeMacro, serializeMacros } from "../../protocol/macro.ts";
 import { usePersistedBoolean } from "../../hooks/usePersistedBoolean.ts";
 import { HelpIcon } from "../common/HelpIcon.tsx";
 import { KeySlot } from "../common/KeySlot.tsx";
@@ -142,6 +142,7 @@ function MacroActionRow({
           type="number"
           className="input input-sm w-28"
           min={0}
+          max={MAX_MACRO_DELAY_MS}
           value={action.ms}
           onChange={(e) => onChange({ ...action, ms: Number(e.target.value) })}
         />

@@ -11,6 +11,7 @@ import { useTheme } from "../../../contexts/theme.tsx";
 import type { Keyboard } from "../../../protocol/keyboard.ts";
 import type { KeycodeDef } from "../../../protocol/keycodes.ts";
 import { useSettledLive } from "../../common/useSettledLive.ts";
+import { useStableAnchor } from "../../common/useStableAnchor.ts";
 import { KeycapFace } from "./KeycapFace.tsx";
 import { KeycodeCascadeSelector } from "../picker/KeycodeCascadeSelector.tsx";
 import { KeyboardCaseOutline, useCaseShape } from "./KeyboardCaseLayer.tsx";
@@ -165,6 +166,7 @@ export function KeyboardLayoutPreview({
     e.preventDefault();
     setMenu({ x: e.clientX, y: e.clientY, target });
   };
+  const menuAnchor = useStableAnchor(menu);
 
   // Same knob grouping as the interactive board, so the two stay pixel-identical.
   const { placed, knobs, loose: looseEncoders, pressKeys } = useKnobLayout(keyboard);
@@ -376,7 +378,7 @@ export function KeyboardLayoutPreview({
         // popover; the cascade handles its own dismissal (outside-click/Escape).
         <div onContextMenu={(e) => e.preventDefault()}>
           <KeycodeCascadeSelector
-            anchor={{ x: menu.x, y: menu.y }}
+            anchor={menuAnchor}
             keyboard={keyboard}
             value={
               menu.target.kind === "key"

@@ -1017,6 +1017,14 @@ const MESSAGES = {
     ja: "この Tap Dance を削除しますか?すべてのアクションが消去されます。",
     fr: "Supprimer ce Tap Dance ? Toutes ses actions seront effacées.",
   },
+  // Shown when a renumber's write to the new slot lands but clearing the old slot then fails,
+  // leaving the entry duplicated on the device until it's cleared manually or the page reloads.
+  tapDanceMoveDuplicated: {
+    en: "Slot {from} still holds a copy — the move to slot {to} succeeded but clearing the old slot failed",
+    zh: "槽位 {from} 仍保留着一份——移动到槽位 {to} 已成功,但清空原槽位失败了",
+    ja: "スロット {from} にはまだコピーが残っています——スロット {to} への移動は成功しましたが、元のスロットのクリアに失敗しました",
+    fr: "L'emplacement {from} contient toujours une copie — le déplacement vers l'emplacement {to} a réussi, mais l'effacement de l'ancien emplacement a échoué",
+  },
   tapDanceAssigned: { en: "In use", zh: "已使用", ja: "使用中", fr: "Utilisé" },
   tapDanceUnassigned: { en: "Not in use", zh: "未使用", ja: "未使用", fr: "Non utilisé" },
   tapDanceAssignedHelp: {
@@ -1137,6 +1145,14 @@ const MESSAGES = {
     zh: "确定删除这个组合键吗?",
     ja: "このコンボを削除しますか?",
     fr: "Supprimer ce combo ?",
+  },
+  // Shown when a renumber's write to the new slot lands but clearing the old slot then fails,
+  // leaving the entry duplicated on the device until it's cleared manually or the page reloads.
+  comboMoveDuplicated: {
+    en: "Slot {from} still holds a copy — the move to slot {to} succeeded but clearing the old slot failed",
+    zh: "槽位 {from} 仍保留着一份——移动到槽位 {to} 已成功,但清空原槽位失败了",
+    ja: "スロット {from} にはまだコピーが残っています——スロット {to} への移動は成功しましたが、元のスロットのクリアに失敗しました",
+    fr: "L'emplacement {from} contient toujours une copie — le déplacement vers l'emplacement {to} a réussi, mais l'effacement de l'ancien emplacement a échoué",
   },
   comboActive: { en: "Active", zh: "已生效", ja: "有効", fr: "Actif" },
   comboAdd: { en: "Add combo", zh: "添加 Combo", ja: "コンボを追加", fr: "Ajouter un combo" },

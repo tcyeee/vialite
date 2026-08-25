@@ -18,6 +18,7 @@ import { KeycapFace } from "./KeycapFace.tsx";
 import { KeycodeCascadeSelector } from "../picker/KeycodeCascadeSelector.tsx";
 import { KeyInfoCard } from "../picker/KeyInfoCard.tsx";
 import { useSettledLive } from "../../common/useSettledLive.ts";
+import { useStableAnchor } from "../../common/useStableAnchor.ts";
 import {
   appearanceMetrics,
   FONT_SCALES,
@@ -176,6 +177,7 @@ export function KeyboardLayoutEditor({
   // quick-config board below tracks it; the cascade dismisses itself (outside
   // click / Escape / after a pick), so there's no separate close listener here.
   const [menu, setMenu] = useState<{ x: number; y: number; target: ContextTarget } | null>(null);
+  const menuAnchor = useStableAnchor(menu);
   const openMenu = (e: ReactMouseEvent, target: ContextTarget) => {
     if (!onContextAssign) {
       return;
@@ -473,7 +475,7 @@ export function KeyboardLayoutEditor({
         // popover; the cascade handles its own dismissal (outside-click/Escape).
         <div onContextMenu={(e) => e.preventDefault()}>
           <KeycodeCascadeSelector
-            anchor={{ x: menu.x, y: menu.y }}
+            anchor={menuAnchor}
             keyboard={keyboard}
             value={
               menu.target.kind === "key"

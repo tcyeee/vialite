@@ -888,6 +888,41 @@ export class Keyboard {
     }
   }
 
+  /**
+   * Runs a paginated "ids ascending, terminated by 0xffff" query loop, shared
+   * by reloadRgb (VIALRGB_GET_SUPPORTED) and reloadQmkSettings
+   * (QMK_SETTINGS_QUERY). `buildCmd(cursor)` builds the request for the given
+   * cursor (the highest id seen so far, 0 initially); `dataOffset` is where
+   * the id array starts in the reply (past any echoed command bytes). The
+   * round cap guards against firmware that never sends the terminator (or
+   * repeats the same page), which in a browser tab means a hung page.
+   */
+  private async fetchPaginatedIds(
+    buildCmd: (cursor: number) => Uint8Array<ArrayBuffer>,
+    dataOffset: number,
+  ): Promise<Set<number>> {
+    const ids = new Set<number>();
+    let cur = 0;
+    for (let round = 0; cur !== 0xffff && round < 64; round++) {
+      const data = await this.transport.send(buildCmd(cur), 20);
+      const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      const before = cur;
+      for (let i = dataOffset; i + 1 < data.length; i += 2) {
+        const value = dv.getUint16(i, true);
+        if (value !== 0xffff) {
+          ids.add(value);
+        }
+        cur = Math.max(cur, value);
+      }
+      if (cur === before) {
+        // No progress this round — the device isn't advancing; stop rather
+        // than re-request the same window.
+        break;
+      }
+    }
+    return ids;
+  }
+
   /** Fetches one CMD_VIAL_DYNAMIC_ENTRY_OP entry as `fields` little-endian uint16s (mirrors _retrieve_dynamic_entries). */
   private async fetchDynamicEntry(subcmd: number, idx: number, fields: number): Promise<number[]> {
     const data = await this.transport.send(
@@ -951,24 +986,14 @@ export class Keyboard {
       return;
     }
 
-    const supported = new Set<number>();
-    let cur = 0;
-    while (cur !== 0xffff) {
+    const supported = await this.fetchPaginatedIds((cursor) => {
       const cmd = new Uint8Array(4);
       const view = new DataView(cmd.buffer);
       cmd[0] = C.CMD_VIA_VIAL_PREFIX;
       cmd[1] = C.CMD_VIAL_QMK_SETTINGS_QUERY;
-      view.setUint16(2, cur, true);
-      const data = await this.transport.send(cmd, 20);
-      const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
-      for (let i = 0; i + 1 < data.length; i += 2) {
-        const qsid = dv.getUint16(i, true);
-        cur = Math.max(cur, qsid);
-        if (qsid !== 0xffff) {
-          supported.add(qsid);
-        }
-      }
-    }
+      view.setUint16(2, cursor, true);
+      return cmd;
+    }, 0);
 
     for (const [qsidStr, width] of Object.entries(QMK_SETTINGS_WIDTH)) {
       const qsid = Number(qsidStr);
@@ -1029,32 +1054,15 @@ export class Keyboard {
 
     // Effect ids come back 15-per-packet, ascending, terminated by 0xffff; each
     // round asks for ids above the highest seen so far. Effect 0 (Disable) is
-    // always available and isn't necessarily enumerated. The round cap is ours,
-    // not upstream's: a firmware that never sends the 0xffff terminator would
-    // otherwise spin here forever, which in a browser tab means a hung page.
-    const effects = new Set<number>([0]);
-    let maxEffect = 0;
-    for (let round = 0; maxEffect < 0xffff && round < 64; round++) {
+    // always available and isn't necessarily enumerated.
+    const effects = await this.fetchPaginatedIds((cursor) => {
       const cmd = new Uint8Array(4);
       cmd[0] = C.CMD_VIA_LIGHTING_GET_VALUE;
       cmd[1] = C.VIALRGB_GET_SUPPORTED;
-      new DataView(cmd.buffer).setUint16(2, maxEffect, true);
-      const data = await this.transport.send(cmd, 20);
-      const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
-      const before = maxEffect;
-      for (let i = 2; i + 1 < data.length; i += 2) {
-        const value = dv.getUint16(i, true);
-        if (value !== 0xffff) {
-          effects.add(value);
-        }
-        maxEffect = Math.max(maxEffect, value);
-      }
-      if (maxEffect === before) {
-        // No new ids and no terminator — the device isn't advancing; stop rather
-        // than re-request the same window.
-        break;
-      }
-    }
+      new DataView(cmd.buffer).setUint16(2, cursor, true);
+      return cmd;
+    }, 2);
+    effects.add(0);
     this.rgbSupportedEffects = effects;
 
     const mode = await this.transport.send(
@@ -1071,15 +1079,15 @@ export class Keyboard {
    * per-field variant, so every setter below rewrites all of it (as vial-gui's
    * `_vialrgb_set_mode` does).
    */
-  private async writeRgbMode(): Promise<void> {
+  private async writeRgbMode(mode: number, speed: number, hsv: [number, number, number]): Promise<void> {
     const cmd = new Uint8Array(8);
     cmd[0] = C.CMD_VIA_LIGHTING_SET_VALUE;
     cmd[1] = C.VIALRGB_SET_MODE;
-    new DataView(cmd.buffer).setUint16(2, this.rgbMode, true);
-    cmd[4] = this.rgbSpeed;
-    cmd[5] = this.rgbHsv[0];
-    cmd[6] = this.rgbHsv[1];
-    cmd[7] = this.rgbHsv[2];
+    new DataView(cmd.buffer).setUint16(2, mode, true);
+    cmd[4] = speed;
+    cmd[5] = hsv[0];
+    cmd[6] = hsv[1];
+    cmd[7] = hsv[2];
     await this.transport.send(cmd, 20);
   }
 
@@ -1087,9 +1095,9 @@ export class Keyboard {
     if (this.rgbMode === mode) {
       return;
     }
+    await this.writeRgbMode(mode, this.rgbSpeed, this.rgbHsv);
     this.rgbMode = mode;
     this.notify();
-    await this.writeRgbMode();
   }
 
   async setRgbSpeed(speed: number): Promise<void> {
@@ -1097,9 +1105,9 @@ export class Keyboard {
     if (this.rgbSpeed === next) {
       return;
     }
+    await this.writeRgbMode(this.rgbMode, next, this.rgbHsv);
     this.rgbSpeed = next;
     this.notify();
-    await this.writeRgbMode();
   }
 
   /** Brightness is HSV's `value`, capped at the firmware-reported maximum. */
@@ -1108,9 +1116,10 @@ export class Keyboard {
     if (this.rgbHsv[2] === next) {
       return;
     }
-    this.rgbHsv = [this.rgbHsv[0], this.rgbHsv[1], next];
+    const nextHsv: [number, number, number] = [this.rgbHsv[0], this.rgbHsv[1], next];
+    await this.writeRgbMode(this.rgbMode, this.rgbSpeed, nextHsv);
+    this.rgbHsv = nextHsv;
     this.notify();
-    await this.writeRgbMode();
   }
 
   /** Hue/saturation only — brightness stays on its own slider. Both 0-255. */
@@ -1120,9 +1129,10 @@ export class Keyboard {
     if (this.rgbHsv[0] === h && this.rgbHsv[1] === s) {
       return;
     }
-    this.rgbHsv = [h, s, this.rgbHsv[2]];
+    const nextHsv: [number, number, number] = [h, s, this.rgbHsv[2]];
+    await this.writeRgbMode(this.rgbMode, this.rgbSpeed, nextHsv);
+    this.rgbHsv = nextHsv;
     this.notify();
-    await this.writeRgbMode();
   }
 
   /**

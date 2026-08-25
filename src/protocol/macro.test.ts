@@ -4,6 +4,7 @@ import { deserialize as kcDeserialize } from "./keycodes.ts";
 import {
   deserializeMacro,
   deserializeMacros,
+  MAX_MACRO_DELAY_MS,
   serializeMacro,
   serializeMacros,
   type MacroAction,
@@ -38,6 +39,15 @@ describe("macro action serialization", () => {
     const data = serializeMacro(actions, V2);
     expect(deserializeMacro(data, V2)).toEqual(actions);
     expect(() => serializeMacro(actions, V1)).toThrow();
+  });
+
+  it("rejects a delay beyond MAX_MACRO_DELAY_MS but accepts exactly the max", () => {
+    const atMax: MacroAction[] = [{ kind: "delay", ms: MAX_MACRO_DELAY_MS }];
+    expect(() => serializeMacro(atMax, V2)).not.toThrow();
+    expect(deserializeMacro(serializeMacro(atMax, V2), V2)).toEqual(atMax);
+
+    const overMax: MacroAction[] = [{ kind: "delay", ms: MAX_MACRO_DELAY_MS + 1 }];
+    expect(() => serializeMacro(overMax, V2)).toThrow();
   });
 
   it("round-trips extended (>=256) keycodes on v2, including the 0xFF00 encoding trick", () => {

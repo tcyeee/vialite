@@ -201,21 +201,23 @@ export function KeycodeCascadeSelector({
   }, [value]);
 
   // All non-empty categories: the static tables plus whatever the attached
-  // device exposes (Custom keycodes, Tap Dance). Recomputed each render is
-  // cheap; device categories reflect the currently-connected keyboard.
+  // device exposes (Custom keycodes, Tap Dance). `deviceCategories()` reads
+  // module-level caches that `Keyboard.reload()` repopulates on every connect,
+  // so this is deliberately a plain const recomputed every render (not a
+  // `useMemo` with an empty dep array) — a long-lived instance of this picker
+  // (e.g. a macro action row's "+" button, which has no `keyboard` prop to key
+  // a memo off) must still pick up a reconnect to a different board. Matches
+  // `ConfigPanel.tsx`'s unmemoized call to the same function. Recomputing is
+  // cheap: a handful of array spreads/filters over a static table.
   // The two clear keycodes are promoted out of Basic to the top of the category
   // column (see the popover), so strip them from their category's entries to
   // avoid listing them twice.
-  const categories = useMemo<Category[]>(
-    () =>
-      [...KEYCODE_CATEGORIES, ...deviceCategories()]
-        .map((c) => ({
-          name: c.name,
-          entries: c.entries.filter((e) => !CLEAR_LABELS[e.qmkId]),
-        }))
-        .filter((c) => c.entries.length > 0),
-    [],
-  );
+  const categories: Category[] = [...KEYCODE_CATEGORIES, ...deviceCategories()]
+    .map((c) => ({
+      name: c.name,
+      entries: c.entries.filter((e) => !CLEAR_LABELS[e.qmkId]),
+    }))
+    .filter((c) => c.entries.length > 0);
 
   // KC_NO ("清空") / KC_TRNS ("穿透"), in CLEAR_LABELS order — the two actions
   // pinned above the categories as first-level items.

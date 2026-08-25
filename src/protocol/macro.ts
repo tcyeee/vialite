@@ -17,6 +17,10 @@ const VIAL_MACRO_EXT_TAP = 5;
 const VIAL_MACRO_EXT_DOWN = 6;
 const VIAL_MACRO_EXT_UP = 7;
 
+/** Largest delay (ms) the two-byte SS_DELAY_CODE encoding can represent without the high byte
+ *  overflowing its Uint8Array slot (which would wrap to 0 — the buffer's own NUL separator). */
+export const MAX_MACRO_DELAY_MS = 65024;
+
 export type MacroAction =
   | { kind: "text"; text: string }
   | { kind: "tap" | "down" | "up"; keycodes: string[] }
@@ -39,6 +43,9 @@ function serializeAction(action: MacroAction, vialProtocol: number): number[] {
       throw new Error("delay actions require vial protocol >= 2");
     }
     const delay = action.ms;
+    if (delay < 0 || delay > MAX_MACRO_DELAY_MS) {
+      throw new Error(`delay must be between 0 and ${MAX_MACRO_DELAY_MS}ms, got ${delay}`);
+    }
     return [SS_QMK_PREFIX, SS_DELAY_CODE, (delay % 255) + 1, Math.floor(delay / 255) + 1];
   }
   const out: number[] = [];

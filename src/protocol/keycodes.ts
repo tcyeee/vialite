@@ -1687,6 +1687,12 @@ const deviceLabelByQmkId = new Map<string, string>();
  */
 export function setCustomKeycodes(list: CustomKeycode[]): void {
   customKeycodeDefsCache = [];
+  // Reconnecting to a different device must not leak the previous device's
+  // labels — prune this function's keyspace before repopulating it, since
+  // deviceLabelByQmkId is otherwise set-only and never shrinks.
+  for (const key of deviceLabelByQmkId.keys()) {
+    if (key.startsWith("USER")) deviceLabelByQmkId.delete(key);
+  }
   for (const [i, c] of list.entries()) {
     if (i >= 16) break;
     const qmkId = `USER${String(i).padStart(2, "0")}`;
@@ -1700,6 +1706,12 @@ export function setCustomKeycodes(list: CustomKeycode[]): void {
 /** Registers how many tap-dance slots the device exposes, as TD(0)..TD(n-1). */
 export function setTapDanceCount(count: number): void {
   tapDanceDefsCache = [];
+  // Same reasoning as setCustomKeycodes: prune this function's keyspace
+  // (TD(n)) before repopulating so a reconnect to a device with fewer slots
+  // doesn't keep serving a stale label for the now-nonexistent ones.
+  for (const key of deviceLabelByQmkId.keys()) {
+    if (key.startsWith("TD(")) deviceLabelByQmkId.delete(key);
+  }
   for (let i = 0; i < count; i++) {
     const qmkId = `TD(${i})`;
     deviceLabelByQmkId.set(qmkId, `TD${i}`);

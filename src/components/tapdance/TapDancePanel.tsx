@@ -9,6 +9,7 @@ import { RenumberPicker } from "../common/RenumberPicker.tsx";
 import { ConfirmDialog } from "../common/ConfirmDialog.tsx";
 import { startViewTransition } from "../common/viewTransition.ts";
 import { useKeyInfoHover } from "../common/useKeyInfoHover.tsx";
+import { clearOldSlotAfterMove } from "../common/moveSlot.ts";
 import { useEscapeKey } from "../../hooks/useEscapeKey.ts";
 import { useWriteError } from "../../hooks/useWriteError.ts";
 import {
@@ -442,7 +443,11 @@ export function TapDancePanel({ keyboard }: Props) {
    *  taking the draft's meaning with it. */
   const closeEditingOn = (i: number) => setEditing((e) => (e?.row === i ? null : e));
 
-  /** Move an entry to a different (free) slot number: write it to the new slot, clear the old one. */
+  /** Move an entry to a different (free) slot number: write it to the new slot, clear the old one.
+   *  The two writes are separate device round-trips: if the first lands but the second (clearing
+   *  the old slot) then fails, the entry is now duplicated on the device rather than moved, so
+   *  that failure is surfaced distinctly below rather than folded into the generic write-error
+   *  path — and the UI bookkeeping still runs, since the move itself genuinely did happen. */
   const moveTo = async (fromIdx: number, toIdx: number) => {
     if (fromIdx === toIdx) return;
     const src = keyboard.tapDanceEntries[fromIdx];
@@ -450,14 +455,21 @@ export function TapDancePanel({ keyboard }: Props) {
     const heldOrder = displayOrder.map((i) => (i === fromIdx ? toIdx : i));
     try {
       await keyboard.setTapDance(toIdx, { ...src });
-      if (isUsed(src)) await keyboard.setTapDance(fromIdx, { ...EMPTY_ENTRY });
-      if (draftIndex === fromIdx) setDraftIndex(toIdx);
-      closeEditingOn(fromIdx);
-      if (reorderTimer.current) clearTimeout(reorderTimer.current);
-      setPendingOrder(heldOrder);
-      reorderTimer.current = window.setTimeout(settlePendingReorder, REORDER_SETTLE_MS);
     } catch (err) {
       onWriteError(err);
+      return;
+    }
+    if (draftIndex === fromIdx) setDraftIndex(toIdx);
+    closeEditingOn(fromIdx);
+    if (reorderTimer.current) clearTimeout(reorderTimer.current);
+    setPendingOrder(heldOrder);
+    reorderTimer.current = window.setTimeout(settlePendingReorder, REORDER_SETTLE_MS);
+    if (isUsed(src)) {
+      await clearOldSlotAfterMove(
+        () => keyboard.setTapDance(fromIdx, { ...EMPTY_ENTRY }),
+        onWriteError,
+        t("tapDanceMoveDuplicated", { from: fromIdx, to: toIdx }),
+      );
     }
   };
 
