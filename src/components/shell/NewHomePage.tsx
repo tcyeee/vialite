@@ -181,7 +181,7 @@ export function NewHomePage({
   return (
     <div className="relative flex h-screen flex-col overflow-x-hidden overflow-y-auto bg-[#EAE6E6] text-black dark:bg-black dark:text-white lg:overflow-y-hidden">
       <nav className="flex items-center justify-between px-10 py-4 md:px-14">
-        <span className="text-[1.95rem] font-extrabold tracking-tight">Vialite</span>
+        <img src="/vialite-logo.svg" alt="Vialite" className="h-8 w-auto dark:invert" />
         <div className="flex items-center gap-3 text-[15px] font-medium text-black/90 dark:text-white/90">
           <button
             type="button"
