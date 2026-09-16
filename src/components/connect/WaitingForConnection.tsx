@@ -145,9 +145,9 @@ export function WaitingForConnection({
         style={{ opacity: zoom ? 1 : 0 }}
       />
       <img
-        className="fixed top-6 left-6 h-12 w-auto transition-opacity duration-300 md:h-16"
+        className="fixed top-6 left-6 h-12 w-auto transition-opacity duration-300 dark:invert md:h-16"
         style={fadeStyle}
-        src="/logo-full.svg"
+        src="/vialite-logo.svg"
         alt="Vialite"
       />
 

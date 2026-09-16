@@ -25,7 +25,7 @@ export function SiteConfigPage({ onExit }: Props) {
               bottom margin (on top of the container's gap). */}
           <div className="mb-20 flex flex-col gap-5">
             <section className="flex w-full max-w-lg flex-col items-center justify-center gap-6 self-center rounded-box bg-brand-surface-variant/30 p-6 text-center">
-              <img src="/logo-full.svg" alt="Vialite" className="h-15 w-auto" />
+              <img src="/vialite-logo.svg" alt="Vialite" className="h-15 w-auto dark:invert" />
               <p className="text-sm leading-relaxed text-brand-on-surface-variant">
                 {t("siteAboutIntro")}
               </p>
